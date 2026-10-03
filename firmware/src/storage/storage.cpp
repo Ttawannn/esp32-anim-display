@@ -1,6 +1,8 @@
 #include "storage.h"
 
 #include <algorithm>
+#include <atomic>
+#include "replace.h"
 
 #include "player/dpa.h"
 
@@ -11,11 +13,17 @@ bool begin() {
   if (!LittleFS.exists(kAnimDir)) LittleFS.mkdir(kAnimDir);
   // Remove temp files left by interrupted uploads.
   std::vector<String> stale;
+  std::vector<String> backups;
   File dir = LittleFS.open(kAnimDir);
   for (File f = dir.openNextFile(); f; f = dir.openNextFile()) {
     if (String(f.name()).startsWith(".up-")) stale.push_back(String(kAnimDir) + "/" + f.name());
+    if (String(f.name()).endsWith(".dpa.bak")) backups.push_back(String(kAnimDir) + "/" + f.name());
   }
   dir.close();
+  for (const auto& backup : backups) {
+    const String dest = backup.substring(0, backup.length() - 4);
+    if (!recoverReplacement(LittleFS, dest, backup)) return false;
+  }
   for (const auto& p : stale) LittleFS.remove(p);
   return true;
 }
@@ -59,14 +67,14 @@ size_t fileSize(const String& name) {
 bool remove(const String& name) { return LittleFS.remove(animPath(name)); }
 
 String newUploadTmpPath() {
-  static uint32_t counter = 0;
+  static std::atomic<uint32_t> counter{0};
   return String(kAnimDir) + "/.up-" + String(millis()) + "-" + String(++counter) + ".tmp";
 }
 
 bool commitUpload(const String& tmpPath, const String& name) {
   const String dest = animPath(name);
-  LittleFS.remove(dest);
-  return LittleFS.rename(tmpPath, dest);
+  const String backup = dest + ".bak";
+  return replaceFile(LittleFS, tmpPath, dest, backup);
 }
 
 std::vector<AnimInfo> list() {

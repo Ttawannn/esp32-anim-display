@@ -28,6 +28,8 @@ const state = {
 };
 
 const used = () => [...state.anims.values()].reduce((s, b) => s + b.length + 512, 4096);
+const uploads = new Map();
+let nextUploadId = 0;
 const preset = () => PRESETS.find((p) => p.id === state.display.preset);
 
 function header(buf) {
@@ -101,8 +103,14 @@ createServer(async (req, res) => {
       if (data.length + used() > FS_TOTAL) return send(res, 507, { error: 'not enough storage' });
       state.anims.set(name, data);
       if (q('play') !== '0') play(name);
-      return send(res, 200, { ok: true, name, size: data.length });
+      const uploadId = ++nextUploadId;
+      uploads.set(uploadId, { state: 'saved' });
+      if (uploads.size > 16) uploads.delete(uploads.keys().next().value);
+      return send(res, 202, { ok: true, name, size: data.length, upload_id: uploadId });
     }
+    case 'GET /api/uploads/status':
+      return uploads.has(Number(q('id')))
+        ? send(res, 200, uploads.get(Number(q('id')))) : send(res, 404, { error: 'upload not found' });
     case 'GET /api/anims/file': {
       const b = state.anims.get(q('name'));
       if (!b) return send(res, 404, { error: 'not found' });

@@ -8,6 +8,7 @@
 #include "commands.h"
 #include "controller.h"
 #include "net/wifi_manager.h"
+#include "serial_rpc.h"
 #include "storage/storage.h"
 
 static void saveAndReboot() {
@@ -166,20 +167,31 @@ static void handleCommand(char* line) {
   }
 }
 
+// Lines starting with '@' are USB RPC requests from the web editor (base64 chunks of a few KB);
+// everything else is a console command.
 void consolePoll() {
-  static char line[128];
+  serialRpcPoll();
+  static char line[6144];
   static size_t len = 0;
+  static bool overflow = false;
   while (Serial.available()) {
     const char c = Serial.read();
     if (c == '\r' || c == '\n') {
-      if (len) {
+      if (len && !overflow) {
         line[len] = 0;
-        Serial.printf("> %s\n", line);
-        handleCommand(line);
-        len = 0;
+        if (line[0] == '@') {
+          serialRpcHandle(line + 1);
+        } else {
+          Serial.printf("> %s\n", line);
+          handleCommand(line);
+        }
       }
+      len = 0;
+      overflow = false;
     } else if (len < sizeof(line) - 1) {
       line[len++] = c;
+    } else {
+      overflow = true;  // drop the whole line
     }
   }
 }

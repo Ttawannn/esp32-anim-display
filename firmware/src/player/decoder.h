@@ -40,6 +40,7 @@ private:
 class StreamReader {
 public:
   StreamReader(Source& src, uint32_t start, uint32_t end) : src_(src), pos_(start), end_(end) {}
+  bool exhausted() const { return pos_ == end_ && bufPos_ == bufLen_; }
   int next() {
     if (bufPos_ == bufLen_) {
       if (pos_ >= end_) return -1;
@@ -62,6 +63,7 @@ private:
 class RleDecoder {
 public:
   explicit RleDecoder(StreamReader& in) : in_(in) {}
+  bool finished() const { return literal_ == 0 && repeat_ == 0 && in_.exhausted(); }
   bool read(uint8_t* out, size_t n) {
     for (size_t i = 0; i < n; i++) {
       if (literal_ == 0 && repeat_ == 0) {
@@ -120,7 +122,10 @@ bool decodeIndexed(Source& src, const FrameEntry& e, const Header& h, const Rect
   RleDecoder rle(in);
   for (uint16_t i = 0; i < r.h; i++) {
     if (!rle.read(idx, r.w)) return false;
-    for (uint16_t c = 0; c < r.w; c++) px[c] = palette[idx[c]];
+    for (uint16_t c = 0; c < r.w; c++) {
+      if (idx[c] >= h.paletteSize) return false;
+      px[c] = palette[idx[c]];
+    }
     row(r.y + i, px);
   }
   return true;
@@ -130,7 +135,9 @@ bool decodeIndexed(Source& src, const FrameEntry& e, const Header& h, const Rect
 template <typename PageFn>
 bool decodeMono(Source& src, const FrameEntry& e, const Header& h, const Rect& r, uint8_t* bytes, PageFn page) {
   if (r.w == 0) return true;
-  if (((r.y | r.h) & 7) || r.x + r.w > h.canvasW || r.y >= h.canvasH) return false;
+  const uint32_t paddedHeight = (uint32_t(h.canvasH) + 7) & ~7u;
+  if (((r.y | r.h) & 7) || r.x + r.w > h.canvasW || r.y >= h.canvasH ||
+      uint32_t(r.y) + r.h > paddedHeight) return false;
   StreamReader in(src, e.offset + 8, e.offset + e.size);
   RleDecoder rle(in);
   for (uint16_t p = 0; p < r.h / 8; p++) {

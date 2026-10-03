@@ -72,7 +72,7 @@ Frame types are INDEXED (palette + RLE), JPEG (baseline, decoded by JPEGDEC), an
 
 - **Loop task:** the only task that may touch the panel or the player. It runs `controllerLoop()`, which drains a FreeRTOS command queue (`app/commands`) and drives `player/player`, the playlist, overlays, and live preview.
 - **HTTP handlers (`net/web.cpp`):** these run in the AsyncTCP task. They must never draw; they post to the command queue with `commandPost()`.
-- **Uploads:** the handler writes a unique temp file itself, then posts `Cmd::CommitUpload`. The loop task does the rename, because the target file may be playing.
+- **Uploads:** the handler validates a unique temp file, then posts `Cmd::CommitUpload`. The loop task replaces the file while preserving a recoverable backup and publishes an upload receipt; clients poll that receipt before reporting success.
 - **Status reads:** `/api/info` reads player state through the lock-protected `statusPublish()` / `statusRead()` snapshot.
 - **URL matching:** ESPAsyncWebServer's default string URI matching is prefix-like (`/api/live` also matches `/api/live/end`). Register routes with `exact()`.
 
@@ -104,7 +104,8 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. Boards are matched
 - **Frames are immutable:** every edit replaces a frame's `data` buffer (`Pixels = Uint8ClampedArray<ArrayBuffer>`). Undo snapshots share untouched frames by reference, and caches are keyed on buffer identity (`WeakMap`).
 - **Single source of truth for the panel image:** `render/output.ts` (adjustments, RGB565 or 1-bit, color limit). The device preview, the import dialogs, and the encoder all go through it.
 - **Generated animations:** `templates/eyes.ts` produces procedural eye animations from keyframes (tween, then hold-as-delay).
-- **REST client:** `device/api.ts` mirrors `firmware/src/net/web.cpp`. Keep `web/scripts/mock-board.mjs` in sync with API changes.
+- **Board client:** `device/api.ts` uses HTTP or Web Serial. `firmware/src/net/api.cpp` is shared by HTTP (`net/web.cpp`) and USB (`app/serial_rpc.cpp`); see `docs/usb-protocol.md`. Serialize entire USB transfers, including their save receipt. Keep `web/scripts/mock-board.mjs` in sync with API changes.
+- **Encoding:** use `codec/encode.ts` for estimates, downloads, uploads, and live preview. It shares a bounded cache and runs `codec/dpa.ts` in a Worker without detaching immutable project buffers.
 - **Two pages:** `main.tsx` routes by hash.
   - `#/editor` is the full editor (`ui/App.tsx`).
   - `#/remote` is the phone remote (`ui/RemoteApp.tsx`).

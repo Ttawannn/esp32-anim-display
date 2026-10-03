@@ -3,7 +3,7 @@
 Every endpoint lives at `http://<board ip>/api/...` (or `http://display.local/api/...`) and responds with JSON.
 Errors respond with `{"error": "..."}` and an appropriate HTTP status. CORS headers are always sent, so an editor running on a PC can call the board directly.
 
-The implementation is [firmware/src/net/web.cpp](../firmware/src/net/web.cpp).
+The JSON API is implemented in [firmware/src/net/api.cpp](../firmware/src/net/api.cpp), shared by HTTP and [USB serial](usb-protocol.md).
 [web/scripts/mock-board.mjs](../web/scripts/mock-board.mjs) is a fake board that answers the same API.
 
 ## Status
@@ -18,14 +18,21 @@ The implementation is [firmware/src/net/web.cpp](../firmware/src/net/web.cpp).
 |--------|------|-------------|
 | GET | `/api/anims` | `{anims: [{name, size, width, height, frames, color}], free}` |
 | POST | `/api/anims?name=<n>&play=1` | upload a `.dpa` as multipart (field `file`); `play=0` stores it without playing |
+| GET | `/api/uploads/status?id=<id>` | `{state: "pending" | "saved" | "failed"}`; failed saves include `error` |
 | GET | `/api/anims/file?name=<n>&max=<bytes>` | download the file; with `max`, only its first bytes (used for thumbnails) |
 | DELETE | `/api/anims?name=<n>` | delete |
 | POST | `/api/play?name=<n>` | play this file (pauses the playlist) |
 | POST | `/api/stop` | stop and clear the screen |
 | POST | `/api/next` | next playlist item, or the next file |
 
-Upload errors: `400` invalid file name, `415` not a DPA file, `507` not enough storage.
-Uploads are written to a temporary file and the header is validated before the existing file is replaced, so a dropped connection never corrupts the old file.
+Upload errors: `400` invalid file name, `415` invalid DPA structure/data, `507` insufficient space, `503` command queue full.
+An accepted upload returns HTTP `202` with `{ok: true, name, size, upload_id}`. This means the commit is queued; poll its receipt until `saved` before reporting success. Receipts use a bounded 16-slot ring, and pending receipts are never overwritten. Older clients can still read `ok`; newer clients also support older firmware that returns no receipt.
+
+Uploads require enough **free** storage for the whole temporary file plus 8 KB metadata headroom; replacing a file does not release the old file's space during transfer. Validation streams through all frame entries and RLE data, checks palette indices and frame bounds, and checks baseline JPEG structure and dimensions. JPEG pixel decoding remains the player's responsibility.
+
+The loop task renames the old file to `.dpa.bak`, installs the validated temporary file, then removes the backup. If installation fails, it restores the old file; boot recovery retries unfinished recovery and cleans up interrupted temporary uploads. Upload commits and deletion also work while the display is unavailable.
+
+Command endpoints return `503` when their command cannot be queued. Playback, test-pattern, live-preview and brightness requests also fail explicitly if the display did not initialise.
 
 ## Live preview
 

@@ -156,7 +156,7 @@ static void handle(Command& c) {
     }
     case Cmd::CommitUpload: {
       if (player.name() == name) player.stop();
-      const bool ok = storage::commitUpload((const char*)c.data, name);
+      const bool ok = commandCommitUpload(c);
       Serial.printf("upload '%s' %s\n", name.c_str(), ok ? "saved" : "FAILED to save");
       if (ok && c.value) {
         controllerPlay(name);

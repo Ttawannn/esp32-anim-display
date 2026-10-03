@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks';
+import { projectEncodingKey } from '../codec/encode';
 import { autoConnect, sendLiveFrame } from '../device/session';
 import { addFrame, deleteFrame, selectFrame, store, useEditor } from '../model/store';
 import { AdjustPanel } from './AdjustPanel';
@@ -33,7 +34,7 @@ export function App() {
     if (!s.live) return;
     const t = setTimeout(sendLiveFrame, 120);
     return () => clearTimeout(t);
-  }, [s.live, liveFrame, s.project.adjust, s.project.background, s.project.presetId]);
+  }, [s.live, liveFrame, projectEncodingKey(s.project)]);
 
   // Playback: advance frames using each frame's own delay.
   useEffect(() => {

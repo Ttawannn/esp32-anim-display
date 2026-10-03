@@ -44,12 +44,15 @@ The board receives files already sized for its display; it only decodes RLE/JPEG
 | `player/playlist` | `/playlist.json` |
 | `storage/` | LittleFS: `/anims/<name>.dpa`, UTF-8 file names (Thai works), at most 48 bytes |
 | `display/` | display drivers: SPI RGB565 (`esp_lcd` + DMA) and I2C OLED, display presets, font, test pattern |
-| `net/web` | REST API ([docs/api.md](api.md)) + embedded editor (`web_assets.h`) |
+| `net/web` | HTTP transport + embedded editor (`web_assets.h`) |
+| `net/api` | shared JSON API, streaming file validation, upload receipts |
+| `app/serial_rpc` | USB JSON-line transport, chunked uploads/reads, interrupted-transfer cleanup |
 | `net/wifi_manager` | joins the saved network, otherwise starts an AP + captive portal; mDNS `display.local` |
 | `bench/` | display and JPEG benchmarks (`bench` command) |
 
 **Threading:** HTTP handlers run in the AsyncTCP task and must never draw. They send commands with `commandPost()`, and `controllerLoop()` in the loop task carries them out.
 For uploads, the handler writes the temporary file itself (LittleFS is thread-safe), and the loop task does the rename, because that file may currently be playing.
+The browser waits for an upload receipt confirming the rename. Replacement keeps a recoverable backup until the new file is installed. USB uses the same command queue and receipts.
 
 **Flash usage (4 MB):**
 - firmware about 1.33–1.36 MB, including the 41 KB editor
@@ -65,9 +68,9 @@ For uploads, the handler writes the temporary file itself (LittleFS is thread-sa
 | `templates/` | procedurally generated templates (12 eye animations) |
 | `color/` | RGB565, color adjustment, dithering, color reduction |
 | `render/` | the image the panel will actually show + display preview |
-| `codec/` | RLE, .dpa writer/reader, unit tests, test vector generation |
+| `codec/` | RLE, .dpa writer/reader, worker encoding and cached results, unit tests, test vectors |
 | `import/` | GIF, video, resampling |
-| `device/` | REST client, auto-connect, live preview |
+| `device/` | Wi-Fi/USB transports, connection lifecycle, live preview |
 | `storage/` | IndexedDB, `.dpe` project files |
 | `ui/` | UI components (Preact): the editor (`#/editor`), the board manager, and the phone remote (`#/remote`, default on phones that reach a board) |
 
@@ -94,4 +97,11 @@ cd web && npm run mock-board
 
 ```bash
 cd web && npm run dev:mock
+```
+
+The additional native failure tests compile the real command queue/receipt code against a bounded FreeRTOS test double, and exercise streaming DPA validation and recoverable file replacement with injected filesystem failures:
+
+```bash
+python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/robustness_test.cpp firmware/src/app/commands.cpp -o build/robustness_test.exe
+build/robustness_test.exe shared/test-vectors
 ```

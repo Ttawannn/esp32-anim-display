@@ -33,6 +33,10 @@ npm run mock-board
 npm run dev:mock
 ```
 
+### Over USB
+
+Open **บอร์ด** (Board) → **เชื่อมผ่าน USB** (Connect over USB), then choose the ESP32's native USB port. The editor must be on localhost or HTTPS in a browser supporting Web Serial. Close other serial monitors first. USB takes precedence over Wi-Fi until disconnected; uploads show progress and wait for the board to confirm storage. See [the protocol](../docs/usb-protocol.md).
+
 ### Other commands
 
 | Command | Does |
@@ -101,7 +105,7 @@ src/
   templates/ procedurally generated animations (eyes)
   color/     RGB565, color adjustment, dithering, color reduction
   render/    the image the panel will actually show + display preview
-  codec/     RLE + .dpa writer/reader (unit tests, test vectors)
+  codec/     RLE + .dpa writer/reader, encoding worker and shared result cache (tests, test vectors)
   import/    GIF decoding, video frame extraction, resampling
   device/    board REST client, auto-connect, live preview
   storage/   IndexedDB, .dpe project files

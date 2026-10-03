@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'preact/hooks';
 import {
-  device, type AnimFile, type DevicePreset, type DisplaySettings, type PlaylistData, type WifiNetwork,
+  device, deviceConnectionKey, usbConnected, type AnimFile, type DevicePreset, type DisplaySettings, type PlaylistData, type WifiNetwork,
 } from '../device/api';
-import { refreshDevice } from '../device/session';
+import { connectUsb, refreshDevice } from '../device/session';
 import { store, toast, useEditor } from '../model/store';
 import { formatBytes, IconButton, Modal } from './common';
+import { UsbControls } from './UsbControls';
 
 type Tab = 'files' | 'playlist' | 'display' | 'wifi';
 
@@ -21,10 +22,12 @@ async function run(fn: () => Promise<unknown>, ok?: string) {
 
 // After a reboot the board is gone for a few seconds; poll until it answers again.
 async function waitForReboot() {
+  const viaUsb = usbConnected();
   toast('กำลังรีบูตบอร์ด...');
   await new Promise((r) => setTimeout(r, 4000));
   for (let i = 0; i < 20; i++) {
     try {
+      if (viaUsb && !usbConnected()) await connectUsb(true);
       await refreshDevice();
       toast('บอร์ดกลับมาแล้ว');
       return;
@@ -38,6 +41,7 @@ async function waitForReboot() {
 export function DeviceDialog() {
   const s = useEditor();
   const host = s.deviceHost;
+  const connection = deviceConnectionKey(host);
   const info = s.deviceInfo;
   const [tab, setTab] = useState<Tab>('files');
   const [error, setError] = useState('');
@@ -47,7 +51,7 @@ export function DeviceDialog() {
     refreshDevice().then(() => setError(''), (e) => setError((e as Error).message));
     const t = setInterval(() => refreshDevice().catch(() => {}), 3000);
     return () => clearInterval(t);
-  }, [host]);
+  }, [connection]);
 
   return (
     <Modal title="จัดการบอร์ด" onClose={close}>
@@ -58,6 +62,7 @@ export function DeviceDialog() {
           เชื่อมต่อ
         </button>
       </div>
+      <UsbControls />
       {!info ? (
         <p class="err">{error || 'กำลังติดต่อบอร์ด...'}</p>
       ) : (
@@ -74,7 +79,7 @@ export function DeviceDialog() {
               </button>
             ))}
           </div>
-          <div style={{ marginTop: 12 }}>
+          <div key={connection} style={{ marginTop: 12 }}>
             {tab === 'files' && <FilesTab host={host} />}
             {tab === 'playlist' && <PlaylistTab host={host} />}
             {tab === 'display' && <DisplayTab host={host} />}

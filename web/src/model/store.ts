@@ -25,6 +25,7 @@ export interface EditorState {
   oledTint: OledTint;
   deviceHost: string;
   deviceInfo: DeviceInfo | null; // last /api/info from the board, null = not connected
+  deviceTransport: 'wifi' | 'usb' | null;
   live: boolean; // mirror the current frame on the board while editing
   dialog: Dialog;
   toast: { text: string; error?: boolean } | null;
@@ -59,6 +60,7 @@ class Store {
       oledTint: 'white',
       deviceHost: '',
       deviceInfo: null,
+      deviceTransport: null,
       live: false,
       dialog: null,
       toast: null,

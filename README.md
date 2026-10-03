@@ -18,6 +18,7 @@ Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then 
 - **Color tools:** brightness, contrast, saturation, hue and color count. OLEDs get 1-bit conversion with dithering.
 - **True-to-hardware preview:** RGB565 or 1-bit color and the round-display mask. Switch the target display at any time.
 - **One-click upload:** with live preview on the real display while you edit.
+- **USB connection:** manage the board and upload directly over Web Serial, with progress and confirmation that files were saved.
 - **Board management from the browser:** files, playlist, display settings and Wi-Fi.
 - **Compact files:** the [.dpa format](docs/dpa-format.md) stores only what changes between frames. The look-left-right animation on a 240×240 display takes just 24 KB.
 

@@ -2,13 +2,14 @@
 // auto-cycle (playlist) and a one-tap install of the eye mood set.
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { device, presetForDevice, type AnimFile, type DeviceInfo, type PlaylistData } from '../device/api';
+import { device, deviceConnectionKey, presetForDevice, type AnimFile, type DeviceInfo, type PlaylistData } from '../device/api';
 import { refreshDevice } from '../device/session';
 import { thumbnail } from '../device/thumbs';
 import { store, toast, useEditor } from '../model/store';
 import { defaultEyeOptions, installMoodSet } from '../templates/eyeProject';
 import type { EyeStyle } from '../templates/eyes';
 import { formatBytes, Icon } from './common';
+import { UsbControls } from './UsbControls';
 
 function Tile(props: { host: string; file: AnimFile; info: DeviceInfo; active: boolean; onPlay: () => void }) {
   const [src, setSrc] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export function RemoteApp() {
   const s = useEditor();
   const info = s.deviceInfo;
   const host = s.deviceHost;
+  const connection = deviceConnectionKey(host);
   const [files, setFiles] = useState<AnimFile[] | null>(null);
   const [error, setError] = useState('');
   const [playlist, setPlaylist] = useState<PlaylistData | null>(null);
@@ -58,10 +60,14 @@ export function RemoteApp() {
     );
 
   useEffect(() => {
+    setFiles(null);
+    setPlaylist(null);
+    setBrightness(null);
+    setPending(null);
     connect();
     pollRef.current = window.setInterval(() => refreshDevice().catch(() => {}), 2000);
     return () => clearInterval(pollRef.current);
-  }, [host]);
+  }, [connection]);
 
   useEffect(() => {
     if (pending && info?.player.name === pending) setPending(null);
@@ -123,6 +129,7 @@ export function RemoteApp() {
         <div class="spacer" />
         <a class="btn" href="#/editor">เปิด Editor</a>
       </header>
+      <UsbControls />
 
       {!info ? (
         <section class="card">
@@ -172,7 +179,7 @@ export function RemoteApp() {
             ) : (
               <div class="tiles">
                 {files.map((f) => (
-                  <Tile key={f.name} host={host} file={f} info={info} active={f.name === playingName} onPlay={() => play(f.name)} />
+                  <Tile key={`${connection}:${f.name}`} host={host} file={f} info={info} active={f.name === playingName} onPlay={() => play(f.name)} />
                 ))}
               </div>
             )}

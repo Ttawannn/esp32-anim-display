@@ -172,11 +172,12 @@ These targets still need to be measured on hardware (`bench` command).
 - **Black and white (OLED):** threshold, dithering (none / Floyd–Steinberg / Atkinson / Bayer), invert.
 - **True-to-hardware display preview**, including round displays and OLED tint.
 - **Export:** `.dpa` with a size estimate, upload to the board, live preview on the board.
+- **Encoding:** Web Worker and a bounded cache shared by estimates, downloads, uploads and live preview.
+- **USB:** Web Serial connection controls, complete-operation sequencing, upload progress and storage confirmation.
 - **Board manager:** files (play/delete, storage), playlist, display settings (preset, rotation, offset, invert, BGR, mirror, bus speed, pins, brightness, test pattern), Wi-Fi (scan, connect, forget).
 
 ### Not yet implemented
 - Animated thumbnails in the board's file list, and drag-to-reorder for the playlist.
-- Encoding in a Web Worker (currently on the main thread; fine for the sizes involved so far).
 - Device name setting and backup/restore of animations.
 - Loading extra display presets from a JSON file on the board.
 - OTA firmware updates.

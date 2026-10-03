@@ -1,4 +1,4 @@
-import { encodeDpa } from '../codec/dpa';
+import { encodeProject } from '../codec/encode';
 import { device, deviceFileName } from '../device/api';
 import { createProject, newFrame } from '../model/project';
 import type { Project } from '../model/types';
@@ -42,7 +42,7 @@ export async function installMoodSet(
     const name = deviceFileName(`${anim.emoji} ${anim.name}`);
     onProgress(i, EYE_ANIMS.length, anim.name);
     const g = generateEyes(screen.width, screen.height, anim, o);
-    const { bytes } = await encodeDpa(eyeProject(presetId, g, o, name));
+    const { bytes } = await encodeProject(eyeProject(presetId, g, o, name));
     await device.upload(host, name, bytes, false);
     names.push(name);
   }

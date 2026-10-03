@@ -78,6 +78,7 @@ static void pollButton() {
 }
 
 void setup() {
+  Serial.setRxBufferSize(8192);  // USB RPC lines are a few KB (see app/serial_rpc)
   Serial.begin(115200);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   ledSet(255, 0, 0);
@@ -117,6 +118,8 @@ void loop() {
     Command c;
     while (commandTake(c)) {
       if (c.type == Cmd::Reboot) ESP.restart();
+      if (c.type == Cmd::CommitUpload) commandCommitUpload(c);
+      if (c.type == Cmd::Delete) storage::remove(c.name);
       free(c.data);
     }
   }

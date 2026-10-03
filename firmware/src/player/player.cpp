@@ -131,12 +131,13 @@ bool Player::open(std::unique_ptr<Source> src) {
   if (!table_) return fail("out of memory (frame table)");
   const uint32_t fileSize = src->size();
   uint8_t eb[dpa::kEntrySize * 32];
-  for (uint16_t i = 0; i < h_.frameCount; i += 32) {
+  for (uint32_t i = 0; i < h_.frameCount; i += 32) {
     const uint16_t n = min<uint16_t>(32, h_.frameCount - i);
     if (!src->readAt(h_.tableOffset + i * dpa::kEntrySize, eb, n * dpa::kEntrySize)) return fail("truncated frame table");
     for (uint16_t k = 0; k < n; k++) {
       dpa::FrameEntry e = dpa::parseEntry(eb + k * dpa::kEntrySize);
-      if (e.size < 8 || e.offset + e.size > fileSize || e.delay == 0) return fail("corrupt frame table");
+      if (e.size < 8 || e.offset > fileSize || e.size > fileSize - e.offset || e.delay == 0)
+        return fail("corrupt frame table");
       table_[i + k] = e;
     }
   }

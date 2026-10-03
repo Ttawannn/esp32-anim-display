@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { encodeDpa, resolveMode, type EncodeResult } from '../codec/dpa';
+import { resolveMode, type EncodeResult } from '../codec/dpa';
+import { encodeProject } from '../codec/encode';
 import { device, deviceFileName, presetForDevice } from '../device/api';
 import { refreshDevice, setLive } from '../device/session';
 import { getPreset } from '../model/presets';
@@ -30,7 +31,7 @@ export function OutputPanel({ s }: { s: EditorState }) {
     let cancelled = false;
     timer.current = window.setTimeout(async () => {
       try {
-        const r = await encodeDpa(p);
+        const r = await encodeProject(p);
         if (!cancelled) setEstimate(r);
       } catch {
         if (!cancelled) setEstimate(null);
@@ -42,12 +43,12 @@ export function OutputPanel({ s }: { s: EditorState }) {
       cancelled = true;
       clearTimeout(timer.current);
     };
-  }, [p.frames, p.adjust, p.background, p.presetId, p.encoding, p.jpegQuality, p.scale, mode]);
+  }, [p, mode]);
 
   const encode = async () => {
     setWorking('กำลังเข้ารหัส...');
     try {
-      return await encodeDpa(p, (d, t) => setWorking(`กำลังเข้ารหัส ${d}/${t}`));
+      return await encodeProject(p, (d, t) => setWorking(`กำลังเข้ารหัส ${d}/${t}`));
     } finally {
       setWorking(null);
     }
@@ -62,8 +63,9 @@ export function OutputPanel({ s }: { s: EditorState }) {
     try {
       const r = await encode();
       setWorking(`กำลังส่ง ${formatBytes(r.bytes.length)} ไปบอร์ด...`);
-      await device.upload(s.deviceHost, fileName, r.bytes, true);
-      toast(`ส่ง "${fileName}" แล้ว บอร์ดกำลังเล่น`);
+      await device.upload(s.deviceHost, fileName, r.bytes, true,
+        (sent, total) => setWorking(`กำลังส่ง ${Math.round(sent / total * 100)}% ไปบอร์ด...`));
+      toast(`บันทึก "${fileName}" บนบอร์ดแล้ว`);
       refreshDevice().catch(() => {});
     } catch (e) {
       toast((e as Error).message, true);

@@ -1,14 +1,14 @@
 // Thumbnails of animations stored on the board, rendered the way the panel shows them.
-// Cached per name + size.
+// Cached per connection + name + size.
 
 import { decodeDpa, decodeFirstFrame, type FirstFrame } from '../codec/dpa';
 import { expand565Table } from '../color/rgb565';
-import { device, type AnimFile } from './api';
+import { device, deviceConnectionKey, type AnimFile } from './api';
 
 const cache = new Map<string, Promise<string | null>>();
 
 export function thumbnail(host: string, f: AnimFile): Promise<string | null> {
-  const key = `${host}|${f.name}|${f.size}`;
+  const key = `${deviceConnectionKey(host)}|${f.name}|${f.size}`;
   let p = cache.get(key);
   if (!p) {
     p = render(host, f).catch(() => null);

@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { device, deviceConnectionKey, presetForDevice, type AnimFile, type DeviceInfo, type PlaylistData } from '../device/api';
+import { uploadDpaFile } from '../device/send';
 import { refreshDevice } from '../device/session';
 import { SerialLink } from '../device/serial';
 import { thumbnail } from '../device/thumbs';
@@ -184,6 +185,9 @@ export function RemoteApp() {
             <div class="row">
               <h3 class="grow">แตะเพื่อแสดงบนจอ {files ? `(${files.length})` : ''}</h3>
               <span class="hint">ว่าง {formatBytes(info.fs.free)}</span>
+              <button class="btn small" onClick={async () => { if (await uploadDpaFile()) loadFiles(); }} title="ส่งไฟล์ .dpa จากเครื่องนี้">
+                <Icon name="upload" /> .dpa
+              </button>
             </div>
             {files === null ? (
               <p class="hint">กำลังโหลด...</p>

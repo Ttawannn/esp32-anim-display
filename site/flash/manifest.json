@@ -1,0 +1,15 @@
+{
+  "name": "Display Editor",
+  "version": "__VERSION__",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-C3",
+      "parts": [{ "path": "firmware/c3_supermini/firmware.factory.bin", "offset": 0 }]
+    },
+    {
+      "chipFamily": "ESP32-C6",
+      "parts": [{ "path": "firmware/c6_supermini/firmware.factory.bin", "offset": 0 }]
+    }
+  ]
+}

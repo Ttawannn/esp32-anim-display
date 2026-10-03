@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>ติดตั้งเฟิร์มแวร์ · Display Editor</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <style>
+    :root {
+      --bg: #0b0d12; --panel: #141822; --panel-2: #1a1f2b; --line: #252c3b; --line-2: #323b4f;
+      --text: #e9ecf3; --muted: #8b94a8; --accent: #4f8cff; --grad: linear-gradient(135deg, #4f8cff, #7a5cff);
+      --ok: #34d399; --warn: #f5b74e;
+      font-family: system-ui, -apple-system, 'Segoe UI', 'Leelawadee UI', 'Noto Sans Thai', sans-serif;
+      color: var(--text); background: var(--bg); line-height: 1.55;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 50% -10%, rgba(79, 140, 255, .18), transparent 55%), var(--bg); }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 18px 56px; }
+    a { color: #8fb3ff; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 16px; margin-bottom: 28px; text-decoration: none; color: var(--text); }
+    .brand b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .logo { display: inline-flex; gap: 4px; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: var(--grad); }
+    .logo i { width: 6px; height: 10px; border-radius: 2px; background: #fff; }
+    h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -.3px; }
+    .lead { color: var(--muted); margin: 0 0 26px; font-size: 16px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; margin: 16px 0; }
+    .install { text-align: center; background: linear-gradient(160deg, rgba(79, 140, 255, .14), rgba(122, 92, 255, .1)), var(--panel); border-color: rgba(122, 92, 255, .4); }
+    .install p { color: var(--muted); margin: 12px 0 0; font-size: 14px; }
+    esp-web-install-button button[slot=activate] {
+      font: inherit; font-size: 17px; font-weight: 600; color: #fff; background: var(--grad); border: 0; border-radius: 14px;
+      padding: 15px 30px; cursor: pointer; box-shadow: 0 10px 28px rgba(79, 110, 255, .4);
+    }
+    esp-web-install-button button[slot=activate]:hover { filter: brightness(1.08); }
+    .unsupported { color: var(--warn); }
+    ol { margin: 0; padding-left: 0; list-style: none; counter-reset: step; }
+    ol li { counter-increment: step; position: relative; padding: 0 0 16px 46px; }
+    ol li::before {
+      content: counter(step); position: absolute; left: 0; top: -2px; width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; background: var(--panel-2); border: 1px solid var(--line-2);
+    }
+    ol li b { display: block; }
+    ol li span { color: var(--muted); font-size: 14px; }
+    h2 { font-size: 17px; margin: 0 0 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .dl { display: block; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); text-decoration: none; color: var(--text); }
+    .dl:hover { border-color: var(--accent); }
+    .dl small { display: block; color: var(--muted); }
+    .muted { color: var(--muted); font-size: 13px; }
+    code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } h1 { font-size: 25px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="brand" href="../"><span class="logo"><i></i><i></i></span><span>Display <b>Editor</b></span></a>
+    <h1>ติดตั้งเฟิร์มแวร์ลงบอร์ด</h1>
+    <p class="lead">แฟลชเฟิร์มแวร์ล่าสุดลง ESP32-C3 / ESP32-C6 SuperMini ได้จากเบราว์เซอร์ ไม่ต้องลงโปรแกรม ระบบจะตรวจชนิดชิปให้อัตโนมัติ</p>
+
+    <section class="card install">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate">⚡ ติดตั้งเฟิร์มแวร์</button>
+        <span slot="unsupported" class="unsupported">
+          เบราว์เซอร์นี้ติดตั้งผ่าน USB ไม่ได้ — ใช้ Chrome หรือ Edge บนคอมพิวเตอร์
+        </span>
+        <span slot="not-allowed" class="unsupported">ต้องเปิดหน้านี้ผ่าน HTTPS</span>
+      </esp-web-install-button>
+      <p>เวอร์ชัน __VERSION__</p>
+    </section>
+
+    <section class="card">
+      <h2>ขั้นตอน</h2>
+      <ol>
+        <li><b>เสียบบอร์ดเข้าคอมด้วยสาย USB</b><span>ใช้สายที่ส่งข้อมูลได้ (สายชาร์จอย่างเดียวจะมองไม่เห็นบอร์ด)</span></li>
+        <li><b>กด "ติดตั้งเฟิร์มแวร์" แล้วเลือกพอร์ตของบอร์ด</b><span>ถ้าไม่เจอบอร์ด: กดปุ่ม BOOT ค้าง แล้วเสียบสายใหม่ ปล่อย BOOT แล้วลองอีกครั้ง</span></li>
+        <li><b>เลือก "ติดตั้ง"</b><span>ครั้งแรกเลือกล้างข้อมูล (Erase) ได้ ถ้าอัปเดตเวอร์ชันและอยากเก็บแอนิเมชันเดิมไว้ ไม่ต้องล้าง</span></li>
+        <li><b>เชื่อม Wi-Fi ของบอร์ด</b><span>ชื่อ <code>DisplayEditor-XXXX</code> รหัส <code>displayedit</code> แล้วหน้าเว็บของบอร์ดจะเปิดขึ้นเอง (หรือเข้า http://192.168.4.1)</span></li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>ใช้งานต่อ</h2>
+      <div class="grid">
+        <a class="dl" href="../">✏️ เปิด Editor ออนไลน์<small>สร้างแอนิเมชัน แล้วส่งลงบอร์ดผ่าน USB</small></a>
+        <a class="dl" href="https://github.com/Ttawannn/esp32-anim-display">📖 คู่มือและการต่อสาย<small>GitHub</small></a>
+      </div>
+      <h2 style="margin-top: 22px">ดาวน์โหลดไฟล์เฟิร์มแวร์</h2>
+      <div class="grid">
+        <a class="dl" href="firmware/c3_supermini/firmware.factory.bin" download>ESP32-C3 SuperMini<small>firmware.factory.bin · แฟลชที่ 0x0</small></a>
+        <a class="dl" href="firmware/c6_supermini/firmware.factory.bin" download>ESP32-C6 SuperMini<small>firmware.factory.bin · แฟลชที่ 0x0</small></a>
+      </div>
+      <p class="muted">สำหรับแฟลชเองด้วย esptool: <code>esptool.py write_flash 0x0 firmware.factory.bin</code></p>
+    </section>
+  </main>
+</body>
+</html>

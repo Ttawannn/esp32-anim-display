@@ -2,9 +2,10 @@ import { useEffect, useState } from 'preact/hooks';
 import {
   device, deviceConnectionKey, usbConnected, type AnimFile, type DevicePreset, type DisplaySettings, type PlaylistData, type WifiNetwork,
 } from '../device/api';
+import { uploadDpaFile } from '../device/send';
 import { connectUsb, refreshDevice } from '../device/session';
 import { store, toast, useEditor } from '../model/store';
-import { formatBytes, IconButton, Modal } from './common';
+import { formatBytes, Icon, IconButton, Modal } from './common';
 import { UsbControls } from './UsbControls';
 
 type Tab = 'files' | 'playlist' | 'display' | 'wifi';
@@ -110,6 +111,9 @@ function FilesTab({ host }: { host: string }) {
         <IconButton icon="pause" fill title="หยุด" onClick={() => run(() => device.stop(host))} />
         <IconButton icon="right" title="ถัดไป" onClick={() => run(() => device.next(host))} />
         <button class="btn" onClick={() => run(() => device.testPattern(host))} title="แสดงภาพทดสอบ 10 วินาที">ภาพทดสอบ</button>
+        <button class="btn" onClick={async () => { if (await uploadDpaFile()) load(); }} title="ส่งไฟล์ .dpa จากเครื่องนี้ไปบอร์ด">
+          <Icon name="upload" /> อัปโหลด .dpa
+        </button>
       </div>
       <div class="stat"><span>พื้นที่</span><b>{formatBytes(info.fs.used)} / {formatBytes(info.fs.total)}</b></div>
       <div class="bar"><div style={{ width: `${usedPct}%` }} /></div>

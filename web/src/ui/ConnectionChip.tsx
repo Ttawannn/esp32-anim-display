@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { presetForDevice, usbConnected } from '../device/api';
 import { SerialLink } from '../device/serial';
+import { firmwareInstallerUrl } from '../device/send';
 import { connectUsb, disconnectUsb, refreshDevice, setLive } from '../device/session';
 import { getPreset } from '../model/presets';
 import { retarget } from '../model/project';
@@ -98,6 +99,9 @@ export function ConnectionChip() {
                   )}
                 </span>
               </div>
+              <p class="hint" style={{ margin: '12px 0 0' }}>
+                บอร์ดยังไม่มีเฟิร์มแวร์? <a href={firmwareInstallerUrl()} target="_blank" rel="noopener">ติดตั้งจากเบราว์เซอร์</a>
+              </p>
             </div>
           )}
           {working && <div class="hint">กำลัง{working}...</div>}

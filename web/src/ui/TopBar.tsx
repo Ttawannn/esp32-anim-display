@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { encodeProject } from '../codec/encode';
 import { deviceFileName } from '../device/api';
-import { sendToBoard } from '../device/send';
+import { firmwareInstallerUrl, sendToBoard } from '../device/send';
 import { store, toast, type EditorState } from '../model/store';
 import { download, loadProjectFile, saveProjectFile } from '../storage/projectFile';
 import { Icon, IconButton, pickFile } from './common';
@@ -51,6 +51,9 @@ export function TopBar({ s }: { s: EditorState }) {
         <MenuItem icon="save" label="บันทึกโปรเจกต์" hint="เก็บไว้แก้ต่อ (.dpe)" onClick={saveProject} />
         <MenuSeparator />
         <MenuItem icon="download" label="ดาวน์โหลด .dpa" hint="ไฟล์สำหรับเล่นบนบอร์ด" onClick={downloadDpa} />
+        <MenuSeparator />
+        <MenuItem icon="board" label="ติดตั้งเฟิร์มแวร์ลงบอร์ด" hint="แฟลชผ่าน USB จากเบราว์เซอร์"
+          onClick={() => window.open(firmwareInstallerUrl(), '_blank', 'noopener')} />
       </Menu>
       <Menu label="สร้าง" icon="sparkle" open={menu === 'create'} onToggle={toggle('create')}>
         <MenuItem icon="sparkle" label="แม่แบบดวงตา" hint="12 อารมณ์ พร้อมใช้" onClick={() => open('eyes')} />

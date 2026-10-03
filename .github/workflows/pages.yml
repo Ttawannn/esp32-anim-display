@@ -1,0 +1,76 @@
+# Publishes GitHub Pages from main:
+#   /        the web editor (works fully over USB / Web Serial)
+#   /flash/  browser-based firmware installer (ESP Web Tools) + firmware binaries
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.6.0'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: platformio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+      - name: Install dependencies
+        run: |
+          npm ci --prefix web
+          python -m pip install platformio==6.2.0
+      # build:device also regenerates the editor embedded in the firmware, so both match.
+      - name: Build editor
+        working-directory: web
+        run: npm run build:device
+      - name: Build firmware
+        working-directory: firmware
+        run: python -m platformio run -e c3_supermini -e c6_supermini
+      - name: Assemble site
+        run: |
+          version="$(grep -oP 'FIRMWARE_VERSION "\K[^"]+' firmware/src/app/app.h)+${GITHUB_SHA::7}"
+          mkdir -p _site
+          cp -r web/dist/. _site/
+          mkdir -p _site/flash
+          sed "s/__VERSION__/${version}/" site/flash/index.html > _site/flash/index.html
+          sed "s/__VERSION__/${version}/" site/flash/manifest.json > _site/flash/manifest.json
+          for env in c3_supermini c6_supermini; do
+            mkdir -p "_site/flash/firmware/$env"
+            cp "firmware/.pio/build/$env/firmware.factory.bin" "_site/flash/firmware/$env/"
+          done
+          touch _site/.nojekyll
+          find _site -type f | sort
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

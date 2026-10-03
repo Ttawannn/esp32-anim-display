@@ -4,6 +4,8 @@
 
 Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then send them to the board with one click.
 
+**[Open the editor online](https://ttawannn.github.io/esp32-anim-display/)** · **[Install the firmware from your browser](https://ttawannn.github.io/esp32-anim-display/flash/)** (Chrome / Edge, USB)
+
 <p align="center">
   <img src="docs/images/eyes-demo.gif" alt="Eye template demo: look left-right, happy, angry, in love, surprised" width="240">
 </p>
@@ -40,21 +42,25 @@ The display model is selected from the web UI at runtime, so changing it needs n
 
 ## Getting started
 
-1. **Flash the firmware** with [PlatformIO](https://platformio.org/) from PowerShell or VS Code (the build does not work under Git Bash):
+1. **Flash the firmware.** Either:
+   - **From the browser (easiest):** plug the board in over USB, open the [firmware installer](https://ttawannn.github.io/esp32-anim-display/flash/) in Chrome or Edge, and press **ติดตั้งเฟิร์มแวร์** (Install firmware). The C3 or C6 is detected automatically.
+   - **With [PlatformIO](https://platformio.org/):** run this from PowerShell or VS Code (the build does not work under Git Bash):
 
-   ```bash
-   cd firmware; python -m platformio run -e c3_supermini -t upload
-   ```
+     ```bash
+     cd firmware; python -m platformio run -e c3_supermini -t upload
+     ```
 
-   For a C6 board, use `-e c6_supermini`.
+     For a C6 board, use `-e c6_supermini`.
 
 2. **Join the board's Wi-Fi.** The network is `DisplayEditor-XXXX` and the password is `displayedit`. The page opens automatically, or go to http://192.168.4.1.
    - **On a phone:** the remote opens. Tap **ติดตั้งชุดอารมณ์** (Install mood set) to load all 12 eye moods, then tap any face to show it.
    - **On a computer:** the editor opens. On a phone, use **เปิด Editor** (Open editor); on a computer, use the **รีโมท** (Remote) button to switch.
-3. **Pick your display.** The editor's interface is in Thai: open **บอร์ด** (Board) → **ตั้งค่าจอ** (Display settings), choose the model, then press **ภาพทดสอบ** (Test pattern) to check orientation and colors.
+3. **Pick your display.** The editor's interface is in Thai: click the connection chip in the top bar → **จัดการบอร์ด** (Board manager) → **ตั้งค่าจอ** (Display settings), choose the model, then press **ภาพทดสอบ** (Test pattern) to check orientation and colors.
 4. **Make an animation**, for example **แม่แบบดวงตา** (Eye templates) → create, then press **ส่งไปบอร์ด** (Send to board).
 
-To use your home network instead, go to **บอร์ด** → **Wi-Fi**. After that, the board is reachable at http://display.local.
+To use your home network instead, go to **จัดการบอร์ด** → **Wi-Fi**. After that, the board is reachable at http://display.local.
+
+**Using the online editor:** browsers block an HTTPS site from talking to a plain-HTTP board over Wi-Fi, so the [online editor](https://ttawannn.github.io/esp32-anim-display/) connects over USB instead: connection chip → **ผ่านสาย USB** (Over USB). Everything else (sending, live preview, the remote, board settings) works the same.
 
 **BOOT button on the board:**
 - Short press: next animation.

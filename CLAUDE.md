@@ -43,6 +43,14 @@ python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/deco
 build/decode_test.exe shared/test-vectors
 ```
 
+## Hosting
+
+`.github/workflows/pages.yml` publishes GitHub Pages on every push to main:
+- `/`: the editor (`web/dist`)
+- `/flash/`: the ESP Web Tools installer from `site/flash/`, with freshly built `firmware.factory.bin` for both boards
+
+`.github/workflows/ci.yml` is validation only.
+
 ## Architecture
 
 ### The core contract: `.dpa`

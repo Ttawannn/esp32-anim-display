@@ -18,8 +18,11 @@ using portMUX_TYPE = std::mutex;
 #define portMUX_INITIALIZER_UNLOCKED {}
 #define portENTER_CRITICAL(mux) (mux)->lock()
 #define portEXIT_CRITICAL(mux) (mux)->unlock()
+// glibc 2.38+ (Ubuntu 24.04, the CI runner) ships strlcpy; MinGW/zig on Windows does not.
+#if !defined(__GLIBC__) || __GLIBC__ < 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 38)
 inline size_t strlcpy(char* dst, const char* src, size_t size) {
   const size_t len = strlen(src);
   if (size) { const size_t n = len < size - 1 ? len : size - 1; memcpy(dst, src, n); dst[n] = 0; }
   return len;
 }
+#endif

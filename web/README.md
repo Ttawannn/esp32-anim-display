@@ -1,8 +1,8 @@
-# Web Editor
+# Web editor
 
-ตัวสร้างและแก้ไขแอนิเมชันสำหรับจอ ESP32 ทำงานในเบราว์เซอร์ทั้งหมด (Vite + Preact + TypeScript, ขนาด ~33 KB gzip)
+Creates and edits animations for the ESP32 displays. Runs entirely in the browser (Vite + Preact + TypeScript, about 41 KB gzipped). The firmware embeds this editor and serves it from the board. The user interface is in Thai.
 
-## เปิดใช้งาน
+## Running
 
 ```bash
 cd web
@@ -10,57 +10,95 @@ npm install
 npm run dev
 ```
 
-แล้วเปิด http://localhost:5173
+Then open http://localhost:5173.
 
-ถ้าเครื่องเชื่อม Wi-Fi ของบอร์ดอยู่ จะใส่ IP บอร์ด (เช่น `192.168.4.1`) ในช่อง "IP บอร์ด" ของแผงส่งออก หรือรันแบบ proxy ก็ได้:
+### Connecting to a board
+
+- **Served from the board:** when you open the editor from the board itself, it connects automatically.
+- **Running locally:** while your computer is on the board's Wi-Fi, enter the board's IP (e.g. `192.168.4.1`) in the **บอร์ด** (Board) dialog, or proxy the API through the dev server:
+
+  ```bash
+  DEVICE=192.168.4.1 npm run dev
+  ```
+
+### Without a board
+
+[`scripts/mock-board.mjs`](scripts/mock-board.mjs) is an in-memory fake board that implements the firmware API. Run these in separate terminals:
 
 ```bash
-DEVICE=192.168.4.1 npm run dev
+npm run mock-board
 ```
 
-คำสั่งอื่น: `npm test` (unit tests ของ codec), `npm run build` (ไฟล์สำหรับใส่ในบอร์ด → `dist/`)
+```bash
+npm run dev:mock
+```
 
-## ความสามารถ
+### Other commands
 
-- **Pixel art:** ดินสอ, ยางลบ, เส้น, สี่เหลี่ยม, วงรี, เทสี, ดูดสี, เลื่อนภาพ, วาดสมมาตร, กลับภาพ, หัวแปรง 1–3 px, onion skin, undo/redo
-- **เฟรม:** เพิ่ม, ทำซ้ำ, ลบ, ย้าย, กำหนดเวลาแต่ละเฟรมหรือ fps ทั้งหมด, เล่นวนดู
-- **แม่แบบดวงตา:** สร้างแอนิเมชันดวงตาอัตโนมัติ 12 ท่า (มองซ้าย-ขวา, มองรอบ ๆ, กะพริบ, ดีใจ, เศร้า, โกรธ, ตกใจ, ง่วงนอน, หลงรัก, ขยิบตา, สงสัย, มึนงง)
-  3 แบบ (หุ่นยนต์ / การ์ตูน / ตาเดียวสำหรับจอกลม) ปรับสี ขนาด ระยะห่าง fps ความละเอียด และหมุนสำหรับติดจอแนวนอนได้ หรือรวมทุกอารมณ์เป็นแอนิเมชันเดียว
-- **นำเข้า GIF:** ใช้ขนาดเดิม (pixel art ขยายเป็นจำนวนเต็ม) หรือปรับให้พอดีจอ (พอดี/เต็มจอ/ยืด, ซูม, เลื่อน), ตัดเฟรม, ปรับความเร็ว
-- **นำเข้าวิดีโอ:** เลือกช่วงเวลา, fps, ความละเอียด, ครอป/ซูม/เลื่อน, ประมาณขนาดไฟล์ก่อนนำเข้า (แปลงในเบราว์เซอร์ ไม่อัปโหลดไปไหน)
-- **สี:** palette สำเร็จรูป (PICO-8, Sweetie 16, NES, Game Boy), แทนที่สีทุกเฟรม, สีพื้นหลัง
-- **ปรับสี (จอ TFT):** ความสว่าง, คอนทราสต์, ความสด, เฉดสี, กลับสี, จำกัดจำนวนสี
-- **ขาวดำ (จอ OLED):** จุดตัด, dither 4 แบบ, กลับขาว-ดำ, จำลองสีจอ (ขาว/ฟ้า/เหลือง-ฟ้า)
-- **จำลองจอ:** แสดงผลตามจริง (สี RGB565 / 1 บิต, ขยาย, ตำแหน่ง, มาสก์จอกลม) เปลี่ยนชนิดจอได้ทุกเมื่อ
-- **ส่งออก:** ไฟล์ `.dpa` ([สเปก](../docs/dpa-format.md)) เลือก Indexed (คมชัด) หรือ JPEG (วิดีโอ), แสดงขนาดเทียบพื้นที่บอร์ด
-- **โปรเจกต์:** บันทึกอัตโนมัติในเบราว์เซอร์, บันทึก/เปิดไฟล์ `.dpe`
+| Command | Does |
+|---------|------|
+| `npm test` | codec unit tests; also regenerates `shared/test-vectors` |
+| `npm run typecheck` | TypeScript check |
+| `npm run build` | production build into `dist/` |
+| `npm run build:device` | build and embed it into the firmware (`firmware/src/net/web_assets.h`) |
 
-## คีย์ลัด
+## Features
 
-| คีย์ | ทำอะไร |
-|------|--------|
-| B E L R O G I M | ดินสอ ยางลบ เส้น สี่เหลี่ยม วงรี เทสี ดูดสี เลื่อน |
-| คลิกขวา | วาดด้วยสีรอง |
-| X | สลับสีหลัก/สีรอง |
-| Space | เล่น/หยุด |
-| ← → | เฟรมก่อนหน้า/ถัดไป |
-| D / N | ทำซ้ำเฟรม / เฟรมว่างใหม่ |
-| Delete | ลบเฟรม |
-| Ctrl+Z / Ctrl+Y | ย้อนกลับ / ทำซ้ำ |
-| + / − หรือ Ctrl+ล้อเมาส์ | ซูม |
+- **Pixel art:**
+  - tools: pencil, eraser, line, rectangle, ellipse, fill, color picker, move
+  - options: mirror drawing, flip, 1–3 px brush, onion skin, undo/redo
+- **Frames:** add, duplicate, delete, reorder; set the delay per frame or the fps for all frames; loop playback.
+- **Eye templates:** generates eye animations in 12 moods:
+  - moods: look left-right, look around, blink, happy, sad, angry, surprised, sleepy, in love, wink, suspicious, dizzy
+  - 3 styles: robot, cartoon, single eye for round displays
+  - adjustable: color, size, spacing, fps, resolution, and rotation for sideways-mounted displays
+  - all moods can be combined into one animation
+- **GIF import:**
+  - keep the native size (pixel art scaled by an integer factor), or fit to the screen (contain / cover / stretch, zoom, pan)
+  - trim frames and change the speed
+- **Video import:**
+  - choose the time range, fps and resolution; crop, zoom and pan
+  - shows the estimated file size before importing
+  - converted in the browser; nothing is uploaded anywhere
+- **Colors:** palette presets (PICO-8, Sweetie 16, NES, Game Boy), replace a color across all frames, background color.
+- **Color adjustment (TFT):** brightness, contrast, saturation, hue, invert, color limit.
+- **Black and white (OLED):** threshold, 4 dithering modes, invert, and a preview of the OLED's color (white / blue / yellow-blue).
+- **Display preview:** shows exactly what the panel will show (RGB565 / 1-bit, scaling, position, round mask). Switch the target display at any time.
+- **Export:**
+  - `.dpa` files ([format](../docs/dpa-format.md)), Indexed (sharp) or JPEG (video)
+  - shows the size relative to the board's free space
+- **Board:**
+  - upload and play
+  - live preview on the real display while editing
+  - board manager: files, playlist, display settings, Wi-Fi
+- **Projects:** autosaved in the browser; save and open `.dpe` files.
 
-## โครงสร้าง
+## Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| B E L R O G I M | pencil, eraser, line, rectangle, ellipse, fill, picker, move |
+| Right click | draw with the secondary color |
+| X | swap primary and secondary colors |
+| Space | play / pause |
+| ← → | previous / next frame |
+| D / N | duplicate frame / new blank frame |
+| Delete | delete frame |
+| Ctrl+Z / Ctrl+Y | undo / redo |
+| + / − or Ctrl+mouse wheel | zoom |
+
+## Structure
 
 ```
 src/
-  model/    โปรเจกต์, preset จอ, palette, store (state + undo + autosave)
-  editor/   เครื่องมือวาด (ฟังก์ชันล้วนบน RGBA)
-  color/    RGB565, ปรับสี, dither, ลดจำนวนสี
-  render/   ภาพที่จอจะแสดงจริง + จำลองหน้าจอ
-  codec/    RLE + ตัวเขียน/อ่าน .dpa (มี unit tests)
-  templates/ แม่แบบแอนิเมชันที่สร้างด้วยโค้ด (ดวงตา)
-  import/   ถอดรหัส GIF, ดึงเฟรมวิดีโอ, ย่อ/ขยายภาพ
-  device/   REST client ของบอร์ด
-  storage/  IndexedDB, ไฟล์โปรเจกต์ .dpe
-  ui/       คอมโพเนนต์ Preact
+  model/     project, display presets, palettes, store (state + undo + autosave)
+  editor/    drawing tools (pure functions on RGBA buffers)
+  templates/ procedurally generated animations (eyes)
+  color/     RGB565, color adjustment, dithering, color reduction
+  render/    the image the panel will actually show + display preview
+  codec/     RLE + .dpa writer/reader (unit tests, test vectors)
+  import/    GIF decoding, video frame extraction, resampling
+  device/    board REST client, auto-connect, live preview
+  storage/   IndexedDB, .dpe project files
+  ui/        Preact components
 ```

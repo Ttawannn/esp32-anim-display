@@ -1,9 +1,9 @@
 # DPA — Display Animation file format (version 1)
 
-ไฟล์แอนิเมชันที่ Web Editor สร้างและเฟิร์มแวร์เล่น ทุกค่าเป็น **little-endian**
-ภาพถูกเตรียมให้พอดีกับจอเป้าหมายแล้ว บอร์ดแค่ถอดรหัสแล้ววางลงจอ
+The animation file that the web editor writes and the firmware plays. All values are **little-endian**.
+Frames are prepared for the target display in advance; the board only decodes them and puts them on the screen.
 
-## โครงสร้าง
+## Layout
 
 ```
 Header        32 bytes
@@ -14,22 +14,22 @@ Frame data    ...
 
 ### Header (32 bytes)
 
-| Offset | Type | Field | ความหมาย |
-|-------:|------|-------|----------|
+| Offset | Type | Field | Meaning |
+|-------:|------|-------|---------|
 | 0 | char[4] | magic | `"DPA1"` |
 | 4 | u8 | version | `1` |
 | 5 | u8 | color_mode | `0` = RGB565, `1` = MONO (1 bit) |
-| 6 | u16 | screen_w | ความกว้างจอเป้าหมาย |
-| 8 | u16 | screen_h | ความสูงจอเป้าหมาย |
-| 10 | u16 | canvas_w | ความกว้างภาพที่เก็บ |
-| 12 | u16 | canvas_h | ความสูงภาพที่เก็บ |
-| 14 | u8 | scale | ขยายแบบ nearest-neighbor 1..8 |
-| 15 | u8 | loop | `0` = วนไม่สิ้นสุด, `n` = เล่น n รอบ |
-| 16 | i16 | offset_x | ตำแหน่งมุมซ้ายบนของภาพ (หลังขยาย) บนจอ ติดลบได้ (ถูกครอป) |
+| 6 | u16 | screen_w | target display width |
+| 8 | u16 | screen_h | target display height |
+| 10 | u16 | canvas_w | stored image width |
+| 12 | u16 | canvas_h | stored image height |
+| 14 | u8 | scale | nearest-neighbor upscale factor, 1..8 |
+| 15 | u8 | loop | `0` = loop forever, `n` = play n times |
+| 16 | i16 | offset_x | screen position of the image's top-left corner (after scaling); may be negative (cropped) |
 | 18 | i16 | offset_y | |
 | 20 | u16 | frame_count | |
 | 22 | u16 | palette_size | 0..256 |
-| 24 | u16 | bg_color | RGB565 สำหรับพื้นที่นอกภาพ (MONO: 0 หรือ 1) |
+| 24 | u16 | bg_color | RGB565 for the area outside the image (MONO: 0 or 1) |
 | 26 | u16 | reserved | 0 |
 | 28 | u32 | frame_table_offset | |
 
@@ -37,26 +37,26 @@ Frame data    ...
 
 | Offset | Type | Field |
 |-------:|------|-------|
-| 0 | u32 | data_offset (จากต้นไฟล์) |
+| 0 | u32 | data_offset (from the start of the file) |
 | 4 | u32 | data_size |
 | 8 | u16 | delay_ms |
 | 10 | u8 | type |
 | 11 | u8 | flags (bit0 = keyframe) |
 
-เฟรมแรกต้องเป็น keyframe เสมอ เพราะการวนกลับมาเฟรมแรกต้องวาดใหม่ทั้งภาพ
+The first frame must always be a keyframe, because looping back to frame 0 redraws the whole image.
 
-## ชนิดเฟรม
+## Frame types
 
-พิกัดของเฟรมทุกชนิดเป็นพิกัดใน **canvas** (ก่อนขยาย) บอร์ดคำนวณตำแหน่งบนจอเป็น
-`screen_x = offset_x + x × scale`
+All frame coordinates are **canvas** coordinates (before scaling). The board computes the screen position as
+`screen_x = offset_x + x × scale`.
 
 ### type 0 — INDEXED
 
 ```
-u16 x, u16 y, u16 w, u16 h      สี่เหลี่ยมที่เปลี่ยน (w = 0 คือเฟรมไม่เปลี่ยน แค่หน่วงเวลา)
-RLE stream ของ index (w × h bytes หลังถอด) เรียงทีละแถว
+u16 x, u16 y, u16 w, u16 h      changed rectangle (w = 0 means the frame is unchanged, delay only)
+RLE stream of indices (w × h bytes once decoded), row by row
 ```
-index อ้างอิง palette ใน header
+Indices refer to the palette in the header.
 
 ### type 1 — JPEG
 
@@ -64,28 +64,28 @@ index อ้างอิง palette ใน header
 u16 x, u16 y, u16 w, u16 h
 baseline JPEG (w × h)
 ```
-ใช้กับวิดีโอและภาพถ่าย (`scale` ควรเป็น 1)
+Used for video and photos (`scale` should be 1).
 
 ### type 2 — MONO
 
 ```
-u16 x, u16 y, u16 w, u16 h      y และ h เป็นพหุคูณของ 8
-RLE stream ของไบต์แบบ page: ทีละ page (8 แถว) ในแต่ละ page เรียงตาม x,
-bit 0 = แถวบนสุดของ page, 1 = พิกเซลติด
+u16 x, u16 y, u16 w, u16 h      y and h are multiples of 8
+RLE stream of page bytes: one page (8 rows) at a time, ordered by x within each page,
+bit 0 = top row of the page, 1 = pixel on
 ```
-ตรงกับรูปแบบ RAM ของ SSD1306/SH1106 จึงส่งขึ้นจอได้ทันทีเมื่อ scale = 1
+This matches the RAM layout of the SSD1306/SH1106, so with scale = 1 it can be sent to the display as-is.
 
 ## RLE (PackBits)
 
-อ่านไบต์ควบคุม `c`:
-- `c < 128` → ข้อมูลดิบ `c + 1` ไบต์ตามมา
-- `c ≥ 128` → ไบต์ถัดไปซ้ำ `c − 126` ครั้ง (2..129)
+Read a control byte `c`:
+- `c < 128` → `c + 1` literal bytes follow
+- `c ≥ 128` → the next byte is repeated `c − 126` times (2..129)
 
-## ตัวอย่างขนาด
+## Typical sizes
 
-| เนื้อหา | ขนาดต่อเฟรมโดยประมาณ |
-|---------|-----------------------|
-| Pixel art 60×60 ×4, เปลี่ยนบางส่วน | 0.1–1 KB |
+| Content | Approx. size per frame |
+|---------|------------------------|
+| Pixel art 60×60 ×4, partial changes | 0.1–1 KB |
 | GIF 240×240 indexed | 3–20 KB |
-| วิดีโอ 240×240 JPEG q≈70 | 8–12 KB |
+| Video 240×240 JPEG q≈70 | 8–12 KB |
 | OLED 128×64 | 0.1–0.5 KB |

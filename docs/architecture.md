@@ -1,80 +1,82 @@
-# โครงสร้างระบบ
+# Architecture
 
 ```
-┌──────────────────────────── เบราว์เซอร์ (PC / มือถือ) ─────────────────────────────┐
-│  Web Editor (web/)                                                              │
-│   วาด pixel art · แม่แบบดวงตา · นำเข้า GIF/วิดีโอ · ปรับสี/ขาวดำ · จำลองจอ          │
-│        │ เฟรม RGBA                                                               │
+┌──────────────────────────────── Browser (PC / phone) ───────────────────────────┐
+│  Web editor (web/)                                                              │
+│   pixel art · eye templates · GIF/video import · color/mono · display preview   │
+│        │ RGBA frames                                                            │
 │        ▼                                                                         │
-│   render/output.ts ── สีตามจอจริง (RGB565 / 1 บิต) ──► codec/dpa.ts ── ไฟล์ .dpa   │
+│   render/output.ts ── colors as the panel shows them (RGB565 / 1-bit)            │
+│        ▼                                                                         │
+│   codec/dpa.ts ── .dpa file                                                      │
 └────────────────────────────────────┬────────────────────────────────────────────┘
-                                     │ HTTP: อัปโหลด / ดูสด / playlist / ตั้งค่า
+                                     │ HTTP: upload / live preview / playlist / settings
 ┌────────────────────────────────────▼────────────────────────────────────────────┐
 │  ESP32-C3 / C6 SuperMini (firmware/)                                            │
-│   net/web.cpp ──► app/commands (คิว) ──► app/controller ──► player/player ──► จอ │
+│   net/web.cpp ──► app/commands ──► app/controller ──► player/player ──► panel   │
 │      │                                       │                  │               │
 │   net/wifi_manager                        playlist        storage (LittleFS)    │
 │   (STA / AP + captive portal)                              /anims/*.dpa          │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**หลักการ:** งานหนักทั้งหมด (ถอดรหัส GIF/วิดีโอ, ย่อขยาย, ปรับสี, dither, ลดจำนวนสี, บีบอัด) ทำในเบราว์เซอร์
-บอร์ดรับไฟล์ที่เตรียมให้พอดีกับจอแล้ว และแค่ถอดรหัส RLE/JPEG ส่งขึ้นจอทีละแถบ จึงไม่ต้องมี frame buffer เต็มจอ (ESP32-C3/C6 ไม่มี PSRAM)
+**Principle:** all the heavy work happens in the browser: GIF/video decoding, resampling, color adjustment, dithering, color reduction and compression.
+The board receives files already sized for its display; it only decodes RLE/JPEG and streams the result to the panel in bands. No full-screen framebuffer is needed, which matters because the ESP32-C3/C6 have no PSRAM.
 
-## ไฟล์ .dpa
+## The .dpa file
 
-[docs/dpa-format.md](dpa-format.md): header, palette, ตารางเฟรม และเฟรม 3 แบบ คือ INDEXED (palette + RLE), JPEG และ MONO (page ของ OLED + RLE)
-- **delta frame:** เก็บเฉพาะสี่เหลี่ยมที่เปลี่ยนจากเฟรมก่อน
-- **ช่วงค้างนิ่ง:** เก็บเป็นเวลาหน่วง ไม่ซ้ำเฟรม
-- **ความเข้ากันได้:** ตัวเข้ารหัส (TypeScript) กับตัวถอดรหัส (C++) ต้องตรงกันทุกไบต์ ตรวจด้วย test vector ชุดเดียวกัน (ดูหัวข้อการทดสอบ)
+[docs/dpa-format.md](dpa-format.md) describes the header, palette, frame table, and three frame types: INDEXED (palette + RLE), JPEG, and MONO (OLED pages + RLE).
+- **Delta frames:** each frame stores only the rectangle that changed since the previous frame.
+- **Holds:** still poses are stored as frame delays, not repeated frames.
+- **Compatibility:** the encoder (TypeScript) and the decoder (C++) must agree byte for byte. This is checked with a shared set of test vectors (see Testing).
 
-## เฟิร์มแวร์ (`firmware/src/`)
+## Firmware (`firmware/src/`)
 
-| โฟลเดอร์ | หน้าที่ |
-|----------|---------|
-| `main.cpp` | ลำดับการบูต, ปุ่ม BOOT, LED |
-| `app/controller` | ตัดสินว่าจะแสดงอะไร: playlist / ไฟล์ล่าสุด / ดูสด / หน้าข้อมูล / ภาพทดสอบ |
-| `app/commands` | คิวคำสั่งจาก HTTP (network task) ไปยัง loop task (ตัวเดียวที่แตะจอได้) + สถานะ player |
-| `app/console` | serial console สำหรับทดสอบและปรับจอ |
-| `app/screens` | หน้าบูต / หน้าข้อมูลการเชื่อมต่อ |
-| `player/decoder.h` | ถอดรหัสเฟรม (ไม่พึ่ง Arduino ใช้ร่วมกับ native test) |
-| `player/player` | อ่านไฟล์ทีละช่วง, จับเวลาเฟรม, ขยายภาพ, ส่งเป็นแถบไปจอ, JPEG ผ่าน JPEGDEC |
+| Folder | Responsibility |
+|--------|----------------|
+| `main.cpp` | boot sequence, BOOT button, LED |
+| `app/controller` | decides what is on screen: playlist / last file / live preview / info screen / test pattern |
+| `app/commands` | command queue from HTTP (network task) to the loop task (the only task allowed to touch the display), plus the player status snapshot |
+| `app/console` | serial console for testing and display tuning |
+| `app/screens` | boot screen and connection-info screen |
+| `player/decoder.h` | frame decoding (no Arduino dependencies, shared with the native test) |
+| `player/player` | streamed file reading, frame timing, scaling, banded output to the display, JPEG via JPEGDEC |
 | `player/playlist` | `/playlist.json` |
-| `storage/` | LittleFS: `/anims/<ชื่อ>.dpa`, ชื่อไฟล์ UTF-8 (ภาษาไทยได้) ไม่เกิน 48 ไบต์ |
-| `display/` | ไดรเวอร์จอ: SPI RGB565 (`esp_lcd` + DMA) และ I2C OLED, preset จอ, ฟอนต์, ภาพทดสอบ |
-| `net/web` | REST API ([docs/api.md](api.md)) + หน้า Editor ที่ฝังไว้ (`web_assets.h`) |
-| `net/wifi_manager` | เชื่อม Wi-Fi ที่บันทึกไว้ ถ้าไม่ได้ให้เปิด AP + captive portal, mDNS `display.local` |
-| `bench/` | วัดความเร็วจอ/JPEG (คำสั่ง `bench`) |
+| `storage/` | LittleFS: `/anims/<name>.dpa`, UTF-8 file names (Thai works), at most 48 bytes |
+| `display/` | display drivers: SPI RGB565 (`esp_lcd` + DMA) and I2C OLED, display presets, font, test pattern |
+| `net/web` | REST API ([docs/api.md](api.md)) + embedded editor (`web_assets.h`) |
+| `net/wifi_manager` | joins the saved network, otherwise starts an AP + captive portal; mDNS `display.local` |
+| `bench/` | display and JPEG benchmarks (`bench` command) |
 
-**เรื่อง thread:** HTTP handler ทำงานใน task ของ AsyncTCP จึงห้ามวาดจอโดยตรง ให้ส่งคำสั่งผ่าน `commandPost()` แล้ว `controllerLoop()` ใน loop task เป็นผู้ทำ
-ส่วนการอัปโหลด handler เขียนลงไฟล์ชั่วคราวเอง (LittleFS ปลอดภัยเมื่อใช้หลาย thread) แล้วให้ loop task เปลี่ยนชื่อไฟล์ เพราะไฟล์นั้นอาจกำลังเล่นอยู่
+**Threading:** HTTP handlers run in the AsyncTCP task and must never draw. They send commands with `commandPost()`, and `controllerLoop()` in the loop task carries them out.
+For uploads, the handler writes the temporary file itself (LittleFS is thread-safe), and the loop task does the rename, because that file may currently be playing.
 
-**การใช้ flash (4 MB):**
-- เฟิร์มแวร์ประมาณ 1.33–1.36 MB รวมหน้า Editor 41 KB
-- LittleFS ประมาณ 2.1 MB สำหรับแอนิเมชัน
-- ค่าตั้งจอและ Wi-Fi เก็บใน NVS
+**Flash usage (4 MB):**
+- firmware about 1.33–1.36 MB, including the 41 KB editor
+- LittleFS about 2.1 MB for animations
+- display and Wi-Fi settings stored in NVS
 
-## Web Editor (`web/src/`)
+## Web editor (`web/src/`)
 
-| โฟลเดอร์ | หน้าที่ |
-|----------|---------|
-| `model/` | โปรเจกต์, preset จอ, palette, store (state + undo + บันทึกอัตโนมัติ) |
-| `editor/` | เครื่องมือวาด |
-| `templates/` | แม่แบบที่สร้างด้วยโค้ด (ดวงตา 12 ท่า) |
-| `color/` | RGB565, ปรับสี, dither, ลดจำนวนสี |
-| `render/` | ภาพที่จอจะแสดงจริง + จำลองหน้าจอ |
-| `codec/` | RLE, ตัวเขียน/อ่าน .dpa, unit tests, สร้าง test vector |
-| `import/` | GIF, วิดีโอ, ย่อขยายภาพ |
-| `device/` | REST client, เชื่อมบอร์ดอัตโนมัติ, ดูสด |
-| `storage/` | IndexedDB, ไฟล์โปรเจกต์ .dpe |
-| `ui/` | หน้าจอ (Preact) รวมหน้า "จัดการบอร์ด" |
+| Folder | Responsibility |
+|--------|----------------|
+| `model/` | project, display presets, palettes, store (state + undo + autosave) |
+| `editor/` | drawing tools |
+| `templates/` | procedurally generated templates (12 eye animations) |
+| `color/` | RGB565, color adjustment, dithering, color reduction |
+| `render/` | the image the panel will actually show + display preview |
+| `codec/` | RLE, .dpa writer/reader, unit tests, test vector generation |
+| `import/` | GIF, video, resampling |
+| `device/` | REST client, auto-connect, live preview |
+| `storage/` | IndexedDB, `.dpe` project files |
+| `ui/` | UI components (Preact), including the board manager |
 
-## การทดสอบ
+## Testing
 
 ```bash
 cd web && npm test
 ```
-codec + สร้าง `shared/test-vectors/*.dpa` และ `*.expected`
+Runs the codec tests and regenerates `shared/test-vectors/*.dpa` and `*.expected`.
 
 ```bash
 python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/decode_test.cpp -o build/decode_test.exe
@@ -84,7 +86,7 @@ python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/deco
 build/decode_test.exe shared/test-vectors
 ```
 
-C++ decoder ต้องได้ภาพตรงกับ JS ทุกพิกเซล ส่วนการทดสอบหน้า Editor โดยไม่มีบอร์ด ให้รันสองคำสั่งนี้ใน terminal แยกกัน:
+The C++ decoder must reproduce the JS output pixel for pixel. To exercise the editor without a board, run these two commands in separate terminals:
 
 ```bash
 cd web && npm run mock-board

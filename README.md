@@ -85,8 +85,6 @@ Then open http://localhost:5173.
 | [`docs/`](docs/architecture.md) | [Architecture](docs/architecture.md) · [.dpa file format](docs/dpa-format.md) · [REST API](docs/api.md) |
 | `shared/test-vectors/` | Test files that the TypeScript encoder and the C++ decoder must agree on, pixel for pixel |
 
-The documentation in `docs/`, `firmware/` and `web/` is currently in Thai.
-
 ## Status
 
 All parts are implemented and the firmware builds for both ESP32-C3 and ESP32-C6. So far it has been verified with:

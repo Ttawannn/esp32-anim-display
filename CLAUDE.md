@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A web editor (`web/`) that creates animations and a firmware (`firmware/`) for ESP32-C3 / ESP32-C6 SuperMini boards that plays them on small TFT/OLED panels, connected over Wi-Fi. The two halves communicate through a custom binary format, `.dpa`, plus a REST API. The user works in Thai, and all UI strings and user-facing docs are in Thai.
+A web editor (`web/`) that creates animations and a firmware (`firmware/`) for ESP32-C3 / ESP32-C6 SuperMini boards that plays them on small TFT/OLED panels, connected over Wi-Fi. The two halves communicate through a custom binary format, `.dpa`, plus a REST API. The user works in Thai. UI strings (editor and on-device screens' user text) are in Thai; all documentation is in English, with Thai UI labels quoted alongside an English gloss.
 
 Docs worth reading before larger changes: `docs/architecture.md` (system overview), `docs/dpa-format.md` (file format), `docs/api.md` (REST API), `PLAN.md` (roadmap and status: the code compiles but has not yet been verified on real hardware).
 

@@ -1,58 +1,66 @@
-# Display Editor — แผนโปรเจกต์ (v2)
+# esp32-anim-display — Project plan
 
-ESP32-C3 / ESP32-C6 ต่อจอเพื่อเล่นแอนิเมชัน (pixel art, GIF, วิดีโอ) แล้วสร้าง/แก้ไข/อัปโหลดผ่าน Web App ทาง Wi-Fi
-ใช้เฟิร์มแวร์ตัวเดียว เลือกรุ่นจอได้จากหน้าเว็บ **ไม่ต้องคอมไพล์ใหม่**
+An ESP32-C3 / ESP32-C6 drives a small display that plays animations (pixel art, GIFs, video). Animations are created, edited and uploaded from a web app over Wi-Fi.
+A single firmware supports every display; the display model is chosen from the web UI **without recompiling**.
+
+> **Status (2026-10-03):** every part is implemented and the firmware builds for both C3 and C6, **but nothing has been tested on real boards and displays yet.**
+> - ✅ Phase 0: display drivers, test pattern, benchmarks
+> - ✅ Phase 1: `.dpa` player (INDEXED / JPEG / MONO, delta rects, scaling); the C++ decoder matches the JS encoder pixel for pixel (native test)
+> - ✅ Phase 2: Wi-Fi (STA + AP + captive portal + mDNS), REST API ([docs/api.md](docs/api.md)), uploads, editor embedded in the firmware
+> - ✅ Phases 3–4: full editor, eye templates, live preview on the board, board manager
+> - ✅ Phase 5: playlist, BOOT button, resume the last animation after reboot
+> - ⏳ Remaining: testing on real hardware, OTA (optional), items under "Not yet implemented"
 
 ---
 
-## 1. ขอบเขต
+## 1. Scope
 
-| ทำ | ไม่ทำ (ตัดออกจาก v1) |
-|----|----------------------|
-| เล่นแอนิเมชันวนซ้ำ / เรียงเป็น playlist | widget ข้อมูลสด (นาฬิกา เซนเซอร์ MQTT) |
-| Pixel art editor ในเว็บ | ตัดต่อวิดีโอขั้นสูง (เสียง, transition) |
-| อัปโหลด GIF สำเร็จรูป | ต่อหลายจอบนบอร์ดเดียว |
-| อัปโหลดวิดีโอ (MP4/WebM/MOV) แปลงในเบราว์เซอร์ | |
-| แก้ไขสี (เฉพาะจอสี), ปรับขาวดำ/dither (เฉพาะ OLED) | |
+| In scope | Out of scope (v1) |
+|----------|-------------------|
+| Looping animations / playlists | live-data widgets (clock, sensors, MQTT) |
+| Pixel art editor in the browser | advanced video editing (audio, transitions) |
+| Ready-made GIF upload | multiple displays on one board |
+| Video upload (MP4/WebM/MOV), converted in the browser | |
+| Color editing (color displays), black-and-white conversion/dithering (OLED) | |
 
-## 2. ฮาร์ดแวร์
+## 2. Hardware
 
-### บอร์ด: ESP32-C3 SuperMini และ ESP32-C6 SuperMini
+### Boards: ESP32-C3 SuperMini and ESP32-C6 SuperMini
 | | ESP32-C3 SuperMini | ESP32-C6 SuperMini |
 |--|--------------------|--------------------|
-| CPU | RISC-V 1 core 160 MHz | RISC-V 1 core 160 MHz |
+| CPU | RISC-V, 1 core, 160 MHz | RISC-V, 1 core, 160 MHz |
 | SRAM | 400 KB | 512 KB |
-| PSRAM | ไม่มี | ไม่มี |
-| Flash | 4 MB | 4 MB (ส่วนใหญ่ ตรวจด้วย `esptool flash_id` ในเฟส 0) |
+| PSRAM | none | none |
+| Flash | 4 MB | 4 MB (most boards; check with `esptool flash_id`) |
 | USB | native USB (CDC) | native USB (CDC) |
-| ปุ่ม BOOT | GPIO9 | GPIO9 |
-| LED บนบอร์ด | GPIO8 (LED สีฟ้า) | GPIO8 (RGB WS2812) |
+| BOOT button | GPIO9 | GPIO9 |
+| On-board LED | GPIO8 (blue) | GPIO8 (RGB WS2812) |
 
-ผลต่อการออกแบบ:
-- **ไม่มี PSRAM จึงไม่เก็บทั้งเฟรมไว้ในแรม (240×240×2 = 115 KB)** เฟิร์มแวร์จะถอดรหัสทีละช่วงแล้วส่งไปจอผ่าน DMA ทันที ใช้บัฟเฟอร์ประมาณ 2 × 7.5 KB
-- **มี core เดียว** Wi-Fi กับการเล่นแอนิเมชันจึงแบ่ง CPU กัน ใช้ FreeRTOS task priority และลด fps ชั่วคราวระหว่างอัปโหลดไฟล์
-- **พื้นที่เก็บไฟล์จำกัด (ประมาณ 2 MB บน Flash 4 MB)** จึงต้องบีบอัดให้ดี และหน้าเว็บต้องแสดงพื้นที่ที่เหลือก่อนอัปโหลด
-- ใช้ปุ่ม **BOOT (GPIO9)** ที่มีบนบอร์ดทั้งสองรุ่นเป็นปุ่มเปลี่ยนแอนิเมชัน
-- Safe mode: กด BOOT **ระหว่างที่หน้าจอบูตแสดงอยู่** (กดค้างตั้งแต่ก่อนเปิดเครื่องไม่ได้ เพราะ GPIO9 เป็น strapping pin บอร์ดจะเข้าโหมดอัปโหลดเฟิร์มแวร์แทน)
-- ใช้ **LED บนบอร์ด (GPIO8)** แสดงสถานะ เช่น โหมด AP / กำลังเชื่อมต่อ / เชื่อมต่อแล้ว / กำลังอัปโหลด (C6 แสดงเป็นสีได้)
+Design consequences:
+- **No PSRAM, so no full frame in RAM (240×240×2 = 115 KB).** The firmware decodes in bands and sends them to the display over DMA immediately, using roughly 2 × 7.5 KB of buffers.
+- **Single core:** Wi-Fi and playback share the CPU.
+- **Limited storage (about 2 MB of the 4 MB flash):** files must compress well, and the web UI shows the remaining space before uploading.
+- **BOOT button (GPIO9):** present on both boards; used to switch animations.
+- **Safe mode:** press BOOT **while the boot screen is shown**. Holding it from power-on doesn't work: GPIO9 is a strapping pin, so the board would enter firmware-download mode instead.
+- **On-board LED (GPIO8):** shows status (C6 in color).
 
-### จอที่รองรับ (preset ชุดแรก)
-| Preset | ชิป | ความละเอียด | บัส | สี | หมายเหตุ |
-|--------|-----|-------------|-----|-----|----------|
-| TFT 0.96" | ST7735S | 80×160 | SPI | RGB565 | IPS ต้องตั้ง offset (26,1), invert, BGR |
-| TFT 1.3" | ST7789 | 240×240 | SPI | RGB565 | หลายรุ่นไม่มีขา CS ต้องใช้ SPI mode 3 |
-| TFT กลม 1.28" | GC9A01 | 240×240 | SPI | RGB565 | เครื่องแก้ไขแสดงมาสก์วงกลม |
-| OLED 0.96" | SSD1306 | 128×64 | I2C | ขาวดำ | ถ้าเป็นจอ 1.3" มักใช้ชิป SH1106 (มี preset ให้) |
-| OLED 0.91" | SSD1306 | 128×32 | I2C | ขาวดำ | |
+### Supported displays
+| Preset | Controller | Resolution | Bus | Color | Notes |
+|--------|------------|------------|-----|-------|-------|
+| TFT 0.96" | ST7735S | 80×160 | SPI | RGB565 | IPS; needs offset (26,1), invert, BGR |
+| TFT 1.3" | ST7789 | 240×240 | SPI | RGB565 | many modules have no CS pin and need SPI mode 3 |
+| Round TFT 1.28" | GC9A01 | 240×240 | SPI | RGB565 | the editor shows a round mask |
+| OLED 0.96" | SSD1306 | 128×64 | I2C | mono | 1.3" modules usually use the SH1106 (has its own preset) |
+| OLED 0.91" | SSD1306 | 128×32 | I2C | mono | |
 
-> ในคำตอบระบุ "oled 128x64 gc9a01" ไว้ แต่ GC9A01 เป็นชิปของจอ TFT กลม แผนนี้จึงถือว่า OLED 128×64 ใช้ SSD1306 หรือ SH1106
+> The original request listed "oled 128x64 gc9a01", but the GC9A01 is the round TFT's controller, so this plan assumes the 128×64 OLED uses an SSD1306 or SH1106.
 
-### การต่อขา (ค่าเริ่มต้น แก้ได้ในหน้าเว็บ)
-แนวคิด: **ใช้สายชุดเดียวกันกับจอทุกแบบ** ขา CLK และ DATA ใช้ร่วมกันระหว่าง SPI (TFT) กับ I2C (OLED) เพราะบอร์ดหนึ่งต่อจอครั้งละหนึ่งจอ
-และเลือก GPIO6/7 ซึ่งเป็นขา IO_MUX ของ SPI โดยตรง (ไม่ผ่าน GPIO matrix) บนทั้ง C3 และ C6 จึงใช้ SPI ความเร็วสูงสุด 80 MHz ได้
+### Pin assignment (defaults, changeable from the web UI)
+Idea: **one wiring harness for every display.** CLK and DATA are shared between SPI (TFT) and I2C (OLED), because a board drives one display at a time.
+GPIO6/7 are SPI2's IO_MUX pins on both the C3 and the C6 (bypassing the GPIO matrix), so SPI can run at up to 80 MHz.
 
-| สัญญาณ | ขาจอ TFT (SPI) | ขาจอ OLED (I2C) | C3 SuperMini | C6 SuperMini |
-|--------|----------------|------------------|--------------|--------------|
+| Signal | TFT pin (SPI) | OLED pin (I2C) | C3 SuperMini | C6 SuperMini |
+|--------|---------------|----------------|--------------|--------------|
 | VCC | VCC | VCC | 3V3 | 3V3 |
 | GND | GND | GND | GND | GND |
 | CLK | SCL / SCK / CLK | SCL | **GPIO6** | **GPIO6** |
@@ -62,255 +70,174 @@ ESP32-C3 / ESP32-C6 ต่อจอเพื่อเล่นแอนิเม
 | RST | RES / RST | — | GPIO3 | GPIO21 |
 | BL | BLK / BL / LED | — | GPIO5 (PWM) | GPIO22 (PWM) |
 
-ขาที่หลีกเลี่ยง:
+Pins to avoid:
 - **C3:** GPIO2, 8, 9 (strapping), GPIO18, 19 (USB)
 - **C6:** GPIO4, 5, 8, 9, 15 (strapping), GPIO12, 13 (USB), GPIO16, 17 (UART0)
-- GPIO6/7 บน C6 เป็นขา JTAG ด้วย แต่ใช้เป็น SPI ได้ เพราะการดีบักผ่าน USB ใช้ JTAG ภายในแยกต่างหาก
+- GPIO6/7 on the C6 are also JTAG pins, but they work as SPI because USB debugging uses the internal USB-JTAG.
 
-หมายเหตุการต่อ:
-- **ST7789 1.3" ที่ไม่มีขา CS:** ไม่ต้องต่อ CS (preset ตั้ง `cs: -1` และ SPI mode 3 ให้แล้ว)
-- **BL:** ถ้าไม่ต้องปรับความสว่าง ต่อเข้า 3V3 ตรง ๆ ได้
-- **OLED I2C:** โมดูลส่วนใหญ่มีตัวต้านทาน pull-up อยู่แล้ว ต่อแค่ 4 เส้น
+Wiring notes:
+- **1.3" ST7789 without a CS pin:** leave CS unconnected (the preset already uses SPI mode 3).
+- **BL:** connect directly to 3V3 if brightness control isn't needed.
+- **I2C OLED:** most modules already have pull-up resistors; only 4 wires are needed.
 
-## 3. สถาปัตยกรรม
-
-```
-┌─────────────────────────── Browser (PC / มือถือ) ──────────────────────────┐
-│ Web App                                                                    │
-│  Pixel Editor │ GIF Import │ Video Import │ Color Tools │ Library │ Setup  │
-│        └──────────── Encoder (Web Worker) → ไฟล์ .dpa ──────────┘            │
-└─────────────┬──────────────────────────────────────────┬──────────────────┘
-        REST: อัปโหลด/จัดการไฟล์/config          WebSocket: พรีวิวสด, สถานะ
-┌─────────────┴──────────────────────────────────────────┴──────────────────┐
-│ ESP32-C3/C6 Firmware                                                      │
-│  AsyncWebServer → LittleFS → Player (stream decode) → LovyanGFX + DMA → จอ │
-│  WiFi (AP/STA/mDNS) · ปุ่ม BOOT · Playlist                                  │
-└───────────────────────────────────────────────────────────────────────────┘
-```
-
-**หลักการ: งานหนักทำในเบราว์เซอร์** เช่น ถอดรหัส GIF/วิดีโอ ย่อขนาด ปรับสี ลดจำนวนสี dither และบีบอัด
-ส่วน ESP32 แค่ถอดรหัสไฟล์ `.dpa` ที่เตรียมไว้พอดีกับจอแล้ว ส่งขึ้นจอ
-
-## 4. รูปแบบไฟล์ `.dpa` (Display Animation)
+## 3. Architecture
 
 ```
-Header      magic "DPA1", version, screen_w, screen_h,
-            canvas_w, canvas_h, scale (1–8), offset_x, offset_y,
-            color_mode, frame_count, loop_mode, palette_size
-Palette     ≤ 256 สี (RGB565) ใช้กับเฟรมแบบ indexed
-Frame table offset + delay_ms + type ของแต่ละเฟรม
-Frames      แต่ละเฟรมเป็นหนึ่งในชนิดต่อไปนี้
+┌──────────────────────────── Browser (PC / phone) ────────────────────────────┐
+│ Web editor                                                                   │
+│  Pixel editor │ Eye templates │ GIF/video import │ Color tools │ Board manager │
+│        └──────────── encoder → .dpa file ────────────┘                        │
+└───────────────────────────────────┬──────────────────────────────────────────┘
+          HTTP REST: upload, file management, playlist, settings, live preview
+┌───────────────────────────────────┴──────────────────────────────────────────┐
+│ ESP32-C3/C6 firmware                                                          │
+│  AsyncWebServer → LittleFS → player (streamed decode) → esp_lcd + DMA → panel  │
+│  Wi-Fi (AP/STA/mDNS) · BOOT button · playlist                                  │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-| ชนิดเฟรม | ใช้กับ | วิธีเก็บ |
-|-----------|--------|----------|
-| `MONO` | OLED | 1 bit/พิกเซล + RLE, delta เฉพาะ page ที่เปลี่ยน |
-| `INDEXED` | pixel art, GIF | อ้างอิง palette + delta rect + RLE (lossless) |
-| `JPEG` | วิดีโอ, ภาพถ่าย | baseline JPEG ต่อเฟรม (MJPEG) ถอดรหัสด้วย JPEGDEC |
+**Principle: the heavy work happens in the browser:** GIF/video decoding, resizing, color adjustment, color reduction, dithering and compression.
+The ESP32 only decodes `.dpa` files that are already sized for its display and pushes them to the panel. Details: [docs/architecture.md](docs/architecture.md).
 
-- **`scale`** ใช้กับ pixel art: เก็บที่ความละเอียดจริง (เช่น 60×60) แล้วบอร์ดขยายแบบ nearest-neighbor ×4 เป็น 240×240 ตอนเล่น ไฟล์จึงเล็กลงประมาณ 16 เท่า
-- ถ้าไฟล์ไม่ตรงกับขนาดจอ (เช่น เปลี่ยนจอ) บอร์ดจะเล่นตรงกลางจอ และหน้าเว็บจะแจ้งเตือน
+## 4. The `.dpa` file format (Display Animation)
 
-### ประมาณการว่า 2 MB เก็บได้แค่ไหน
-| เนื้อหา | ขนาดต่อเฟรม (ประมาณ) | ~2 MB เก็บได้ |
-|---------|-----------------------|----------------|
-| OLED 128×64 | 0.1–0.5 KB | หลายพันเฟรม |
-| Pixel art 60×60 ×4 | 0.1–2 KB | หลายพันเฟรม |
-| GIF 240×240 | 3–20 KB | 100–600 เฟรม |
-| วิดีโอ 240×240 JPEG q≈70 | 8–12 KB | ประมาณ 10 วินาทีที่ 20 fps |
-| วิดีโอ 80×160 | 3–5 KB | ประมาณ 25 วินาทีที่ 20 fps |
+Full specification: [docs/dpa-format.md](docs/dpa-format.md).
 
-## 5. เฟิร์มแวร์
+| Frame type | Used for | Storage |
+|------------|----------|---------|
+| `MONO` | OLED | 1 bit/pixel in OLED page layout + RLE, delta rects |
+| `INDEXED` | pixel art, GIF | palette + delta rect + RLE (lossless) |
+| `JPEG` | video, photos | one baseline JPEG per frame, decoded with JPEGDEC |
 
-### เครื่องมือ
-- **PlatformIO + pioarduino platform (Arduino core 3.x / ESP-IDF 5.x)**: platform ทางการของ PlatformIO ยังไม่รองรับ C6 บน Arduino
-- **ESP-IDF `esp_lcd` panel IO** (ติดมากับ core อยู่แล้ว เป็นของ Espressif และรองรับทั้ง C3 และ C6): จัดการ SPI + DMA + ขา DC และ I2C ให้ เราเขียนแค่ลำดับคำสั่ง init ของแต่ละจอ
-  - เหตุผล: LovyanGFX ยังไม่ระบุว่ารองรับ C6 อย่างเป็นทางการ และบอร์ดนี้วาดแค่บิตแมป จึงไม่ต้องใช้ไลบรารีกราฟิกเต็มรูปแบบ
-  - **ลำดับคำสั่ง init เก็บใน `presets.json`** จึงเพิ่มจอรุ่นใหม่ได้โดยไม่ต้องคอมไพล์เฟิร์มแวร์ใหม่
-  - ทางสำรองถ้ามีปัญหา: Arduino_GFX (มีตัวอย่างใช้งานกับ C6 จริงแล้ว)
-- **JPEGDEC** (bitbank2): ถอดรหัส JPEG ทีละ MCU แล้วส่งขึ้นจอโดยตรง
-- **ESP32Async/ESPAsyncWebServer + AsyncTCP**, **ArduinoJson**, **LittleFS**
-- ฟอนต์ 5×7 ขนาดเล็กในตัว ไว้แสดง IP / สถานะ / ภาพทดสอบตอนบูต
+- **`scale`** is for pixel art: art is stored at its real resolution (e.g. 60×60) and the board upscales it ×4 to 240×240 with nearest-neighbor while playing, making files about 16× smaller.
+- If a file doesn't match the display size (e.g. after swapping displays), the board plays it centered and the web UI shows a warning.
 
-### Display driver
-มีไดรเวอร์แค่ 2 ประเภทครอบคลุมจอทั้งหมด:
-| ไดรเวอร์ | จอ | งาน |
-|-----------|-----|-----|
-| `spi_rgb565` | ST7735S, ST7789, GC9A01 | ส่ง init sequence → `CASET/RASET/RAMWR` → ส่งพิกเซลผ่าน DMA |
-| `i2c_mono_page` | SSD1306 (128×64, 128×32), SH1106 | ส่ง init sequence → เขียนทีละ page (8 แถว), รองรับ column offset ของ SH1106 |
+### What fits in about 2 MB
+| Content | Approx. size per frame | Fits in ~2 MB |
+|---------|------------------------|---------------|
+| OLED 128×64 | 0.1–0.5 KB | thousands of frames |
+| Pixel art 60×60 ×4 | 0.1–2 KB | thousands of frames |
+| GIF 240×240 | 3–20 KB | 100–600 frames |
+| Video 240×240 JPEG q≈70 | 8–12 KB | about 10 seconds at 20 fps |
+| Video 80×160 | 3–5 KB | about 25 seconds at 20 fps |
 
-ตัวอย่าง preset:
-```json
-{
-  "id": "gc9a01_240_round", "name": "TFT กลม 1.28\" GC9A01",
-  "driver": "spi_rgb565", "width": 240, "height": 240, "shape": "round",
-  "offset": [0, 0], "invert": true, "bgr": true, "spi_mode": 0, "spi_hz": 80000000,
-  "init": [[ "0xEF" ], [ "0xEB", "0x14" ], ["..."], [ "0x11", { "delay": 120 } ], [ "0x29" ]]
-}
-```
+## 5. Firmware
 
-### โมดูล
-- `display/`: `PanelSpiRgb565`, `PanelI2cMono`, ตัวโหลด preset, ภาพทดสอบ (แถบสี + กรอบขอบจอ + ลูกศรบอกทิศ)
-- `player/`: `DpaReader` (อ่านไฟล์ทีละช่วง), ตัวถอดรหัส MONO/INDEXED/JPEG, ขยาย scale, ตั้งเวลาเฟรม, playlist
-- `net/`: Wi-Fi (AP + captive portal ครั้งแรก, STA, mDNS `display.local`), REST, WebSocket
-- `storage/`: จัดการไฟล์, เขียนลงไฟล์ชั่วคราวก่อนแล้วค่อย rename (ป้องกันไฟล์เสียถ้าเน็ตหลุด)
+### Tools and libraries
+- **PlatformIO + pioarduino platform (Arduino core 3.x / ESP-IDF 5.x).** The official PlatformIO platform does not support the C6 with Arduino.
+- **ESP-IDF `esp_lcd` panel IO** for SPI displays: it ships with the core, is maintained by Espressif, and supports both C3 and C6. It handles SPI + DMA + the DC pin; we only write each display's init sequence.
+  - Why not LovyanGFX: it doesn't officially list the C6, and the board only draws bitmaps, so a full graphics library isn't needed.
+  - Fallback if problems appear: Arduino_GFX (has working C6 examples).
+- **Arduino `Wire`** for I2C OLEDs. It is simpler than `esp_lcd` I2C and doesn't conflict with the core's I2C driver.
+- **JPEGDEC** (bitbank2) decodes JPEG one MCU block at a time and sends it straight to the display.
+- **ESP32Async/ESPAsyncWebServer + AsyncTCP**, **ArduinoJson**, **LittleFS**.
+- A built-in 5×7 font for the IP/status/test screens.
 
-### REST API
-| Method | Path | ใช้ทำ |
-|--------|------|-------|
-| GET | `/api/info` | ชิป, จอ (w, h, color_mode, shape), พื้นที่ว่าง, heap, fps |
-| GET/PUT | `/api/display` | config จอ, `POST /api/display/test` แสดงภาพทดสอบ |
-| GET | `/api/display/presets` | รายการ preset |
-| GET/PUT | `/api/wifi` | ตั้งค่า Wi-Fi |
-| GET/POST/DELETE | `/api/anims[/{name}]` | รายการ / อัปโหลด (chunked) / ลบ |
-| POST | `/api/play` | `{name}` สั่งเล่น, `{stop:true}` หยุด |
-| GET/PUT | `/api/playlist` | ลำดับการเล่นและเวลาของแต่ละรายการ |
-| WS | `/ws` | live frame (binary), สถานะ (JSON) |
+### Display drivers
+Two driver types cover every display:
+| Driver | Displays | Work |
+|--------|----------|------|
+| `PanelSpiRgb565` | ST7735S, ST7789, GC9A01 | init sequence → `CASET/RASET/RAMWR` → pixels over DMA, double-buffered bands |
+| `PanelI2cMono` | SSD1306 (128×64, 128×32), SH1106 | init sequence → page-by-page writes (8 rows), SH1106 column offset, dirty pages only |
 
-### Partition
-ทั้งสองบอร์ดเป็น Flash 4 MB จึงใช้ layout เดียวกัน:
-- **ค่าเริ่มต้น (เน้นพื้นที่เก็บ):** `nvs | app 1.75 MB | littlefs ~2.2 MB` อัปเดตเฟิร์มแวร์ผ่าน USB ส่วนไฟล์เว็บอัปเดตผ่านหน้าเว็บได้
-- **ตัวเลือก OTA:** `app0 1.5 MB | app1 1.5 MB | littlefs ~0.9 MB` ใช้ได้เมื่อเฟิร์มแวร์เล็กกว่า 1.5 MB (วัดในเฟส 0) แลกกับพื้นที่เก็บแอนิเมชันที่ลดลง
+Presets (geometry, offsets, flags, init sequence) are compiled into `display/presets.cpp` and selected at runtime. All tuning values (rotation, offset, invert, BGR, mirror, bus speed, pins) are stored in NVS.
 
-### ประสิทธิภาพที่คาดหวัง
-| กรณี | เป้า fps |
-|------|----------|
-| OLED I2C 128×64 (I2C 800 kHz–1 MHz) | 30+ |
-| Pixel art / GIF 240×240 (SPI 40–80 MHz, delta) | 30+ เมื่อเปลี่ยนบางส่วน, 20+ เมื่อเปลี่ยนทั้งจอ |
-| วิดีโอ JPEG 240×240 บน C3/C6 | 15–20 (ส่วนที่ช้าสุดคือการถอดรหัส JPEG) |
-| วิดีโอ 80×160 | 30 |
+### Partitions
+Both boards have 4 MB of flash and use the same layouts:
+- **Default (storage-first):** `nvs | app 1.75 MB | littlefs ~2.1 MB`. Firmware updates over USB.
+- **OTA option:** `app0 1.5 MB | app1 1.5 MB | littlefs ~0.9 MB`. The measured firmware size (1.33–1.36 MB including the editor) fits, at the cost of animation storage.
 
-## 6. Web App
+### Performance targets
+| Case | Target fps |
+|------|------------|
+| I2C OLED 128×64 (I2C 800 kHz–1 MHz) | 30+ |
+| Pixel art / GIF 240×240 (SPI 40–80 MHz, delta) | 30+ with partial changes, 20+ for full-screen changes |
+| JPEG video 240×240 on C3/C6 | 15–20 (JPEG decoding is the bottleneck) |
+| Video 80×160 | 30 |
 
-### เทคโนโลยี
-- **Vite + Preact + TypeScript** ทั้งแอปบีบอัด gzip แล้วต้องไม่เกิน 150 KB เพราะต้องอยู่ใน Flash 4 MB
-- `gifuct-js` สำหรับถอดรหัส GIF, ใช้ `<video>` + canvas ของเบราว์เซอร์สำหรับวิดีโอ (ไม่ต้องใช้ ffmpeg.wasm ที่หนัก)
-- งานเข้ารหัสทำใน Web Worker เพื่อไม่ให้หน้าเว็บค้าง
-- ESP32 เปิดหน้าเว็บให้เอง จึงใช้ได้ทั้งในโหมด AP ที่ไม่มีอินเทอร์เน็ต ช่วงพัฒนาใช้ `vite dev` proxy ไปที่บอร์ด
+These targets still need to be measured on hardware (`bench` command).
 
-### หน้าจอ
-**1. Library / Dashboard**
-- รายการแอนิเมชัน + thumbnail ที่เล่นได้, เล่น/หยุด/ลบ, ลากเพื่อเรียง playlist
-- แถบพื้นที่ว่าง, ปรับความสว่าง
+## 6. Web app
 
-**2. Pixel Art Editor**
-- Canvas ตั้งขนาดได้ ค่าเริ่มต้นแนะนำตามจอ เช่น 60×60 (×4) สำหรับ 240×240, 20×40 (×4) สำหรับ 80×160, 128×64 (×1) สำหรับ OLED
-- เครื่องมือ: ดินสอ, ยางลบ, เส้น, สี่เหลี่ยม, วงกลม, เติมสี, ดูดสี, เลือกและย้าย, mirror
-- เฟรม: เพิ่ม/ลบ/ทำซ้ำ/ลากเรียง, onion skin, กำหนด delay แต่ละเฟรม, พรีวิววนซ้ำ
-- Palette: preset (PICO-8, GameBoy, NES), สีกำหนดเอง, เปลี่ยนสีใน palette แล้วทุกเฟรมเปลี่ยนตาม
-- OLED: palette มีแค่สองสีคือ ขาว/ดำ
-- Undo/redo, บันทึกโปรเจกต์ (`.json`) ไว้ในเครื่องและบนบอร์ด เพื่อเปิดแก้ต่อได้
+### Technology
+- **Vite + Preact + TypeScript.** The whole app is about 41 KB gzipped (budget: 150 KB), embedded in the firmware.
+- `gifuct-js` decodes GIFs. Video uses the browser's `<video>` element + canvas (no heavy ffmpeg.wasm).
+- The ESP32 serves the editor itself, so it also works in AP mode without internet. During development, `vite dev` proxies the API to a board or to the mock board.
 
-**3. Import GIF**
-- เลือกไฟล์แล้วพรีวิวบนจอจำลอง (ขนาดจริง, มาสก์วงกลม, จำลองจอขาวดำ)
-- การวางภาพ: fit / fill / crop เอง (ลากกรอบ), ตัดเฟรมหัว-ท้าย, ปรับความเร็ว
-- ถ้า GIF เป็น pixel art สามารถเปิดต่อใน Pixel Editor ได้
+### What was built
+- **Pixel art editor:** drawing tools, frames, onion skin, delays, palette presets, replace a color across all frames, undo/redo, autosave, `.dpe` project files.
+- **Eye templates:** 12 moods × 3 styles.
+- **GIF and video import:** fit/crop/zoom/pan, trimming, speed or fps, resolution, size estimate.
+- **Color tools (TFT):** brightness, contrast, saturation, hue, invert, color limit.
+- **Black and white (OLED):** threshold, dithering (none / Floyd–Steinberg / Atkinson / Bayer), invert.
+- **True-to-hardware display preview**, including round displays and OLED tint.
+- **Export:** `.dpa` with a size estimate, upload to the board, live preview on the board.
+- **Board manager:** files (play/delete, storage), playlist, display settings (preset, rotation, offset, invert, BGR, mirror, bus speed, pins, brightness, test pattern), Wi-Fi (scan, connect, forget).
 
-**4. Import วิดีโอ**
-- เลือกไฟล์ (MP4/WebM/MOV ตามที่เบราว์เซอร์รองรับ) แล้วเลือกช่วงเวลา (เริ่ม/จบ) และ fps (10/15/20/24)
-- ครอปและจัดตำแหน่งให้พอดีจอ (สำหรับจอกลม ใช้กรอบวงกลม)
-- ปรับคุณภาพ JPEG พร้อมแสดง**ขนาดไฟล์โดยประมาณเทียบกับพื้นที่ว่าง**แบบเรียลไทม์
-- จอ OLED: แปลงเป็นขาวดำ + dither
+### Not yet implemented
+- Animated thumbnails in the board's file list, and drag-to-reorder for the playlist.
+- Encoding in a Web Worker (currently on the main thread; fine for the sizes involved so far).
+- Device name setting and backup/restore of animations.
+- Loading extra display presets from a JSON file on the board.
+- OTA firmware updates.
 
-**5. เครื่องมือปรับสี** (ใช้ได้กับ GIF, วิดีโอ และ pixel art)
-| จอสี (TFT) | จอขาวดำ (OLED) |
-|------------|-----------------|
-| ความสว่าง, contrast, saturation, hue shift | threshold |
-| แทนที่สี (คลิกสีใน palette แล้วเลือกสีใหม่ มีผลทุกเฟรม) | dither: ไม่ใช้ / Floyd–Steinberg / Bayer / Atkinson |
-| tint / filter สีเดียว, invert | invert |
-| ลดจำนวนสี (สำหรับ GIF ขนาดเล็กลง) | ความสว่างของจอ |
-| สีพื้นหลัง (ส่วนนอกภาพ/โปร่งใส) | |
-
-ทุกค่าพรีวิวสดบนจอจำลองในเบราว์เซอร์ และกด **"Live on device"** เพื่อดูบนจอจริงได้
-
-**6. Display Setup**
-- เลือกบอร์ด (C3/C6) และ preset จอ แล้วปรับขา, rotation, offset, invert, RGB/BGR, ความเร็ว SPI/I2C ได้
-- ปุ่ม "ทดสอบ" แสดงภาพทดสอบก่อนบันทึก
-
-**7. Settings**: Wi-Fi, ชื่ออุปกรณ์, backup/restore รายการแอนิเมชัน, อัปเดตไฟล์เว็บ
-
-## 7. โครงสร้างโปรเจกต์
+## 7. Project structure
 
 ```
-Display_editor/
+esp32-anim-display/
 ├─ firmware/
-│  ├─ platformio.ini          # env: c3_supermini, c6_supermini
+│  ├─ platformio.ini          # envs: c3_supermini, c6_supermini
 │  ├─ partitions/             # 4mb_storage.csv, 4mb_ota.csv
-│  ├─ src/{display,player,net,storage}/ + main.cpp
-│  ├─ test/                   # native tests ของตัวถอดรหัส
-│  └─ data/                   # web build (gz) + presets.json + ตัวอย่าง .dpa
+│  ├─ src/{app,display,player,net,storage,bench}/ + main.cpp
+│  └─ test/native/            # C++ decoder test against the shared vectors
 ├─ web/
-│  ├─ src/
-│  │  ├─ codec/               # RGB565, palette, dither, delta, RLE, JPEG, writer .dpa
-│  │  ├─ import/              # gif, video
-│  │  ├─ editor/              # pixel editor
-│  │  ├─ color/               # ฟิลเตอร์ปรับสี
-│  │  ├─ device/              # REST + WebSocket client
-│  │  └─ ui/
-│  └─ vite.config.ts          # build → ../firmware/data
-├─ shared/test-vectors/       # ไฟล์ทดสอบที่ทั้ง JS และ C++ ต้องถอดรหัสได้ผลตรงกัน
-└─ docs/                      # สเปก .dpa, API, ผังการต่อสายของแต่ละจอ
+│  ├─ src/{model,editor,templates,color,render,codec,import,device,storage,ui}/
+│  └─ scripts/                # embed.mjs (editor → firmware), mock-board.mjs
+├─ shared/test-vectors/       # files the JS encoder and C++ decoder must agree on
+└─ docs/                      # architecture, .dpa format, API
 ```
 
-## 8. ลำดับการพัฒนา
+## 8. Development phases
 
-> **สถานะรวม (2026-10-03):** โค้ดครบทุกส่วนแล้วและคอมไพล์ผ่านทั้ง C3/C6 **แต่ยังไม่ได้ทดสอบกับบอร์ดและจอจริง**
-> - ✅ เฟส 0: ไดรเวอร์จอ, ภาพทดสอบ, benchmark
-> - ✅ เฟส 1: ตัวเล่น `.dpa` (INDEXED / JPEG / MONO, delta, scale), ตัวถอดรหัสตรงกับตัวเข้ารหัส JS ทุกพิกเซล (native test)
-> - ✅ เฟส 2: Wi-Fi (STA + AP + captive portal + mDNS), REST API ([docs/api.md](docs/api.md)), อัปโหลด, หน้า Editor ฝังในเฟิร์มแวร์
-> - ✅ เฟส 3–4: Editor ครบ + แม่แบบดวงตา + ดูสดบนบอร์ด + หน้า "จัดการบอร์ด"
-> - ✅ เฟส 5: playlist, ปุ่ม BOOT, จำไฟล์ล่าสุดหลังรีบูต
-> - ⏳ เหลือ: ทดสอบกับฮาร์ดแวร์จริง, OTA (ตัวเลือก)
+### Phase 0: hardware bring-up ✅ (code), ⏳ (hardware)
+- PlatformIO (pioarduino) envs `c3_supermini` and `c6_supermini`.
+- Drivers on `esp_lcd` (SPI) and `Wire` (I2C) with a test pattern for all 5 displays.
+- **Still to measure on hardware:**
+  - the highest SPI clock that stays clean (start at 40 MHz, go up to 80 MHz)
+  - the highest I2C clock
+  - JPEG 240×240 decode time
+  - free heap with Wi-Fi + web server running
+- Building on Windows must be done from PowerShell / VS Code, not Git Bash (the ESP-IDF tools installer doesn't support MSys).
 
-### เฟส 0: พิสูจน์ฮาร์ดแวร์ (2–3 วัน) ⚠️ ทำก่อน เพราะมีความเสี่ยงที่สุด
-> **สถานะ:** โค้ดเสร็จและคอมไพล์ผ่านทั้ง C3/C6 แล้ว (`firmware/`) เหลือทดสอบกับจอจริงและเก็บผล benchmark
-> - ขนาดเฟิร์มแวร์ที่วัดได้: C3 1.16 MB, C6 1.22 MB (รวม Wi-Fi + web server + JPEGDEC) จึงยังพอใส่ layout OTA 1.5 MB ได้
-> - OLED ใช้ Arduino `Wire` แทน `esp_lcd` I2C (ง่ายกว่าและไม่ชนกับไดรเวอร์ I2C ของ core) ส่วน TFT ใช้ `esp_lcd` SPI + DMA ตามแผน
-> - การ build บน Windows ต้องรันจาก PowerShell / VS Code ไม่ใช่ Git Bash (ตัวติดตั้ง ESP-IDF tools ไม่รองรับ MSys)
-- ตั้ง PlatformIO (pioarduino) env `c3_supermini` และ `c6_supermini`, ตรวจขนาด Flash จริงด้วย `esptool flash_id`
-- เขียนไดรเวอร์ `spi_rgb565` และ `i2c_mono_page` บน `esp_lcd` แล้วแสดงภาพทดสอบให้ได้ครบทั้ง 5 จอ บนทั้งสองบอร์ด
-- วัดค่าจริง: SPI สูงสุดที่ภาพยังไม่เพี้ยน (เริ่ม 40 MHz แล้วเพิ่มไป 80 MHz), I2C สูงสุด, เวลาถอดรหัส JPEG 240×240, heap ที่เหลือเมื่อเปิด Wi-Fi + web server, ขนาดเฟิร์มแวร์
-- ✅ ผลที่ได้: `presets.json` ที่ทดสอบแล้วทั้ง 5 จอ, ตัวเลข fps จริง และเลือก partition layout
+### Phase 1: player + `.dpa` ✅
+- `.dpa` spec, MONO / INDEXED / JPEG decoders, scaling, banded output over DMA.
+- Runtime display config, safe mode.
 
-### เฟส 1: Player + `.dpa` (≈1 สัปดาห์)
-- สเปก `.dpa`, ตัวถอดรหัส MONO / INDEXED / JPEG, scale, ส่งขึ้นจอทีละช่วงด้วย DMA
-- `DisplayFactory` อ่าน config ตอนรัน, safe mode
-- ✅ เล่นไฟล์ตัวอย่างได้ครบทุกจอ ด้วยเฟิร์มแวร์ตัวเดียว
+### Phase 2: Wi-Fi + API ✅
+- Wi-Fi AP/STA/mDNS, captive portal, REST API, uploads via temp file + validate + rename.
 
-### เฟส 2: Wi-Fi + API + หน้าเว็บพื้นฐาน (≈1 สัปดาห์)
-- Wi-Fi AP/STA/mDNS, REST, WebSocket, อัปโหลดแบบ chunked
-- หน้า Library, Display Setup และ **Import GIF** (codec ฝั่ง JS)
-- ✅ จากมือถือ: ตั้งค่าจอ แล้วอัปโหลด GIF ไปเล่นบนจอได้
+### Phase 3: pixel art editor ✅
+Built before phases 1–2 so the editor could be tried early.
 
-### เฟส 3: Pixel Art Editor (≈1.5–2 สัปดาห์)
-> **สถานะ:** ทำก่อนเฟส 1–2 ตามที่ตกลง (`web/`) เสร็จแล้ว: pixel editor, นำเข้า GIF/วิดีโอ, ปรับสี/ขาวดำ, จำลองจอ, ส่งออก `.dpa` ([สเปก](docs/dpa-format.md))
-> เหลือ: ส่งไปบอร์ดและ Live on device (รอเฟิร์มแวร์เฟส 1–2), ใส่ไฟล์เว็บลงบอร์ด
-- เครื่องมือวาด, เฟรม, onion skin, palette, undo/redo, บันทึกโปรเจกต์
-- Live on device ผ่าน WebSocket
-- ✅ วาด pixel art ตั้งแต่ต้น พรีวิวบนจอจริง แล้วบันทึกลงบอร์ดได้
+### Phase 4: video + color tools ✅
 
-### เฟส 4: วิดีโอ + ปรับสี (≈1 สัปดาห์)
-- Import วิดีโอ (ช่วงเวลา, fps, crop, คุณภาพ, ประมาณขนาดไฟล์)
-- เครื่องมือปรับสีครบชุด (TFT) และ dither (OLED) ใช้ร่วมกันทั้ง GIF, วิดีโอ และ pixel art
-- ✅ อัปโหลดคลิปวิดีโอ ปรับสี แล้วเล่นบนจอกลมได้
+### Phase 5: polish ✅ (except OTA)
+- Playlist, BOOT button to switch animations, resume the last animation after reboot.
 
-### เฟส 5: เก็บงาน (3–5 วัน)
-- Playlist + ปุ่ม BOOT เปลี่ยนแอนิเมชัน, จำแอนิเมชันล่าสุดไว้หลังรีบูต
-- OTA (ถ้าเลือก layout OTA), backup/restore, เอกสารการต่อสาย
+## 9. Testing
+- **Codec:** Vitest (JS) + a native C++ test using the same `shared/test-vectors`; results must match exactly. ✅
+- **Board API:** the editor was tested against `web/scripts/mock-board.mjs`. ✅
+- **Displays:** check each preset's test pattern for offset, rotation and color order (RGB/BGR, invert). ⏳
+- **Performance:** fps, heap and free space are reported by `/api/info` and the `bench` command. ⏳
+- **Robustness:** large uploads, Wi-Fi dropping mid-upload, full storage. ⏳
 
-## 9. การทดสอบ
-- **Codec:** Vitest (JS) + PlatformIO native test (C++) ใช้ `shared/test-vectors` ชุดเดียวกัน ผลต้องตรงกันทุกไบต์
-- **จอ:** ภาพทดสอบของแต่ละ preset เพื่อตรวจ offset, rotation และสีสลับ (RGB/BGR, invert)
-- **ประสิทธิภาพ:** ส่ง fps, heap และพื้นที่ว่างผ่าน `/api/info` และแสดงใน Dashboard
-- **ความทนทาน:** อัปโหลดไฟล์ใหญ่, Wi-Fi หลุดระหว่างอัปโหลด, พื้นที่เต็ม
-
-## 10. ความเสี่ยง
-| ความเสี่ยง | วิธีรับมือ |
-|-------------|------------|
-| ไลบรารีจอรองรับ C6 ไม่สมบูรณ์ | ใช้ `esp_lcd` ของ Espressif เอง, ทางสำรองคือ Arduino_GFX |
-| init sequence ของจอโคลนบางรุ่นไม่ตรงกับมาตรฐาน | เก็บ init ไว้ใน preset แก้ได้โดยไม่คอมไพล์ใหม่, มี preset สำรองหลายแบบ (เช่น ST7735 tab สีต่าง ๆ) |
-| แรมไม่พอ (ไม่มี PSRAM) | ถอดรหัสทีละช่วง ไม่เก็บทั้งเฟรม, จำกัดจำนวน WebSocket client |
-| วิดีโอ 240×240 กินพื้นที่มาก | แสดงขนาดไฟล์ก่อนอัปโหลด, แนะนำ fps/คุณภาพ, ใช้ INDEXED แทน JPEG สำหรับคลิปการ์ตูน |
-| JPEG ถอดรหัสช้าบน C3 | ลด fps อัตโนมัติตามผลวัดในเฟส 0, ใช้ INDEXED แทนสำหรับคลิปการ์ตูน |
-| Wi-Fi แย่ง CPU กับ player (core เดียว) | ตั้ง task priority, ลด fps ระหว่างอัปโหลด |
-| ตั้งค่าจอผิดจนจอไม่ติด | หน้าเว็บทำงานแยกจากจอ, กด BOOT ระหว่างหน้าจอบูตเพื่อเข้า safe mode |
+## 10. Risks
+| Risk | Mitigation |
+|------|------------|
+| Display libraries with incomplete C6 support | use Espressif's own `esp_lcd`; fallback is Arduino_GFX |
+| Clone displays whose init sequences differ from the reference | init sequences live in presets; alternate presets exist (e.g. ST7735 offset variants, SH1106) |
+| Not enough RAM (no PSRAM) | banded decoding, no full frame buffer |
+| 240×240 video uses a lot of storage | size shown before upload, fps/quality suggestions, INDEXED instead of JPEG for cartoon clips |
+| Slow JPEG decoding on the C3 | measure in phase 0; prefer INDEXED for cartoon clips |
+| Wi-Fi competing with the player for the single core | AsyncTCP runs in its own task; uploads are written by the network task, drawing stays in the loop task |
+| Wrong display settings leave the screen blank | the web UI works without the display; press BOOT on the boot screen for safe mode |

@@ -1,54 +1,56 @@
 # Firmware
 
-เฟิร์มแวร์สำหรับ ESP32-C3 SuperMini / ESP32-C6 SuperMini มีหน้าที่:
-- เล่นแอนิเมชัน `.dpa` ที่สร้างจาก Web Editor
-- เปิดหน้า Editor ให้ใช้ผ่าน Wi-Fi (ฝังอยู่ในเฟิร์มแวร์)
-- รับไฟล์, จัด playlist, ดูสดขณะแก้ไข และตั้งค่าจอ/Wi-Fi ผ่านหน้าเว็บ
+Firmware for the ESP32-C3 SuperMini / ESP32-C6 SuperMini. It:
+- plays `.dpa` animations created in the web editor
+- serves the editor over Wi-Fi (embedded in the firmware)
+- receives uploads, runs playlists, shows live previews while you edit, and lets you configure the display and Wi-Fi from the browser
 
-โครงสร้างโค้ดดูที่ [docs/architecture.md](../docs/architecture.md) ส่วน API ดูที่ [docs/api.md](../docs/api.md)
+Code structure: [docs/architecture.md](../docs/architecture.md). API: [docs/api.md](../docs/api.md).
 
-## แฟลชลงบอร์ด
+## Flashing
 
-ต้องมี [PlatformIO](https://platformio.org/) (ส่วนขยายใน VS Code หรือ `pip install platformio`) และต้องรันจาก PowerShell / VS Code เพราะใน Git Bash จะใช้ไม่ได้
+You need [PlatformIO](https://platformio.org/) (the VS Code extension or `pip install platformio`). Build from PowerShell or VS Code; the build does not work under Git Bash.
 
 ```bash
 cd firmware; python -m platformio run -e c3_supermini -t upload
 ```
 
-ถ้าเป็นบอร์ด C6 ใช้ `-e c6_supermini` แทน
+For a C6 board, use `-e c6_supermini` instead.
 
-ถ้าอัปโหลดไม่ได้: กดปุ่ม BOOT ค้าง แล้วกด RESET (หรือเสียบ USB ใหม่ขณะกด BOOT) ปล่อย BOOT แล้วอัปโหลดอีกครั้ง
+If the upload fails: hold BOOT and press RESET (or replug USB while holding BOOT), release BOOT, then upload again.
 
-หน้า Editor ฝังอยู่ในเฟิร์มแวร์ ถ้าแก้โค้ดในโฟลเดอร์ `web/` ให้รัน `npm run build:device` ใน `web/` ก่อนแฟลช
+The editor is embedded in the firmware. After changing anything in `web/`, run `npm run build:device` in `web/` before flashing.
 
-## เริ่มใช้งานครั้งแรก
+## First-time setup
 
-1. **ต่อจอ** ตามตารางด้านล่าง แล้วเสียบ USB
-2. **เลือกรุ่นจอ:** ค่าเริ่มต้นคือ TFT 1.3" ST7789 ถ้าเป็นจออื่น ทำได้ 2 ทาง
-   - serial monitor: พิมพ์ `presets` แล้ว `preset <เลข>`
-   - หน้าเว็บ: ไปที่ "จัดการบอร์ด" → "ตั้งค่าจอ"
-3. **เชื่อม Wi-Fi ของบอร์ด:** ชื่อ `DisplayEditor-XXXX` รหัส `displayedit`
-   - มือถือจะเปิดหน้า Editor ให้เอง ถ้าไม่เปิด ให้เข้า http://192.168.4.1
-4. **ใช้ Wi-Fi บ้าน (ถ้าต้องการ):** ไปที่ "จัดการบอร์ด" → "Wi-Fi" → ค้นหา → ใส่รหัส → เชื่อมต่อ
-   - หลังจากนั้นเข้าได้ที่ http://display.local หรือ IP ที่แสดงบนจอ
-5. **สร้างแอนิเมชัน** แล้วกด **"ส่งไปบอร์ด"** บอร์ดจะเล่นทันที
+1. **Wire the display** using the table below and plug in USB.
+2. **Select the display model.** The default is the 1.3" ST7789 TFT. For other displays, either:
+   - serial monitor: type `presets`, then `preset <number>`
+   - web UI: go to **บอร์ด** (Board) → **ตั้งค่าจอ** (Display settings)
+3. **Join the board's Wi-Fi:** network `DisplayEditor-XXXX`, password `displayedit`.
+   - Phones open the editor automatically; otherwise go to http://192.168.4.1
+4. **Use your home Wi-Fi (optional):** go to **บอร์ด** → **Wi-Fi** → scan → enter the password → connect.
+   - Afterwards, open http://display.local or the IP address shown on the display.
+5. **Create an animation** and press **ส่งไปบอร์ด** (Send to board). The board starts playing it immediately.
 
-ถ้ายังไม่มีแอนิเมชัน จอจะแสดงวิธีเชื่อมต่อ (ชื่อ Wi-Fi, รหัส, ที่อยู่เว็บ)
+When there are no animations yet, the display shows how to connect (Wi-Fi name, password and web address).
 
-## ปุ่มและไฟ
+The editor's interface is in Thai; English translations of button names are given in parentheses.
 
-| การกด | ผล |
-|-------|----|
-| กดสั้น | แอนิเมชันถัดไป (หรือรายการถัดไปใน playlist) |
-| กดค้าง 2 วินาที | แสดงข้อมูลการเชื่อมต่อ 15 วินาที |
-| กดระหว่างหน้า "Display Editor" ตอนบูต | safe mode: ตั้งค่าจอกลับเป็นค่าเริ่มต้น |
+## Button and LED
 
-**LED บนบอร์ด:** แดง = กำลังบูต, น้ำเงิน = เชื่อม Wi-Fi บ้านแล้ว, ม่วง = เปิด Wi-Fi ของบอร์ดเอง (C3 มีไฟสีเดียว: ติดค้างเมื่อพร้อม)
+| Action | Result |
+|--------|--------|
+| Short press | next animation (or next playlist item) |
+| Hold for 2 seconds | show connection info for 15 seconds |
+| Press while "Display Editor" is shown at boot | safe mode: reset display settings to defaults |
 
-## การต่อสาย
+**On-board LED:** red = booting, blue = joined home Wi-Fi, purple = running its own Wi-Fi. The C3 has a single-color LED, which stays on when ready.
 
-| สัญญาณ | ขาจอ TFT (SPI) | ขาจอ OLED (I2C) | C3 SuperMini | C6 SuperMini |
-|--------|----------------|------------------|--------------|--------------|
+## Wiring
+
+| Signal | TFT pin (SPI) | OLED pin (I2C) | C3 SuperMini | C6 SuperMini |
+|--------|---------------|----------------|--------------|--------------|
 | VCC | VCC | VCC | 3V3 | 3V3 |
 | GND | GND | GND | GND | GND |
 | CLK | SCL / SCK / CLK | SCL | GPIO6 | GPIO6 |
@@ -58,51 +60,51 @@ cd firmware; python -m platformio run -e c3_supermini -t upload
 | RST | RES / RST | — | GPIO3 | GPIO21 |
 | BL | BLK / BL / LED | — | GPIO5 | GPIO22 |
 
-- จอ ST7789 1.3" ที่ไม่มีขา CS ไม่ต้องต่อ CS
-- ต่อ BL เข้า 3V3 ได้ แต่จะปรับความสว่างไม่ได้
-- ขาที่เขียนบนจอ TFT ว่า "SCL/SDA" คือ SPI ไม่ใช่ I2C ให้ต่อเข้า CLK/DATA ตามตาราง
-- เปลี่ยนขาได้ในหน้า "ตั้งค่าจอ" หรือใช้คำสั่ง `pins`
+- 1.3" ST7789 modules without a CS pin: leave CS unconnected.
+- BL can go straight to 3V3, but brightness then can't be adjusted.
+- Pins labeled "SCL/SDA" on TFT modules are SPI, not I2C. Connect them to CLK/DATA as in the table.
+- Pins can be changed in **ตั้งค่าจอ** (Display settings) or with the `pins` command.
 
-## Preset จอ
+## Display presets
 
-| # | id | จอ |
-|---|----|----|
+| # | id | Display |
+|---|----|---------|
 | 0 | `st7735s_80x160` | TFT 0.96" 80×160 |
-| 1 | `st7735s_80x160_b` | TFT 0.96" 80×160 แบบ offset ที่สอง (ใช้ถ้าภาพเลื่อนหรือมีขอบขยะ) |
-| 2 | `st7789_240x240` | TFT 1.3" 240×240 (ค่าเริ่มต้น) |
-| 3 | `gc9a01_240_round` | TFT กลม 1.28" 240×240 |
+| 1 | `st7735s_80x160_b` | TFT 0.96" 80×160, alternate offset (use if the image is shifted or has a garbage edge) |
+| 2 | `st7789_240x240` | TFT 1.3" 240×240 (default) |
+| 3 | `gc9a01_240_round` | Round TFT 1.28" 240×240 |
 | 4 | `ssd1306_128x64` | OLED 0.96" 128×64 |
-| 5 | `sh1106_128x64` | OLED 1.3" 128×64 (ใช้ถ้า SSD1306 แสดงขอบซ้ายเป็นเส้นขยะ) |
+| 5 | `sh1106_128x64` | OLED 1.3" 128×64 (use if SSD1306 shows a garbage strip on the left) |
 | 6 | `ssd1306_128x32` | OLED 0.91" 128×32 |
 
-## ตรวจภาพทดสอบ
+## Checking the test pattern
 
-เปิดภาพทดสอบได้ 2 ทาง: "จัดการบอร์ด" → "ภาพทดสอบ" หรือพิมพ์ `test` ใน serial monitor
+Open it from **บอร์ด** (Board) → **ภาพทดสอบ** (Test pattern), or type `test` in the serial monitor.
 
-| สิ่งที่เห็น | แก้ด้วย |
-|-------------|---------|
-| สี่เหลี่ยมแดงไม่อยู่มุมซ้ายบน (จอกลม: ไม่อยู่ด้านบน) | หมุน (`rot 0..3`) |
-| ภาพกลับด้านเหมือนกระจก | กลับซ้าย-ขวา (`mirror`) |
-| แดงกับน้ำเงินสลับกัน | BGR (`bgr`) |
-| สีเหมือนฟิล์มเนกาทีฟ | invert (`invert`) |
-| ขอบขาวหายบางด้าน หรือมีแถบขยะที่ขอบ | offset (`offset <x> <y>`) หรือ preset ที่ลงท้ายด้วย `_b` |
-| ภาพเพี้ยนหรือมีจุดสุ่ม | ลดความเร็ว SPI (`spi 27`) หรือ I2C (`i2c 400`) |
-| OLED ขึ้น "no OLED found" | ตรวจสาย SDA/SCL หรือลอง `addr 3D` |
+| What you see | Fix with |
+|--------------|----------|
+| The red square is not top-left (round display: not at the top) | rotation (`rot 0..3`) |
+| The image is mirrored | mirror (`mirror`) |
+| Red and blue are swapped | BGR (`bgr`) |
+| Colors look like a photo negative | invert (`invert`) |
+| The white border is missing on some side, or there's a garbage strip at the edge | offset (`offset <x> <y>`) or a preset ending in `_b` |
+| Garbled image or random dots | lower the SPI speed (`spi 27`) or I2C speed (`i2c 400`) |
+| OLED reports "no OLED found" | check SDA/SCL wiring, or try `addr 3D` |
 
 ## Serial console (115200)
 
-พิมพ์ `help` เพื่อดูคำสั่งทั้งหมด
+Type `help` for the full list.
 
-| กลุ่ม | คำสั่ง |
-|-------|--------|
-| เล่นแอนิเมชัน | `ls`, `play <ชื่อ>`, `stop`, `next`, `info` |
-| Wi-Fi | `wifi <ssid> <รหัส>`, `wifi forget` |
-| จอ | `presets`, `preset`, `rot`, `offset`, `invert`, `bgr`, `mirror`, `spi`, `i2c`, `addr`, `pins`, `bright`, `test`, `reset` |
-| ทดสอบ | `show` (สถานะทั้งหมด), `bench` (วัดความเร็วจอและ JPEG) |
+| Group | Commands |
+|-------|----------|
+| Playback | `ls`, `play <name>`, `stop`, `next`, `info` |
+| Wi-Fi | `wifi <ssid> <password>`, `wifi forget` |
+| Display | `presets`, `preset`, `rot`, `offset`, `invert`, `bgr`, `mirror`, `spi`, `i2c`, `addr`, `pins`, `bright`, `test`, `reset` |
+| Diagnostics | `show` (full status), `bench` (display and JPEG benchmarks) |
 
-## ทดสอบตัวถอดรหัสบน PC
+## Testing the decoder on a PC
 
-ใช้ไฟล์ทดสอบชุดเดียวกับฝั่งเว็บ (สร้างด้วย `npm test` ใน `web/`) ให้รันจากโฟลเดอร์หลักของโปรเจกต์:
+This uses the same test files as the web side (generated by `npm test` in `web/`). Run from the repository root:
 
 ```bash
 python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/decode_test.cpp -o build/decode_test.exe

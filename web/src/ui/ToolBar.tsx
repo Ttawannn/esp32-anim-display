@@ -39,9 +39,6 @@ export function ToolBar({ s }: { s: EditorState }) {
       <IconButton icon="grid" title="เส้นตาราง" active={s.grid} onClick={() => store.set({ grid: !s.grid })} />
       <IconButton icon="onion" title="Onion skin (เห็นเฟรมก่อนหน้าจาง ๆ)" active={s.onion}
         onClick={() => store.set({ onion: !s.onion })} />
-      <div class="sep" />
-      <IconButton icon="undo" title="ย้อนกลับ (Ctrl+Z)" disabled={!store.canUndo} onClick={() => store.undo()} />
-      <IconButton icon="redo" title="ทำซ้ำ (Ctrl+Y)" disabled={!store.canRedo} onClick={() => store.redo()} />
     </div>
   );
 }

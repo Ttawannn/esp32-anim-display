@@ -2,16 +2,14 @@ import { useEffect } from 'preact/hooks';
 import { projectEncodingKey } from '../codec/encode';
 import { autoConnect, sendLiveFrame } from '../device/session';
 import { addFrame, deleteFrame, selectFrame, store, useEditor } from '../model/store';
-import { AdjustPanel } from './AdjustPanel';
 import { DeviceDialog } from './DeviceDialog';
 import { EditorCanvas } from './EditorCanvas';
 import { EyesDialog } from './EyesDialog';
 import { ImportGifDialog } from './ImportGifDialog';
 import { ImportVideoDialog } from './ImportVideoDialog';
 import { NewProjectDialog } from './NewProjectDialog';
-import { OutputPanel } from './OutputPanel';
-import { PalettePanel } from './PalettePanel';
-import { PreviewPanel } from './PreviewPanel';
+import { SidePanel } from './SidePanel';
+import { isBlankProject, StartScreen } from './StartScreen';
 import { Timeline } from './Timeline';
 import { ToolBar, TOOLS } from './ToolBar';
 import { TopBar } from './TopBar';
@@ -74,13 +72,11 @@ export function App() {
       <TopBar s={s} />
       <div class="main">
         <ToolBar s={s} />
-        <EditorCanvas s={s} />
-        <div class="side">
-          <PreviewPanel s={s} />
-          <PalettePanel s={s} />
-          <AdjustPanel s={s} />
-          <OutputPanel s={s} />
+        <div class="stage-wrap">
+          <EditorCanvas s={s} />
+          {!s.startDismissed && isBlankProject(s) && <StartScreen s={s} />}
         </div>
+        <SidePanel s={s} />
       </div>
       <Timeline s={s} />
       {s.dialog === 'new' && <NewProjectDialog />}
@@ -88,7 +84,7 @@ export function App() {
       {s.dialog === 'video' && <ImportVideoDialog />}
       {s.dialog === 'eyes' && <EyesDialog />}
       {s.dialog === 'device' && <DeviceDialog />}
-      {s.toast && <div class={`toast${s.toast.error ? ' error' : ''}`}>{s.toast.text}</div>}
+      {s.toast && <div class={`toast${s.toast.error ? ' error' : ''}`} role="status">{s.toast.text}</div>}
     </div>
   );
 }

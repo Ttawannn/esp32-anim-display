@@ -28,6 +28,10 @@ export interface EditorState {
   deviceTransport: 'wifi' | 'usb' | null;
   live: boolean; // mirror the current frame on the board while editing
   dialog: Dialog;
+  sideTab: 'color' | 'adjust' | 'export';
+  connectOpen: boolean; // connection popover in the top bar
+  sending: { label: string; pct: number } | null; // send-to-board progress (0..1)
+  startDismissed: boolean; // hide the start screen on a blank project
   toast: { text: string; error?: boolean } | null;
   busy: string | null;
 }
@@ -63,6 +67,10 @@ class Store {
       deviceTransport: null,
       live: false,
       dialog: null,
+      sideTab: 'color',
+      connectOpen: false,
+      sending: null,
+      startDismissed: false,
       toast: null,
       busy: null,
     };

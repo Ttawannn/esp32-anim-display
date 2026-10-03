@@ -106,6 +106,11 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. Boards are matched
 - **Generated animations:** `templates/eyes.ts` produces procedural eye animations from keyframes (tween, then hold-as-delay).
 - **Board client:** `device/api.ts` uses HTTP or Web Serial. `firmware/src/net/api.cpp` is shared by HTTP (`net/web.cpp`) and USB (`app/serial_rpc.cpp`); see `docs/usb-protocol.md`. Serialize entire USB transfers, including their save receipt. Keep `web/scripts/mock-board.mjs` in sync with API changes.
 - **Encoding:** use `codec/encode.ts` for estimates, downloads, uploads, and live preview. It shares a bounded cache and runs `codec/dpa.ts` in a Worker without detaching immutable project buffers.
+- **Editor shell:**
+  - `TopBar` holds the File/Create menus, `ConnectionChip` (the single place for USB / Wi-Fi connection, live preview and the board manager), and the primary "send to board" button.
+  - Every send goes through `device/send.ts` (`sendToBoard`, with progress in `store.sending`).
+  - A blank project shows `StartScreen`.
+  - The side panel keeps the display preview on top, with color / adjust / export tabs below (`store.sideTab`).
 - **Two pages:** `main.tsx` routes by hash.
   - `#/editor` is the full editor (`ui/App.tsx`).
   - `#/remote` is the phone remote (`ui/RemoteApp.tsx`).

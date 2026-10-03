@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { device, deviceConnectionKey, presetForDevice, type AnimFile, type DeviceInfo, type PlaylistData } from '../device/api';
 import { refreshDevice } from '../device/session';
+import { SerialLink } from '../device/serial';
 import { thumbnail } from '../device/thumbs';
 import { thumbnailRevision } from '../device/thumbnailCache';
 import { store, toast, useEditor } from '../model/store';
@@ -13,20 +14,14 @@ import { formatBytes, Icon } from './common';
 import { UsbControls } from './UsbControls';
 
 function Tile(props: { host: string; file: AnimFile; info: DeviceInfo; revision: number; active: boolean; onPlay: () => void }) {
-  const [src, setSrc] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const image = thumbnail(props.host, props.file);
-    image.promise.then((url) => alive && setSrc(url));
-    return () => { alive = false; image.release(); };
-  }, [props.host, props.file, props.revision]);
+  const src = useThumbnail(props.host, props.file, props.revision);
   const d = props.info.display;
   const mismatch = props.file.width !== d.width || props.file.height !== d.height;
   return (
     <button class={`tile${props.active ? ' active' : ''}`} onClick={props.onPlay}>
       <div class={`shot${d.shape === 'round' ? ' round' : ''}`} style={{ aspectRatio: `${props.file.width} / ${props.file.height}` }}>
         {src ? <img src={src} alt="" /> : <span class="hint">…</span>}
-        {props.active && <span class="playing">▶</span>}
+        {props.active && <span class="playing">กำลังแสดง</span>}
       </div>
       <div class="label">{props.file.name}</div>
       {mismatch && <div class="warn small">ทำมาสำหรับจอคนละขนาด</div>}
@@ -123,18 +118,26 @@ export function RemoteApp() {
     : info.player.name && info.player.playing ? `กำลังเล่น · ${info.player.fps.toFixed(0)} fps${info.player.playlist ? ' · เล่นวนอัตโนมัติ' : ''}`
     : 'หยุดอยู่';
 
+  const current = files?.find((f) => f.name === playingName) ?? null;
+
   return (
     <div class="remote">
       <header class="remote-bar">
-        <div class="brand">Display <span>Remote</span></div>
-        <span class="dot" style={{ color: info ? 'var(--ok)' : 'var(--muted)' }}>●</span>
+        <div class="brand">
+          <span class="logo"><i /><i /></span>
+          <span>Display <b>Remote</b></span>
+        </div>
         <div class="spacer" />
-        <a class="btn" href="#/editor">เปิด Editor</a>
+        <span class={`chip${info ? ' on' : ''}`}>
+          <span class="dot" />{info ? (s.deviceTransport === 'usb' ? 'USB' : 'Wi-Fi') : 'ไม่ได้เชื่อม'}
+        </span>
+        <a class="btn ghost" href="#/editor" title="เปิด Editor"><Icon name="pencil" /></a>
       </header>
-      <UsbControls />
+      {SerialLink.supported() && <UsbControls />}
 
       {!info ? (
         <section class="card">
+          <h3>เชื่อมต่อบอร์ด</h3>
           <p>{error || 'กำลังติดต่อบอร์ด...'}</p>
           <p class="hint">มือถือต้องเชื่อม Wi-Fi ของบอร์ด (DisplayEditor-XXXX รหัส displayedit) หรือ Wi-Fi เดียวกับบอร์ด</p>
           <div class="row">
@@ -146,14 +149,21 @@ export function RemoteApp() {
       ) : (
         <>
           <section class="card now">
+            <NowShot host={host} file={current} info={info} live={info.player.live} />
             <div class="grow">
-              <div class="hint">{info.display.name}</div>
-              <div class="title">{info.player.live ? 'ดูสด' : info.player.name || '—'}</div>
+              <div class="hint">กำลังแสดงบน {info.display.name}</div>
+              <div class="title">{info.player.live ? 'ดูสดจาก Editor' : info.player.name || 'ยังไม่ได้เล่น'}</div>
               <div class="hint">{status}</div>
             </div>
-            <button class="btn big" title="หยุด" onClick={() => act(() => device.stop(host))}><Icon name="pause" fill /></button>
-            <button class="btn big primary" title="ถัดไป" onClick={() => act(() => device.next(host))}><Icon name="right" /></button>
           </section>
+          <div class="now-controls">
+            <button class="btn big grow" title="หยุด" onClick={() => act(() => device.stop(host))}>
+              <Icon name="pause" fill /> หยุด
+            </button>
+            <button class="btn big primary grow" title="ถัดไป" onClick={() => act(() => device.next(host))}>
+              หน้าถัดไป <Icon name="right" />
+            </button>
+          </div>
 
           <section class="card">
             <label class="field">
@@ -163,21 +173,26 @@ export function RemoteApp() {
                 onChange={(e) => act(() => device.brightness(host, Number((e.target as HTMLInputElement).value)))} />
               <span class="v">{Math.round(((brightness ?? info.display.brightness) / 255) * 100)}%</span>
             </label>
-            <label class="check switch">
+            <label class="toggle">
               <input type="checkbox" checked={!!playlist?.enabled} disabled={!playlist || !files?.length} onChange={toggleAuto} />
-              เปลี่ยนหน้าอัตโนมัติ (playlist)
+              <span class="track" />
+              <span><b>เปลี่ยนหน้าอัตโนมัติ</b><small>วนเล่นทุกหน้า หน้าละ 8 วินาที</small></span>
             </label>
           </section>
 
           <section>
             <div class="row">
-              <h3 class="grow">หน้าบนบอร์ด {files ? `(${files.length})` : ''}</h3>
+              <h3 class="grow">แตะเพื่อแสดงบนจอ {files ? `(${files.length})` : ''}</h3>
               <span class="hint">ว่าง {formatBytes(info.fs.free)}</span>
             </div>
             {files === null ? (
               <p class="hint">กำลังโหลด...</p>
             ) : files.length === 0 ? (
-              <p class="hint">ยังไม่มีแอนิเมชันบนบอร์ด ติดตั้งชุดอารมณ์ด้านล่าง หรือสร้างใน Editor</p>
+              <div class="empty">
+                <span class="emoji">🖼️</span>
+                <b>ยังไม่มีแอนิเมชันบนบอร์ด</b>
+                <span class="hint">ติดตั้งชุดอารมณ์ดวงตาด้านล่างได้ในแตะเดียว หรือสร้างเองใน Editor</span>
+              </div>
             ) : (
               <div class="tiles">
                 {files.map((f) => (
@@ -187,26 +202,48 @@ export function RemoteApp() {
             )}
           </section>
 
-          <section class="card">
-            <h3>ชุดอารมณ์ดวงตา</h3>
-            <p class="hint">สร้างดวงตา 12 อารมณ์ให้พอดีกับจอนี้ แล้วติดตั้งลงบอร์ด (ไฟล์ชื่อเดิมจะถูกแทนที่)</p>
-            <div class="row">
-              <select value={style} onChange={(e) => setStyle((e.target as HTMLSelectElement).value as EyeStyle)} disabled={!!install}>
-                <option value="robot">หุ่นยนต์</option>
-                <option value="cartoon">การ์ตูน</option>
-                <option value="single">ตาเดียว</option>
-              </select>
-              <button class="btn primary grow" onClick={installSet} disabled={!!install}>
-                {install ? `กำลังติดตั้ง ${install.done + 1}/${install.total}...` : 'ติดตั้งชุดอารมณ์'}
-              </button>
+          <section class="card moods">
+            <div class="mood-row" aria-hidden="true">👀😄😢😠😲😴😍😉🤨😵</div>
+            <h3>ชุดอารมณ์ดวงตา 12 แบบ</h3>
+            <p class="hint">สร้างให้พอดีกับจอนี้แล้วติดตั้งลงบอร์ด (ไฟล์ชื่อเดิมจะถูกแทนที่)</p>
+            <div class="seg" role="radiogroup">
+              {([['robot', 'หุ่นยนต์'], ['cartoon', 'การ์ตูน'], ['single', 'ตาเดียว']] as [EyeStyle, string][]).map(([id, label]) => (
+                <button key={id} role="radio" aria-checked={style === id} class={style === id ? 'active' : ''}
+                  disabled={!!install} onClick={() => setStyle(id)}>{label}</button>
+              ))}
             </div>
+            <button class="btn primary big wide" onClick={installSet} disabled={!!install}>
+              {install ? `กำลังติดตั้ง ${install.done + 1}/${install.total}…` : <><Icon name="sparkle" /> ติดตั้งชุดอารมณ์</>}
+            </button>
             {install && (
               <div class="progress"><div style={{ width: `${(install.done / install.total) * 100}%` }} /></div>
             )}
           </section>
         </>
       )}
-      {s.toast && <div class={`toast${s.toast.error ? ' error' : ''}`}>{s.toast.text}</div>}
+      {s.toast && <div class={`toast${s.toast.error ? ' error' : ''}`} role="status">{s.toast.text}</div>}
+    </div>
+  );
+}
+
+function useThumbnail(host: string, file: AnimFile | null, revision: number) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    setSrc(null);
+    if (!file) return;
+    let alive = true;
+    const image = thumbnail(host, file);
+    image.promise.then((url) => alive && setSrc(url));
+    return () => { alive = false; image.release(); };
+  }, [host, file, revision]);
+  return src;
+}
+
+function NowShot(props: { host: string; file: AnimFile | null; info: DeviceInfo; live: boolean }) {
+  const src = useThumbnail(props.host, props.live ? null : props.file, thumbnailRevision());
+  return (
+    <div class={`now-shot${props.info.display.shape === 'round' ? ' round' : ''}`}>
+      {src ? <img src={src} alt="" /> : <Icon name={props.live ? 'live' : 'board'} />}
     </div>
   );
 }

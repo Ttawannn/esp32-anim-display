@@ -11,7 +11,8 @@ export function PreviewPanel({ s }: { s: EditorState }) {
   const { project: p } = s;
   const preset = getPreset(p.presetId);
   const ref = useRef<HTMLCanvasElement>(null);
-  const zoom = Math.max(1, Math.min(Math.floor(280 / preset.width), Math.floor(320 / preset.height)));
+  // Fit a 180px box (fractional zoom is fine with pixelated scaling) so the tabs below stay in view.
+  const zoom = Math.min(180 / preset.width, 180 / preset.height);
   const mono = isMono(p);
 
   useEffect(() => {

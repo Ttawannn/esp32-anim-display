@@ -18,7 +18,7 @@ export function NewProjectDialog() {
   const close = () => store.set({ dialog: null });
   const create = () => {
     store.load(createProject({ presetId, width: opt.width, height: opt.height, scale: opt.scale, name, background: bg }));
-    store.set({ dialog: null, zoom: 0, tool: 'pencil', primary: preset.color === 'mono' ? '#ffffff' : store.state.primary });
+    store.set({ dialog: null, zoom: 0, tool: 'pencil', startDismissed: true, primary: preset.color === 'mono' ? '#ffffff' : store.state.primary });
   };
 
   return (

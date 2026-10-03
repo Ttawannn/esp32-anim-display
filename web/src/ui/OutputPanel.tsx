@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { resolveMode, type EncodeResult } from '../codec/dpa';
 import { encodeProject } from '../codec/encode';
-import { device, deviceFileName, presetForDevice } from '../device/api';
-import { refreshDevice, setLive } from '../device/session';
+import { deviceFileName, presetForDevice } from '../device/api';
+import { sendToBoard } from '../device/send';
 import { getPreset } from '../model/presets';
 import { retarget } from '../model/project';
-import { store, toast, type EditorState } from '../model/store';
+import { store, type EditorState } from '../model/store';
 import type { Encoding } from '../model/types';
 import { download } from '../storage/projectFile';
-import { formatBytes, Slider } from './common';
+import { formatBytes, Icon, Slider } from './common';
 
 // Free space on a fresh board (4 MB layout); replaced by the real value once a board is connected.
 export const DEVICE_STORAGE = 2_000_000;
@@ -61,37 +61,6 @@ export function OutputPanel({ s }: { s: EditorState }) {
     download(r.bytes, `${fileName}.dpa`);
   };
 
-  const onUpload = async () => {
-    try {
-      const r = await encode();
-      setWorking(`กำลังส่ง ${formatBytes(r.bytes.length)} ไปบอร์ด...`);
-      await device.upload(s.deviceHost, fileName, r.bytes, true,
-        (sent, total) => setWorking(`กำลังส่ง ${Math.round(sent / total * 100)}% ไปบอร์ด...`));
-      toast(`บันทึก "${fileName}" บนบอร์ดแล้ว`);
-      refreshDevice().catch(() => {});
-    } catch (e) {
-      toast((e as Error).message, true);
-    } finally {
-      setWorking(null);
-    }
-  };
-
-  const onConnect = async () => {
-    setWorking('กำลังติดต่อบอร์ด...');
-    try {
-      const i = await refreshDevice();
-      const presetId = presetForDevice(i);
-      if (presetId && presetId !== p.presetId &&
-          confirm(`บอร์ดใช้จอ ${getPreset(presetId).name}\nเปลี่ยนเป้าหมายของโปรเจกต์ให้ตรงกับบอร์ดไหม`)) {
-        store.commit(retarget(p, presetId));
-      }
-    } catch (e) {
-      toast((e as Error).message, true);
-    } finally {
-      setWorking(null);
-    }
-  };
-
   const size = estimate?.bytes.length ?? 0;
   const capacity = info ? info.fs.free : DEVICE_STORAGE;
   const pct = Math.min(100, (size / capacity) * 100);
@@ -100,7 +69,6 @@ export function OutputPanel({ s }: { s: EditorState }) {
 
   return (
     <div class="section">
-      <h3>ส่งออก</h3>
       {mode !== 'mono' && (
         <div class="row">
           <span class="hint">รูปแบบ</span>
@@ -137,26 +105,16 @@ export function OutputPanel({ s }: { s: EditorState }) {
       )}
       {size > capacity && <p class="warn">ไฟล์ใหญ่เกินพื้นที่ ลองลดจำนวนเฟรม ลดคุณภาพ JPEG หรือลดความละเอียด</p>}
 
-      <div class="row" style={{ marginTop: 10 }}>
-        <button class="btn grow" onClick={onDownload} disabled={!!working}>ดาวน์โหลด .dpa</button>
-        <button class="btn primary grow" onClick={onUpload} disabled={!!working}>ส่งไปบอร์ด</button>
+      <div class="row" style={{ marginTop: 12 }}>
+        <button class="btn grow" onClick={onDownload} disabled={!!working}><Icon name="download" /> ดาวน์โหลด .dpa</button>
+        <button class="btn primary grow" onClick={sendToBoard} disabled={!!s.sending}><Icon name="send" /> ส่งไปบอร์ด</button>
       </div>
-
-      <div class="row" style={{ marginTop: 10 }}>
-        {info ? (
-          <span class="grow hint">
-            <span style={{ color: 'var(--ok)' }}>●</span> {info.display.name} · {info.wifi.ip}
-          </span>
-        ) : (
-          <span class="grow hint">○ ยังไม่ได้เชื่อมบอร์ด</span>
-        )}
-        <button class="btn" onClick={onConnect} disabled={!!working}>{info ? 'รีเฟรช' : 'เชื่อมต่อ'}</button>
-        <button class="btn" onClick={() => store.set({ dialog: 'device' })}>จัดการบอร์ด</button>
-      </div>
-      {mismatch && <p class="warn">โปรเจกต์ทำสำหรับจอ {getPreset(p.presetId).name} แต่บอร์ดใช้ {info!.display.name}</p>}
-      <label class="check" title="แสดงเฟรมที่กำลังแก้บนจอจริงทันที">
-        <input type="checkbox" checked={s.live} disabled={!info} onChange={() => setLive(!s.live)} /> ดูสดบนบอร์ดขณะแก้ไข
-      </label>
+      {mismatch && (
+        <div class="callout warn">
+          โปรเจกต์ทำสำหรับจอ {getPreset(p.presetId).name} แต่บอร์ดใช้ {info!.display.name}
+          <button class="btn small" onClick={() => store.commit(retarget(p, presetForDevice(info!)!))}>ใช้จอของบอร์ด</button>
+        </div>
+      )}
       {working && <p class="hint">{working}</p>}
     </div>
   );

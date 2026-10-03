@@ -46,15 +46,22 @@ export function Timeline({ s }: { s: EditorState }) {
         <IconButton icon="right" title="ย้ายเฟรมไปขวา" onClick={() => moveFrame(1)}
           disabled={frameIndex === p.frames.length - 1} />
         <IconButton icon="trash" title="ลบเฟรม (Delete)" onClick={deleteFrame} />
-        <span class="label">เฟรม {frameIndex + 1}/{p.frames.length}</span>
-        <span class="label">หน่วง</span>
-        <input type="number" min={10} max={10000} step={10} value={frame.delay}
-          onChange={(e) => setDelay(Number((e.target as HTMLInputElement).value), false)} title="เวลาแสดงเฟรมนี้ (ms)" />
-        <span class="label">ms</span>
-        <span class="label">ทุกเฟรม</span>
-        <input type="number" min={1} max={60} step={1} value={fps}
-          onChange={(e) => setDelay(1000 / Number((e.target as HTMLInputElement).value), true)} title="ตั้งความเร็วทุกเฟรม" />
-        <span class="label">fps · รวม {(totalDuration(p) / 1000).toFixed(1)} วินาที</span>
+        <span class="tl-group">
+          <span class="tl-count">เฟรม <b>{frameIndex + 1}</b> / {p.frames.length}</span>
+        </span>
+        <label class="tl-group" title="เวลาที่เฟรมนี้ค้างอยู่บนจอ">
+          <span class="label">เฟรมนี้แสดง</span>
+          <input type="number" min={10} max={10000} step={10} value={frame.delay}
+            onChange={(e) => setDelay(Number((e.target as HTMLInputElement).value), false)} />
+          <span class="label">ms</span>
+        </label>
+        <label class="tl-group" title="ตั้งความเร็วเท่ากันทุกเฟรม">
+          <span class="label">ความเร็วทุกเฟรม</span>
+          <input type="number" min={1} max={60} step={1} value={fps}
+            onChange={(e) => setDelay(1000 / Number((e.target as HTMLInputElement).value), true)} />
+          <span class="label">fps</span>
+        </label>
+        <span class="label">ยาว {(totalDuration(p) / 1000).toFixed(1)} วินาที</span>
       </div>
       <div class="frames" ref={stripRef}>
         {p.frames.map((f, i) => (

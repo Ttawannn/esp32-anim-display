@@ -1,0 +1,5 @@
+# Binary test vectors and assets must never get line-ending conversion.
+*.dpa binary
+*.expected binary
+*.jpg binary
+*.png binary

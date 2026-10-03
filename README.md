@@ -1,68 +1,70 @@
 # esp32-anim-display
 
-**Create animations in the browser and play them on small TFT/OLED displays driven by an ESP32-C3 / ESP32-C6 over Wi-Fi.**
+**Create animations in your browser and play them on small TFT/OLED displays driven by an ESP32-C3 / ESP32-C6, over Wi-Fi.**
 
-สร้างแอนิเมชันในเบราว์เซอร์ ทั้ง pixel art, ดวงตาแสดงอารมณ์, GIF และวิดีโอ แล้วส่งผ่าน Wi-Fi ไปเล่นบนจอเล็กที่ต่อกับ ESP32
-
-<p align="center">
-  <img src="docs/images/eyes-demo.gif" alt="ตัวอย่างแม่แบบดวงตา: มองซ้าย-ขวา ดีใจ โกรธ หลงรัก ตกใจ" width="240">
-</p>
-
-## ความสามารถ
-
-- **Web Editor ในตัว:** บอร์ดเปิดหน้า Editor ให้เอง ไม่ต้องลงโปรแกรม ใช้ได้ทั้งคอมและมือถือ
-- **วาด pixel art:** มีเครื่องมือวาด, เฟรม, onion skin, palette สำเร็จรูป และ undo/redo
-- **แม่แบบดวงตา:** 12 อารมณ์ × 3 แบบ (หุ่นยนต์ / การ์ตูน / ตาเดียวสำหรับจอกลม) ปรับสี ขนาด และความลื่นได้
-- **นำเข้า GIF และวิดีโอ:** ตัดช่วงเวลา, ครอป, ปรับ fps แปลงในเบราว์เซอร์ทั้งหมด
-- **ปรับสี:** ความสว่าง, คอนทราสต์, ความสด, เฉดสี, จำนวนสี จอ OLED มีการแปลงขาวดำ + dither
-- **จำลองจอตามจริง:** สี RGB565 / ขาวดำ 1 บิต, มาสก์จอกลม เปลี่ยนรุ่นจอได้ทุกเมื่อ
-- **ส่งไปบอร์ดในคลิกเดียว:** ดูสดบนจอจริงขณะแก้ไขได้
-- **จัดการบอร์ดผ่านเว็บ:** ไฟล์, playlist, ตั้งค่าจอ, Wi-Fi
-- **ไฟล์เล็ก:** รูปแบบ [.dpa](docs/dpa-format.md) เก็บเฉพาะส่วนที่เปลี่ยน เช่น ดวงตามองซ้าย-ขวาบนจอ 240×240 ใช้แค่ 24 KB
+Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then send them to the board with one click.
 
 <p align="center">
-  <img src="docs/images/eye-moods.png" alt="แม่แบบดวงตา 12 อารมณ์ 3 แบบ" width="540">
+  <img src="docs/images/eyes-demo.gif" alt="Eye template demo: look left-right, happy, angry, in love, surprised" width="240">
 </p>
 
-## ฮาร์ดแวร์ที่รองรับ
+## Features
 
-| บอร์ด | จอ |
-|-------|----|
+- **Built-in web editor:** the board serves the editor itself. Nothing to install, and it works on desktop and mobile.
+- **Pixel art editor:** drawing tools, frames, onion skin, palette presets, undo/redo.
+- **Eye templates:** 12 moods in 3 styles (robot, cartoon, single eye for round displays). Color, size and smoothness are adjustable.
+- **GIF and video import:** trim, crop and choose the frame rate. All conversion happens in the browser.
+- **Color tools:** brightness, contrast, saturation, hue and color count. OLEDs get 1-bit conversion with dithering.
+- **True-to-hardware preview:** RGB565 or 1-bit color and the round-display mask. Switch the target display at any time.
+- **One-click upload:** with live preview on the real display while you edit.
+- **Board management from the browser:** files, playlist, display settings and Wi-Fi.
+- **Compact files:** the [.dpa format](docs/dpa-format.md) stores only what changes between frames. The look-left-right animation on a 240×240 display takes just 24 KB.
+
+<p align="center">
+  <img src="docs/images/eye-moods.png" alt="Eye templates: 12 moods in 3 styles" width="540">
+</p>
+
+## Supported hardware
+
+| Boards | Displays |
+|--------|----------|
 | ESP32-C3 SuperMini | TFT 0.96" ST7735S 80×160 |
 | ESP32-C6 SuperMini | TFT 1.3" ST7789 240×240 |
-| | TFT กลม 1.28" GC9A01 240×240 |
+| | Round TFT 1.28" GC9A01 240×240 |
 | | OLED 0.96" SSD1306 / 1.3" SH1106 128×64 |
 | | OLED 0.91" SSD1306 128×32 |
 
-เปลี่ยนรุ่นจอจากหน้าเว็บได้โดยไม่ต้องคอมไพล์ใหม่ การต่อสายดูที่ [firmware/README.md](firmware/README.md)
+The display model is selected from the web UI at runtime, so changing it needs no recompile. For wiring, see [firmware/README.md](firmware/README.md).
 
-## เริ่มใช้งาน
+## Getting started
 
-1. **แฟลชเฟิร์มแวร์** ด้วย [PlatformIO](https://platformio.org/) (ใช้ PowerShell หรือ VS Code):
+1. **Flash the firmware** with [PlatformIO](https://platformio.org/) from PowerShell or VS Code (the build does not work under Git Bash):
 
    ```bash
    cd firmware; python -m platformio run -e c3_supermini -t upload
    ```
 
-   ถ้าเป็นบอร์ด C6 ใช้ `-e c6_supermini`
+   For a C6 board, use `-e c6_supermini`.
 
-2. **เชื่อม Wi-Fi ของบอร์ด** ชื่อ `DisplayEditor-XXXX` รหัส `displayedit` หน้า Editor จะเปิดขึ้นเอง (หรือเข้า http://192.168.4.1)
-3. **ตั้งรุ่นจอ:** ไปที่ "บอร์ด" → "ตั้งค่าจอ" เลือกรุ่นจอ แล้วกด "ภาพทดสอบ" เพื่อตรวจ
-4. **สร้างแอนิเมชัน:** เช่น "แม่แบบดวงตา" → สร้าง → **ส่งไปบอร์ด**
+2. **Join the board's Wi-Fi.** The network is `DisplayEditor-XXXX` and the password is `displayedit`. The editor opens automatically, or go to http://192.168.4.1.
+3. **Pick your display.** The editor's interface is in Thai: open **บอร์ด** (Board) → **ตั้งค่าจอ** (Display settings), choose the model, then press **ภาพทดสอบ** (Test pattern) to check orientation and colors.
+4. **Make an animation**, for example **แม่แบบดวงตา** (Eye templates) → create, then press **ส่งไปบอร์ด** (Send to board).
 
-ถ้าจะใช้ Wi-Fi บ้าน ไปที่ "บอร์ด" → "Wi-Fi" หลังจากนั้นเข้าได้ที่ http://display.local
+To use your home network instead, go to **บอร์ด** → **Wi-Fi**. After that, the board is reachable at http://display.local.
 
-**ปุ่ม BOOT บนบอร์ด:** กดสั้น = แอนิเมชันถัดไป, กดค้าง 2 วินาที = แสดงชื่อ Wi-Fi และ IP บนจอ
+**BOOT button on the board:**
+- Short press: next animation.
+- Hold for 2 seconds: show the Wi-Fi name and IP address on the display.
 
-### ลองโดยไม่มีบอร์ด
+### Try it without a board
 
-ใช้บอร์ดจำลองที่ตอบ API เหมือนของจริง ต้องติดตั้งแพ็กเกจก่อนครั้งแรก:
+A mock board implements the same API as the firmware. Install the dependencies once:
 
 ```bash
 cd web; npm install
 ```
 
-แล้วรันสองคำสั่งนี้ใน terminal แยกกัน:
+Then run each of these in its own terminal:
 
 ```bash
 cd web; npm run mock-board
@@ -72,22 +74,24 @@ cd web; npm run mock-board
 cd web; npm run dev:mock
 ```
 
-แล้วเปิด http://localhost:5173
+Then open http://localhost:5173.
 
-## โครงสร้าง
+## Repository layout
 
-| โฟลเดอร์ | คืออะไร |
-|----------|---------|
-| [`firmware/`](firmware/README.md) | เฟิร์มแวร์ ESP32 (PlatformIO + Arduino 3.x): ตัวเล่นแอนิเมชัน, ที่เก็บไฟล์, Wi-Fi, REST API, หน้า Editor ที่ฝังไว้ |
-| [`web/`](web/README.md) | Web Editor (Vite + Preact + TypeScript) |
-| [`docs/`](docs/architecture.md) | [โครงสร้างระบบ](docs/architecture.md) · [รูปแบบไฟล์ .dpa](docs/dpa-format.md) · [REST API](docs/api.md) |
-| `shared/test-vectors/` | ไฟล์ทดสอบที่ทั้งตัวเข้ารหัส (TypeScript) และตัวถอดรหัส (C++) ต้องให้ผลตรงกันทุกพิกเซล |
+| Path | Contents |
+|------|----------|
+| [`firmware/`](firmware/README.md) | ESP32 firmware (PlatformIO + Arduino 3.x): player, storage, Wi-Fi, REST API, embedded editor |
+| [`web/`](web/README.md) | Web editor (Vite + Preact + TypeScript) |
+| [`docs/`](docs/architecture.md) | [Architecture](docs/architecture.md) · [.dpa file format](docs/dpa-format.md) · [REST API](docs/api.md) |
+| `shared/test-vectors/` | Test files that the TypeScript encoder and the C++ decoder must agree on, pixel for pixel |
 
-## สถานะ
+The documentation in `docs/`, `firmware/` and `web/` is currently in Thai.
 
-โค้ดครบทุกส่วนและคอมไพล์ผ่านทั้ง ESP32-C3 และ C6 ทดสอบแล้วด้วย:
-- unit test ฝั่งเว็บ
-- test ตัวถอดรหัส C++ บน PC
-- บอร์ดจำลอง
+## Status
 
-**ยังไม่ได้ทดสอบกับบอร์ดและจอจริง** แผนงานดูที่ [PLAN.md](PLAN.md)
+All parts are implemented and the firmware builds for both ESP32-C3 and ESP32-C6. So far it has been verified with:
+- web unit tests
+- a native (PC) test of the C++ decoder
+- the mock board
+
+**It has not yet been tested on real boards and displays.** See [PLAN.md](PLAN.md) for the roadmap.

@@ -272,3 +272,59 @@ export function decodeDpa(bytes: Uint8Array): DecodedDpa {
   }
   return d;
 }
+
+// ---------------------------------------------------------------------------------------------
+// First frame only, from a possibly truncated file (thumbnails of files on the board).
+
+export interface FirstFrame {
+  colorMode: number;
+  screenW: number;
+  screenH: number;
+  canvasW: number;
+  canvasH: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  bgColor: number;
+  rect: { x: number; y: number; w: number; h: number };
+  pixels?: Uint16Array; // INDEXED / MONO: canvas-sized RGB565 (mono: 0 / 0xFFFF)
+  jpeg?: Uint8Array; // JPEG frame data
+}
+
+export function decodeFirstFrame(bytes: Uint8Array): FirstFrame {
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.length < HEADER_SIZE || String.fromCharCode(...bytes.subarray(0, 4)) !== 'DPA1') throw new Error('not a DPA file');
+  const canvasW = v.getUint16(10, true), canvasH = v.getUint16(12, true);
+  const paletteSize = v.getUint16(22, true);
+  const table = v.getUint32(28, true);
+  const off = v.getUint32(table, true), size = v.getUint32(table + 4, true);
+  const type = v.getUint8(table + 10);
+  if (off + size > bytes.length) throw new Error('first frame not in the downloaded range');
+  const rect = { x: v.getUint16(off, true), y: v.getUint16(off + 2, true), w: v.getUint16(off + 4, true), h: v.getUint16(off + 6, true) };
+  const body = bytes.subarray(off + 8, off + size);
+  const f: FirstFrame = {
+    colorMode: v.getUint8(5), screenW: v.getUint16(6, true), screenH: v.getUint16(8, true), canvasW, canvasH,
+    scale: v.getUint8(14), offsetX: v.getInt16(16, true), offsetY: v.getInt16(18, true), bgColor: v.getUint16(24, true), rect,
+  };
+  if (type === FRAME_JPEG) {
+    f.jpeg = body.slice();
+  } else if (type === FRAME_INDEXED) {
+    const palette = new Uint16Array(paletteSize);
+    for (let i = 0; i < paletteSize; i++) palette[i] = v.getUint16(HEADER_SIZE + i * 2, true);
+    const px = new Uint16Array(canvasW * canvasH);
+    const idx = rleDecode(body, rect.w * rect.h);
+    for (let y = 0; y < rect.h; y++) for (let x = 0; x < rect.w; x++) px[(rect.y + y) * canvasW + rect.x + x] = palette[idx[y * rect.w + x]];
+    f.pixels = px;
+  } else if (type === FRAME_MONO) {
+    const px = new Uint16Array(canvasW * canvasH);
+    const pages = rleDecode(body, rect.w * (rect.h / 8));
+    for (let p = 0; p < rect.h / 8; p++)
+      for (let x = 0; x < rect.w; x++)
+        for (let b = 0; b < 8; b++) {
+          const y = rect.y + p * 8 + b;
+          if (y < canvasH) px[y * canvasW + rect.x + x] = (pages[p * rect.w + x] >> b) & 1 ? 0xffff : 0;
+        }
+    f.pixels = px;
+  }
+  return f;
+}

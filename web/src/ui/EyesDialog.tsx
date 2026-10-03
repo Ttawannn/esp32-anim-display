@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { getPreset } from '../model/presets';
-import { createProject, newFrame, totalDuration } from '../model/project';
+import { newFrame, totalDuration } from '../model/project';
 import { store, toast } from '../model/store';
 import type { Project } from '../model/types';
 import { outputFrame } from '../render/output';
 import { composeScreen } from '../render/screen';
 import { EYE_ANIMS, generateEyes, type EyeOptions, type EyeStyle, type GeneratedEyes } from '../templates/eyes';
+import { defaultEyeOptions, eyeProject } from '../templates/eyeProject';
 import { Modal, Slider } from './common';
 
 const STYLES: { id: EyeStyle; name: string; hint: string }[] = [
@@ -19,32 +20,14 @@ export function EyesDialog() {
   const preset = getPreset(current.presetId);
   const mono = preset.color === 'mono';
   const [animId, setAnimId] = useState('look-lr');
-  const [o, setO] = useState<EyeOptions>({
-    style: preset.round ? 'single' : 'robot',
-    eyeColor: '#2ee6ff',
-    irisColor: '#3a8dde',
-    bgColor: '#000000',
-    size: 1,
-    spacing: 1,
-    fps: 20,
-    pixel: 1,
-    rotate: preset.height > preset.width * 1.5 ? 90 : 0,
-    mono,
-  });
+  const [o, setO] = useState<EyeOptions>(() => defaultEyeOptions(preset.width, preset.height, mono, preset.round));
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const anim = EYE_ANIMS.find((a) => a.id === animId)!;
   const set = (patch: Partial<EyeOptions>) => setO({ ...o, ...patch });
 
   const gen = useMemo(() => generateEyes(preset.width, preset.height, anim, o), [animId, o, preset]);
 
-  const toProject = (g: GeneratedEyes, name: string): Project => {
-    const p = createProject({
-      presetId: preset.id, width: g.width, height: g.height, scale: g.scale, name, background: mono ? '#000000' : o.bgColor,
-      frames: g.frames.map((f) => newFrame(g.width, g.height, f.delay, f.data)),
-    });
-    if (mono) p.adjust.dither = 'none';
-    return p;
-  };
+  const toProject = (g: GeneratedEyes, name: string): Project => eyeProject(preset.id, g, o, name);
 
   const preview = useMemo(() => toProject(gen, anim.name), [gen]);
 

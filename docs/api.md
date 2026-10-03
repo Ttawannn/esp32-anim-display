@@ -18,6 +18,7 @@ The implementation is [firmware/src/net/web.cpp](../firmware/src/net/web.cpp).
 |--------|------|-------------|
 | GET | `/api/anims` | `{anims: [{name, size, width, height, frames, color}], free}` |
 | POST | `/api/anims?name=<n>&play=1` | upload a `.dpa` as multipart (field `file`); `play=0` stores it without playing |
+| GET | `/api/anims/file?name=<n>&max=<bytes>` | download the file; with `max`, only its first bytes (used for thumbnails) |
 | DELETE | `/api/anims?name=<n>` | delete |
 | POST | `/api/play?name=<n>` | play this file (pauses the playlist) |
 | POST | `/api/stop` | stop and clear the screen |

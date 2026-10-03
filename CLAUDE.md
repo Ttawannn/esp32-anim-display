@@ -105,3 +105,8 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. Boards are matched
 - **Single source of truth for the panel image:** `render/output.ts` (adjustments, RGB565 or 1-bit, color limit). The device preview, the import dialogs, and the encoder all go through it.
 - **Generated animations:** `templates/eyes.ts` produces procedural eye animations from keyframes (tween, then hold-as-delay).
 - **REST client:** `device/api.ts` mirrors `firmware/src/net/web.cpp`. Keep `web/scripts/mock-board.mjs` in sync with API changes.
+- **Two pages:** `main.tsx` routes by hash.
+  - `#/editor` is the full editor (`ui/App.tsx`).
+  - `#/remote` is the phone remote (`ui/RemoteApp.tsx`).
+  - Without a hash, phones that reach a board (served by it, or the dev proxy flag `VITE_DEVICE_PROXY`) get the remote.
+  - Remote thumbnails (`device/thumbs.ts`) download files via `/api/anims/file` and show the longest-held frame.

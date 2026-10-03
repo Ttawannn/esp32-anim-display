@@ -118,6 +118,10 @@ export const device = {
     await request(host, `/api/anims?play=${play ? 1 : 0}&name=${q(name)}`, { method: 'POST', body: form }, 120000);
   },
 
+  // First `max` bytes of a file on the board (enough for the header and frame 0).
+  fileHead: async (host: string, name: string, max = 65536): Promise<Uint8Array> =>
+    new Uint8Array(await (await request(host, `/api/anims/file?name=${q(name)}&max=${max}`, undefined, 15000)).arrayBuffer()),
+
   remove: async (host: string, name: string) => { await request(host, `/api/anims?name=${q(name)}`, { method: 'DELETE' }); },
   play: async (host: string, name: string) => { await post(host, `/api/play?name=${q(name)}`); },
   stop: async (host: string) => { await post(host, '/api/stop'); },

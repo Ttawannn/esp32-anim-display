@@ -30,6 +30,7 @@ export function TopBar({ s }: { s: EditorState }) {
       <button class="btn" onClick={onOpen}>เปิด</button>
       <button class="btn" onClick={onSave} title="บันทึกโปรเจกต์เพื่อกลับมาแก้ภายหลัง (.dpe)">บันทึก</button>
       <div class="spacer" />
+      <a class="btn" href="#/remote" title="หน้ารีโมทสำหรับมือถือ: แตะเพื่อเลือกหน้าที่จะแสดงบนจอ">รีโมท</a>
       <button class="btn" onClick={() => store.set({ dialog: 'device' })} title="ไฟล์บนบอร์ด, playlist, ตั้งค่าจอ, Wi-Fi">
         <span style={{ color: s.deviceInfo ? 'var(--ok)' : 'var(--muted)' }}>●</span> บอร์ด
       </button>

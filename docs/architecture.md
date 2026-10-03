@@ -69,7 +69,7 @@ For uploads, the handler writes the temporary file itself (LittleFS is thread-sa
 | `import/` | GIF, video, resampling |
 | `device/` | REST client, auto-connect, live preview |
 | `storage/` | IndexedDB, `.dpe` project files |
-| `ui/` | UI components (Preact), including the board manager |
+| `ui/` | UI components (Preact): the editor (`#/editor`), the board manager, and the phone remote (`#/remote`, default on phones that reach a board) |
 
 ## Testing
 

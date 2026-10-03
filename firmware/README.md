@@ -28,7 +28,8 @@ The editor is embedded in the firmware. After changing anything in `web/`, run `
    - serial monitor: type `presets`, then `preset <number>`
    - web UI: go to **บอร์ด** (Board) → **ตั้งค่าจอ** (Display settings)
 3. **Join the board's Wi-Fi:** network `DisplayEditor-XXXX`, password `displayedit`.
-   - Phones open the editor automatically; otherwise go to http://192.168.4.1
+   - The page opens automatically; otherwise go to http://192.168.4.1
+   - Phones get the remote page: tap **ติดตั้งชุดอารมณ์** (Install mood set), then tap a face to show it
 4. **Use your home Wi-Fi (optional):** go to **บอร์ด** → **Wi-Fi** → scan → enter the password → connect.
    - Afterwards, open http://display.local or the IP address shown on the display.
 5. **Create an animation** and press **ส่งไปบอร์ด** (Send to board). The board starts playing it immediately.

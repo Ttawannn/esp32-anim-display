@@ -103,6 +103,13 @@ createServer(async (req, res) => {
       if (q('play') !== '0') play(name);
       return send(res, 200, { ok: true, name, size: data.length });
     }
+    case 'GET /api/anims/file': {
+      const b = state.anims.get(q('name'));
+      if (!b) return send(res, 404, { error: 'not found' });
+      const max = Number(q('max')) || b.length;
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Access-Control-Allow-Origin': '*' });
+      return res.end(b.subarray(0, Math.min(max, b.length)));
+    }
     case 'DELETE /api/anims':
       if (!state.anims.delete(q('name'))) return send(res, 404, { error: 'not found' });
       if (state.player.name === q('name')) state.player = { ...state.player, name: '', playing: false };

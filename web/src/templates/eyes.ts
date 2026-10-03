@@ -183,7 +183,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     keys: [
       { hold: 600 },
       { both: { happy: 0.25 }, ms: 150 },
-      { R: { open: 0.08, happy: 0.6 }, ms: 110, hold: 450 },
+      { R: { open: 0.08, happy: 0.6 }, ms: 110, hold: 700 },
       { R: { open: 1, happy: 0.25 }, ms: 130, hold: 500 },
       { both: { happy: 0 }, ms: 200, hold: 500 },
     ],

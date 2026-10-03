@@ -5,6 +5,8 @@
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
 
+#include <memory>
+
 #include "app/app.h"
 #include "app/commands.h"
 #include "board.h"
@@ -276,6 +278,20 @@ void webBegin() {
     if (name.isEmpty() || !storage::exists(name)) return sendError(req, 404, "not found");
     commandPost(Cmd::Delete, name.c_str());
     sendOk(req);
+  });
+
+  // Raw file, optionally only the first `max` bytes (the remote page needs just frame 0 for thumbnails).
+  server.on(exact("/api/anims/file"), HTTP_GET, [](AsyncWebServerRequest* req) {
+    const String name = storage::sanitizeName(param(req, "name"));
+    auto f = std::make_shared<File>(LittleFS.open(storage::animPath(name), "r"));
+    if (name.isEmpty() || !*f) return sendError(req, 404, "not found");
+    size_t len = f->size();
+    const long max = param(req, "max").toInt();
+    if (max > 0 && (size_t)max < len) len = max;
+    req->send(req->beginResponse("application/octet-stream", len, [f, len](uint8_t* buf, size_t maxLen, size_t index) -> size_t {
+      if (index >= len) return 0;
+      return f->read(buf, std::min(maxLen, len - index));
+    }));
   });
 
   server.on(exact("/api/play"), HTTP_POST, [](AsyncWebServerRequest* req) {

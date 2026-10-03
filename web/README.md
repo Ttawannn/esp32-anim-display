@@ -72,6 +72,11 @@ npm run dev:mock
   - live preview on the real display while editing
   - board manager: files, playlist, display settings, Wi-Fi
 - **Projects:** autosaved in the browser; save and open `.dpe` files.
+- **Phone remote** (`#/remote`):
+  - thumbnails of every animation on the board; tap to play
+  - next / stop, brightness, auto-cycle (playlist)
+  - one-tap install of the 12 eye moods, generated for the board's display
+  - phones that reach a board open it by default; `#/editor` forces the editor
 
 ## Keyboard shortcuts
 

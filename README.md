@@ -11,6 +11,7 @@ Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then 
 ## Features
 
 - **Built-in web editor:** the board serves the editor itself. Nothing to install, and it works on desktop and mobile.
+- **Phone remote:** phones open a remote page with a thumbnail for every animation on the board; tap one to show it. It also has next/stop, brightness, auto-cycle, and a one-tap install of all 12 eye moods.
 - **Pixel art editor:** drawing tools, frames, onion skin, palette presets, undo/redo.
 - **Eye templates:** 12 moods in 3 styles (robot, cartoon, single eye for round displays). Color, size and smoothness are adjustable.
 - **GIF and video import:** trim, crop and choose the frame rate. All conversion happens in the browser.
@@ -46,7 +47,9 @@ The display model is selected from the web UI at runtime, so changing it needs n
 
    For a C6 board, use `-e c6_supermini`.
 
-2. **Join the board's Wi-Fi.** The network is `DisplayEditor-XXXX` and the password is `displayedit`. The editor opens automatically, or go to http://192.168.4.1.
+2. **Join the board's Wi-Fi.** The network is `DisplayEditor-XXXX` and the password is `displayedit`. The page opens automatically, or go to http://192.168.4.1.
+   - **On a phone:** the remote opens. Tap **ติดตั้งชุดอารมณ์** (Install mood set) to load all 12 eye moods, then tap any face to show it.
+   - **On a computer:** the editor opens. On a phone, use **เปิด Editor** (Open editor); on a computer, use the **รีโมท** (Remote) button to switch.
 3. **Pick your display.** The editor's interface is in Thai: open **บอร์ด** (Board) → **ตั้งค่าจอ** (Display settings), choose the model, then press **ภาพทดสอบ** (Test pattern) to check orientation and colors.
 4. **Make an animation**, for example **แม่แบบดวงตา** (Eye templates) → create, then press **ส่งไปบอร์ด** (Send to board).
 

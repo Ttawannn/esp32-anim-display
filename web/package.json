@@ -1,0 +1,27 @@
+{
+  "name": "display-editor-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build:device": "tsc --noEmit && vite build && node scripts/embed.mjs",
+    "mock-board": "node scripts/mock-board.mjs",
+    "dev:mock": "vite --mode mock"
+  },
+  "dependencies": {
+    "gifuct-js": "^2.1.2",
+    "preact": "^11.0.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}

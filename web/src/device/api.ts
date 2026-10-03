@@ -3,6 +3,7 @@
 
 import { PRESETS } from '../model/presets';
 import { CHUNK_BYTES, fromBase64, toBase64, type SerialLink } from './serial';
+import { invalidateThumbnails } from './thumbnailCache';
 
 export interface DeviceInfo {
   version: string;
@@ -86,6 +87,8 @@ const ERRORS: Record<string, string> = {
   'cannot save file': 'บอร์ดบันทึกไฟล์ไม่ได้ — ไฟล์เดิมยังเก็บไว้',
   'write failed (storage full?)': 'พื้นที่บนบอร์ดไม่พอสำหรับบันทึกไฟล์',
   'display unavailable': 'จอบนบอร์ดยังไม่พร้อม — ตรวจสายและตั้งค่าจอ',
+  'cannot save settings': 'บอร์ดบันทึกค่าตั้งไม่ได้ — ลองอีกครั้ง',
+  'cannot save playlist': 'บอร์ดบันทึก playlist ไม่ได้ — รายการเดิมยังเก็บไว้',
 };
 
 function errorFrom(status: number, body: any): Error {
@@ -155,8 +158,11 @@ class HttpTransport implements Transport {
       init.body = JSON.stringify(body);
     }
     const response = await this.fetch(path + queryString(query), init);
-    try { return await response.json(); }
+    let result;
+    try { result = await response.json(); }
     catch { throw new Error('ที่อยู่นี้ไม่ใช่ API ของบอร์ด — ตรวจ IP หรือเชื่อมผ่าน USB'); }
+    await waitUpload(result.command_id, () => this.api('GET', '/api/commands/status', { id: result.command_id }));
+    return result;
   }
 
   async upload(name: string, bytes: Uint8Array, play: boolean) {
@@ -186,7 +192,12 @@ class UsbTransport implements Transport {
 
   async api(method: string, path: string, query?: Record<string, string | number>, body?: unknown) {
     const q = query ? Object.fromEntries(Object.entries(query).map(([k, v]) => [k, String(v)])) : undefined;
-    return this.link.exclusive(async () => (await this.call({ op: 'api', method, path, query: q, body })).body);
+    return this.link.exclusive(async () => {
+      const result = (await this.call({ op: 'api', method, path, query: q, body })).body;
+      await waitUpload(result?.command_id, async () => (await this.call({ op: 'api', method: 'GET',
+        path: '/api/commands/status', query: { id: String(result.command_id) } })).body);
+      return result;
+    });
   }
 
   private async put(kind: 'file' | 'live', bytes: Uint8Array, extra: Record<string, unknown>, onProgress?: (s: number, t: number) => void) {
@@ -260,13 +271,20 @@ export const device = {
   info: (host: string): Promise<DeviceInfo> => transport(host).api('GET', '/api/info'),
   list: (host: string): Promise<{ anims: AnimFile[]; free: number }> => transport(host).api('GET', '/api/anims'),
 
-  upload: (host: string, name: string, bytes: Uint8Array, play = true, onProgress?: (sent: number, total: number) => void) =>
-    transport(host).upload(name, bytes, play, onProgress),
+  upload: async (host: string, name: string, bytes: Uint8Array, play = true, onProgress?: (sent: number, total: number) => void) => {
+    const connection = deviceConnectionKey(host);
+    await transport(host).upload(name, bytes, play, onProgress);
+    invalidateThumbnails(connection, name);
+  },
 
   // First `max` bytes of a file on the board (thumbnails).
   fileHead: (host: string, name: string, max = 65536): Promise<Uint8Array> => transport(host).readFile(name, max),
 
-  remove: async (host: string, name: string) => { await transport(host).api('DELETE', '/api/anims', { name }); },
+  remove: async (host: string, name: string) => {
+    const connection = deviceConnectionKey(host);
+    await transport(host).api('DELETE', '/api/anims', { name });
+    invalidateThumbnails(connection, name);
+  },
   play: async (host: string, name: string) => { await transport(host).api('POST', '/api/play', { name }); },
   stop: async (host: string) => { await transport(host).api('POST', '/api/stop'); },
   next: async (host: string) => { await transport(host).api('POST', '/api/next'); },

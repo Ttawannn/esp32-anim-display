@@ -55,7 +55,7 @@ For uploads, the handler writes the temporary file itself (LittleFS is thread-sa
 The browser waits for an upload receipt confirming the rename. Replacement keeps a recoverable backup until the new file is installed. USB uses the same command queue and receipts.
 
 **Flash usage (4 MB):**
-- firmware about 1.33–1.36 MB, including the 41 KB editor
+- firmware about 1.4 MB, including about 57 KB of compressed editor assets
 - LittleFS about 2.1 MB for animations
 - display and Wi-Fi settings stored in NVS
 
@@ -69,7 +69,7 @@ The browser waits for an upload receipt confirming the rename. Replacement keeps
 | `color/` | RGB565, color adjustment, dithering, color reduction |
 | `render/` | the image the panel will actually show + display preview |
 | `codec/` | RLE, .dpa writer/reader, worker encoding and cached results, unit tests, test vectors |
-| `import/` | GIF, video, resampling |
+| `import/` | GIF decoding worker, video, resampling, frame/memory budgets |
 | `device/` | Wi-Fi/USB transports, connection lifecycle, live preview |
 | `storage/` | IndexedDB, `.dpe` project files |
 | `ui/` | UI components (Preact): the editor (`#/editor`), the board manager, and the phone remote (`#/remote`, default on phones that reach a board) |
@@ -105,3 +105,16 @@ The additional native failure tests compile the real command queue/receipt code 
 python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/robustness_test.cpp firmware/src/app/commands.cpp -o build/robustness_test.exe
 build/robustness_test.exe shared/test-vectors
 ```
+
+The controller regression test compiles the real controller with fake display/player peripherals. It verifies that stopping an overlay remains stopped after its deadline and that failed brightness persistence does not change the active configuration:
+
+```bash
+python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/controller_test.cpp firmware/src/app/controller.cpp firmware/src/app/commands.cpp -o build/controller_test.exe
+build/controller_test.exe
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs typechecking, web tests, all native tests and firmware builds for C3/C6 on pushes and pull requests. Node, PlatformIO, firmware libraries and web dependencies are pinned; use `npm ci` for installation.
+
+Estimates use an AbortSignal and share an encoding job with exports. Removing the final consumer cancels queued work or terminates its active worker; cancellation does not stop another caller's export. GIFs decode one patch at a time in a separate worker and transfer completed RGBA buffers. Inputs are capped at 16 MB for GIF files, 64 MB of decoded RGBA frames, 2,000 frames and 4096 pixels per dimension; video extraction and encoding enforce the frame budget too. These are data limits, not a guarantee about total browser heap usage.
+
+Thumbnail URLs use a 64-entry cache. Visible tiles retain evicted images until they unmount; other URLs are revoked on eviction/invalidation. Successful uploads invalidate the file even when its name and encoded size stay unchanged.

@@ -13,6 +13,7 @@
 #include "app/console.h"
 #include "app/controller.h"
 #include "app/screens.h"
+#include "app/settings.h"
 #include "board.h"
 #include "config.h"
 #include "display/gfx.h"
@@ -109,6 +110,7 @@ void setup() {
 
 void loop() {
   consolePoll();
+  settingsPoll();
   wifi::loop();
   if (panelOk) {
     pollButton();
@@ -119,6 +121,7 @@ void loop() {
     while (commandTake(c)) {
       if (c.type == Cmd::Reboot) ESP.restart();
       if (c.type == Cmd::CommitUpload) commandCommitUpload(c);
+      if (isSettingsCommand(c.type)) settingsApply(c);
       if (c.type == Cmd::Delete) storage::remove(c.name);
       free(c.data);
     }

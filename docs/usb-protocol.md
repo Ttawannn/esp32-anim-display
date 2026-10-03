@@ -14,6 +14,6 @@ The client opens at 115200 baud and releases DTR/RTS. Each request and response 
 | `put_abort` | none | Closes/removes temporary data and frees live RAM |
 | `read` | `name`, `offset`, `length` | Base64 `data`, plus total file `size`; max 3072 bytes per request |
 
-The browser serialises **whole operations** on a link: uploads, live frames, reads and JSON commands cannot interleave. An upload includes polling `/api/uploads/status` until its commit is saved or failed. The firmware supports one transfer at a time; starting a new transfer cancels its predecessor. Transfers idle for 30 seconds are discarded. Live frames are limited to 96 KB and exactly one DPA frame.
+The browser serialises **whole operations** on a link: uploads, live frames, reads and JSON commands cannot interleave. An upload includes polling `/api/uploads/status` until its commit is saved or failed. Settings updates include polling `/api/commands/status` using `body.command_id`; a display/Wi-Fi reboot is deferred until this acknowledgement can be returned. The firmware supports one transfer at a time; starting a new transfer cancels its predecessor. Transfers idle for 30 seconds are discarded. Live frames are limited to 96 KB and exactly one DPA frame.
 
 Disconnecting rejects outstanding requests immediately. The UI clears its board/live state and offers reconnection. Display/Wi-Fi changes reboot the board; the Board dialog can reopen an already granted USB port while waiting for it to return. No browser port permission is requested automatically on first use.

@@ -18,5 +18,6 @@ struct Playlist {
 
 bool playlistLoad(Playlist& pl);
 bool playlistSave(const Playlist& pl);
+bool playlistRecover();
 void playlistToJson(const Playlist& pl, JsonObject out);
 bool playlistFromJson(JsonVariantConst in, Playlist& pl);

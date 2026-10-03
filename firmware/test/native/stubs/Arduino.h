@@ -4,6 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <mutex>
+#include <string>
+using String = std::string;
+inline uint32_t nativeNow = 0;
+inline uint32_t millis() { return nativeNow; }
+inline void delay(uint32_t ms) { nativeNow += ms; }
+inline long random(long n) { return n ? n - 1 : 0; }
+struct NativeSerial { template <typename... Args> void printf(const char*, Args...) {} };
+inline NativeSerial Serial;
+struct NativeEsp { void restart() {} };
+inline NativeEsp ESP;
 using portMUX_TYPE = std::mutex;
 #define portMUX_INITIALIZER_UNLOCKED {}
 #define portENTER_CRITICAL(mux) (mux)->lock()

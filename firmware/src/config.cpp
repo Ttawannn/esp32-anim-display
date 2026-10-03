@@ -50,12 +50,13 @@ bool configLoad(DisplayConfig& cfg) {
   return ok;
 }
 
-void configSave(const DisplayConfig& cfg) {
+bool configSave(const DisplayConfig& cfg) {
   Preferences prefs;
   StoredConfig stored = {kVersion, cfg};
-  prefs.begin(kNamespace, false);
-  prefs.putBytes(kKey, &stored, sizeof(stored));
+  if (!prefs.begin(kNamespace, false)) return false;
+  const bool saved = prefs.putBytes(kKey, &stored, sizeof(stored)) == sizeof(stored);
   prefs.end();
+  return saved;
 }
 
 void configErase() {

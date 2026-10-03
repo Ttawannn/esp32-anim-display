@@ -22,5 +22,5 @@ struct DisplayConfig {
 void configApplyPreset(DisplayConfig& cfg, uint8_t presetIndex);  // keeps pins
 void configDefaults(DisplayConfig& cfg);
 bool configLoad(DisplayConfig& cfg);   // false = nothing stored, defaults used
-void configSave(const DisplayConfig& cfg);
+bool configSave(const DisplayConfig& cfg);
 void configErase();

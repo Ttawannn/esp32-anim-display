@@ -15,6 +15,23 @@ static DNSServer dns;
 static bool apMode = false;
 static String apName;
 
+struct StoredCredentials { uint8_t version; char ssid[33]; char password[65]; };
+static StoredCredentials credentials() {
+  StoredCredentials stored{};
+  Preferences p;
+  if (p.begin("wifi", true)) {
+    if (p.getBytesLength("credentials") != sizeof(stored) ||
+        p.getBytes("credentials", &stored, sizeof(stored)) != sizeof(stored) || stored.version != 1 ||
+        !memchr(stored.ssid, 0, sizeof(stored.ssid)) || !memchr(stored.password, 0, sizeof(stored.password))) {
+      stored = {};
+      strlcpy(stored.ssid, p.getString("ssid", "").c_str(), sizeof(stored.ssid));
+      strlcpy(stored.password, p.getString("pass", "").c_str(), sizeof(stored.password));
+    }
+    p.end();
+  }
+  return stored;
+}
+
 static void applyTxPower() {
 #if defined(BOARD_C3_SUPERMINI)
   // Many C3 SuperMini boards have a poorly matched antenna; full TX power makes Wi-Fi unreliable.
@@ -41,12 +58,10 @@ static void startAP() {
 void begin(StatusFn onStatus) {
   apName = makeApName();
   WiFi.persistent(false);
-  const String ssid = savedSsid();
+  const auto saved = credentials();
+  const String ssid = saved.ssid;
   if (ssid.length()) {
-    Preferences p;
-    p.begin("wifi", true);
-    const String pass = p.getString("pass", "");
-    p.end();
+    const String pass = saved.password;
     char line[48];
     snprintf(line, sizeof(line), "Wi-Fi: %s", ssid.c_str());
     if (onStatus) onStatus(line);
@@ -80,26 +95,27 @@ const char* apPassword() { return kApPassword; }
 const char* hostname() { return kHostname; }
 
 String savedSsid() {
-  Preferences p;
-  p.begin("wifi", true);
-  String s = p.getString("ssid", "");
-  p.end();
-  return s;
+  return credentials().ssid;
 }
 
-void saveCredentials(const String& ssid, const String& pass) {
+bool saveCredentials(const String& ssid, const String& pass) {
+  if (ssid.length() > 32 || pass.length() > 64) return false;
+  StoredCredentials stored{1, {}, {}};
+  strlcpy(stored.ssid, ssid.c_str(), sizeof(stored.ssid));
+  strlcpy(stored.password, pass.c_str(), sizeof(stored.password));
   Preferences p;
-  p.begin("wifi", false);
-  p.putString("ssid", ssid);
-  p.putString("pass", pass);
+  if (!p.begin("wifi", false)) return false;
+  const bool saved = p.putBytes("credentials", &stored, sizeof(stored)) == sizeof(stored);
   p.end();
+  return saved;
 }
 
-void forgetCredentials() {
+bool forgetCredentials() {
   Preferences p;
-  p.begin("wifi", false);
-  p.clear();
+  if (!p.begin("wifi", false)) return false;
+  const bool saved = p.clear();
   p.end();
+  return saved;
 }
 
 void scanJson(JsonObject out) {

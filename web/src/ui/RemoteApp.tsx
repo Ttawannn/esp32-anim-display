@@ -5,19 +5,21 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { device, deviceConnectionKey, presetForDevice, type AnimFile, type DeviceInfo, type PlaylistData } from '../device/api';
 import { refreshDevice } from '../device/session';
 import { thumbnail } from '../device/thumbs';
+import { thumbnailRevision } from '../device/thumbnailCache';
 import { store, toast, useEditor } from '../model/store';
 import { defaultEyeOptions, installMoodSet } from '../templates/eyeProject';
 import type { EyeStyle } from '../templates/eyes';
 import { formatBytes, Icon } from './common';
 import { UsbControls } from './UsbControls';
 
-function Tile(props: { host: string; file: AnimFile; info: DeviceInfo; active: boolean; onPlay: () => void }) {
+function Tile(props: { host: string; file: AnimFile; info: DeviceInfo; revision: number; active: boolean; onPlay: () => void }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
-    thumbnail(props.host, props.file).then((url) => alive && setSrc(url));
-    return () => { alive = false; };
-  }, [props.host, props.file.name, props.file.size]);
+    const image = thumbnail(props.host, props.file);
+    image.promise.then((url) => alive && setSrc(url));
+    return () => { alive = false; image.release(); };
+  }, [props.host, props.file, props.revision]);
   const d = props.info.display;
   const mismatch = props.file.width !== d.width || props.file.height !== d.height;
   return (
@@ -179,7 +181,7 @@ export function RemoteApp() {
             ) : (
               <div class="tiles">
                 {files.map((f) => (
-                  <Tile key={`${connection}:${f.name}`} host={host} file={f} info={info} active={f.name === playingName} onPlay={() => play(f.name)} />
+                  <Tile key={`${connection}:${f.name}`} host={host} file={f} info={info} revision={thumbnailRevision()} active={f.name === playingName} onPlay={() => play(f.name)} />
                 ))}
               </div>
             )}

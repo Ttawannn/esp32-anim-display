@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { device, setUsbLink } from './api';
 import { CHUNK_BYTES, fromBase64, SerialLink, toBase64 } from './serial';
 
-function fakeBoard(options: { failSave?: boolean; failChunk?: boolean; disconnectChunk?: boolean; queueFull?: boolean } = {}) {
+function fakeBoard(options: { failSave?: boolean; failSettings?: boolean; failChunk?: boolean; disconnectChunk?: boolean; queueFull?: boolean } = {}) {
   const files = new Map<string, Uint8Array>();
   let xfer: { kind: string; name: string; size: number; parts: Uint8Array[] } | null = null;
   const live: Uint8Array[] = [];
@@ -14,6 +14,7 @@ function fakeBoard(options: { failSave?: boolean; failChunk?: boolean; disconnec
   const requests: any[] = [];
   const uploads = new Map<number, { name: string; bytes: Uint8Array; polls: number }>();
   let nextUpload = 0;
+  let settingsPolls = 0;
 
   // Board -> host: deliver text in random-sized pieces, with log noise between lines.
   const send = (text: string) => {
@@ -34,6 +35,14 @@ function fakeBoard(options: { failSave?: boolean; failChunk?: boolean; disconnec
       case 'hello':
         return reply({ id, status: 200, body: { proto: 1, version: 'sim' } });
       case 'api':
+        if (req.path === '/api/display' && req.method === 'PUT') {
+          settingsPolls = 0;
+          return reply({ id, status: 202, body: { command_id: 1 } });
+        }
+        if (req.path === '/api/commands/status') {
+          const state = settingsPolls++ === 0 ? 'pending' : options.failSettings ? 'failed' : 'saved';
+          return reply({ id, status: 200, body: { state, error: state === 'failed' ? 'cannot save settings' : undefined } });
+        }
         if (req.path === '/api/uploads/status') {
           const upload = uploads.get(Number(req.query.id))!;
           if (upload.polls++ === 0) return reply({ id, status: 200, body: { state: 'pending' } });
@@ -123,6 +132,18 @@ async function connect(options: Parameters<typeof fakeBoard>[0] = {}) {
 }
 
 describe('USB transport', () => {
+  it('waits for a settings receipt without interleaving another operation', async () => {
+    const board = await connect();
+    await Promise.all([device.saveDisplay('', { rotation: 1 }), device.info('')]);
+    const paths = board.requests.filter((r) => r.op === 'api').map((r) => r.path);
+    expect(paths).toEqual(['/api/display', '/api/commands/status', '/api/commands/status', '/api/info']);
+  });
+
+  it('reports settings persistence failures over USB', async () => {
+    await connect({ failSettings: true });
+    await expect(device.saveDisplay('', { rotation: 1 })).rejects.toThrow('บันทึกค่าตั้งไม่ได้');
+  });
+
   it('handshakes and calls JSON endpoints, ignoring log lines', async () => {
     await connect();
     const info = await device.info('');

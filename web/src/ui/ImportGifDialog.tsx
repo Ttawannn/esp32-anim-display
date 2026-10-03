@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { decodeGif, type DecodedGif } from '../import/gif';
+import type { DecodedGif } from '../import/gif';
+import { decodeGifAsync } from '../import/gifAsync';
+import { checkFrameBudget, MAX_GIF_BYTES } from '../import/limits';
 import { DEFAULT_PLACEMENT, placeImage, rgbaToCanvas, type FitMode, type Placement } from '../import/resample';
 import { fitScale, getPreset } from '../model/presets';
 import { createProject, newFrame } from '../model/project';
@@ -23,14 +25,23 @@ export function ImportGifDialog() {
   const [speed, setSpeed] = useState(100);
   const [previewIdx, setPreviewIdx] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const abort = useRef<AbortController | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  useEffect(() => () => abort.current?.abort(), []);
 
-  const close = () => store.set({ dialog: null });
+  const close = () => { abort.current?.abort(); store.set({ dialog: null }); };
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
+    abort.current?.abort();
+    const controller = new AbortController();
+    abort.current = controller;
     setError('');
+    setProgress(0);
     try {
-      const g = decodeGif(await file.arrayBuffer());
+      if (file.size > MAX_GIF_BYTES) throw new Error('GIF ใหญ่เกิน 16 MB — ลดขนาดไฟล์ก่อนนำเข้า');
+      const g = await decodeGifAsync(await file.arrayBuffer(), controller.signal, (done, total) => setProgress(done / total));
+      if (controller.signal.aborted) return;
       setGif(g);
       setFileName(file.name.replace(/\.gif$/i, ''));
       setRange([0, g.frames.length - 1]);
@@ -39,9 +50,9 @@ export function ImportGifDialog() {
       const native = g.width <= preset.width && g.height <= preset.height;
       setSizeMode(native && g.width * 2 <= preset.width ? 'native' : 'fit');
       setPl({ ...DEFAULT_PLACEMENT, smooth: !(native && g.width * 2 <= preset.width) });
-    } catch {
-      setError('อ่านไฟล์ GIF ไม่ได้');
-    }
+    } catch (error) {
+      if (!controller.signal.aborted) setError((error as Error).message);
+    } finally { if (abort.current === controller) setProgress(null); }
   };
 
   // Output canvas geometry for the chosen mode.
@@ -53,6 +64,7 @@ export function ImportGifDialog() {
 
   const buildFrames = (indices: number[]) => {
     const g = gif!, ge = geom!;
+    checkFrameBudget(ge.w, ge.h, indices.length);
     const ctx = new OffscreenCanvas(ge.w, ge.h).getContext('2d', { willReadFrequently: true })!;
     return indices.map((i) => {
       const f = g.frames[i];
@@ -74,12 +86,14 @@ export function ImportGifDialog() {
   });
 
   const doImport = () => {
-    const idx: number[] = [];
-    for (let i = range[0]; i <= range[1]; i++) idx.push(i);
-    const p = makeProject(buildFrames(idx));
-    store.load(p);
-    store.set({ dialog: null, zoom: 0 });
-    toast(`นำเข้า ${idx.length} เฟรมแล้ว`);
+    try {
+      const idx: number[] = [];
+      for (let i = range[0]; i <= range[1]; i++) idx.push(i);
+      const p = makeProject(buildFrames(idx));
+      store.load(p);
+      store.set({ dialog: null, zoom: 0 });
+      toast(`นำเข้า ${idx.length} เฟรมแล้ว`);
+    } catch (error) { setError((error as Error).message); }
   };
 
   const zoom = Math.max(1, Math.min(Math.floor(300 / preset.width), Math.floor(300 / preset.height)));
@@ -92,8 +106,7 @@ export function ImportGifDialog() {
         <label class="drop" onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer?.files[0]); }}>
           <input type="file" accept="image/gif" hidden onChange={(e) => onFile((e.target as HTMLInputElement).files?.[0])} />
-          เลือกไฟล์ GIF หรือลากมาวางที่นี่
-          {error && <p class="err">{error}</p>}
+          {progress === null ? 'เลือกไฟล์ GIF หรือลากมาวางที่นี่' : `กำลังอ่าน GIF ${Math.round(progress * 100)}%`}
         </label>
       ) : (
         <div class="cols">
@@ -154,6 +167,7 @@ export function ImportGifDialog() {
           </div>
         </div>
       )}
+      {error && <p class="err">{error}</p>}
     </Modal>
   );
 }

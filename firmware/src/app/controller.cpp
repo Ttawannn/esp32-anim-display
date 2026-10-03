@@ -4,6 +4,7 @@
 
 #include "app.h"
 #include "commands.h"
+#include "settings.h"
 #include "display/gfx.h"
 #include "player/playlist.h"
 #include "screens.h"
@@ -103,6 +104,8 @@ void controllerPlay(const String& name) {
 
 void controllerStop() {
   manual = true;
+  overlayUntil = 0;
+  liveLastAt = 0;
   player.stop();
   resumeName = "";
   panel->fillScreen(color::Black);
@@ -186,10 +189,22 @@ static void handle(Command& c) {
       controllerShowInfo(kOverlayMs);
       break;
     case Cmd::Brightness:
-      panel->setBrightness(c.value);
-      appConfig().brightness = c.value;
-      configSave(appConfig());
+      {
+        DisplayConfig cfg = appConfig();
+        cfg.brightness = c.value;
+        const bool saved = configSave(cfg);
+        if (saved) { appConfig() = cfg; panel->setBrightness(c.value); }
+        uploadComplete(c.uploadId, saved, "cannot save settings");
+      }
       break;
+    case Cmd::SaveDisplay:
+    case Cmd::SaveWifi:
+    case Cmd::ForgetWifi:
+      settingsApply(c);
+      break;
+    case Cmd::SavePlaylist:
+      if (!settingsApply(c)) break;
+      [[fallthrough]];
     case Cmd::ReloadPlaylist:
       playlist = Playlist();
       playlistLoad(playlist);

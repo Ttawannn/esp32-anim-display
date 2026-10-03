@@ -9,6 +9,7 @@
 #include "api.h"
 #include "player/dpa.h"
 #include "storage/storage.h"
+#include "storage/replace.h"
 #include "web_assets.h"
 #include "wifi_manager.h"
 
@@ -79,6 +80,7 @@ struct UploadState {
   char tmp[48];
   bool play;
   bool complete;
+  bool queued;
   uint32_t uploadId;
   size_t written;
 };
@@ -90,6 +92,12 @@ static void handleUploadChunk(AsyncWebServerRequest* req, const String& filename
     st = static_cast<UploadState*>(calloc(1, sizeof(UploadState)));
     req->_tempObject = st;
     if (!st) return;
+    req->onDisconnect([req, st]() {
+      // A queued commit owns the path now; interruption before that leaves only temporary data.
+      if (!st->queued && st->tmp[0]) {
+        storage::discardInterruptedUpload(LittleFS, req->_tempFile, st->tmp, st->queued);
+      }
+    });
     st->play = param(req, "play") != "0";
     String name, tmp;
     st->code = apiBeginUpload(param(req, "name").length() ? param(req, "name") : filename, req->contentLength(), name,
@@ -117,6 +125,7 @@ static void handleUploadChunk(AsyncWebServerRequest* req, const String& filename
     req->_tempFile.close();
     st->complete = true;
     st->code = apiFinishUpload(st->tmp, st->name, st->play, st->uploadId, st->error);
+    st->queued = st->code == 0;
   }
 }
 

@@ -3,8 +3,11 @@
 #include <LittleFS.h>
 
 #include "storage/storage.h"
+#include "storage/replace.h"
 
 static constexpr const char* kPath = "/playlist.json";
+static constexpr const char* kTmp = "/playlist.tmp";
+static constexpr const char* kBackup = "/playlist.json.bak";
 static constexpr size_t kMaxItems = 64;
 
 void playlistToJson(const Playlist& pl, JsonObject out) {
@@ -44,7 +47,18 @@ bool playlistLoad(Playlist& pl) {
 bool playlistSave(const Playlist& pl) {
   JsonDocument doc;
   playlistToJson(pl, doc.to<JsonObject>());
-  File f = LittleFS.open(kPath, "w");
-  if (!f) return false;
-  return serializeJson(doc, f) > 0;
+  const size_t expected = measureJson(doc);
+  return storage::writeReplacement(LittleFS, String(kTmp), String(kPath), String(kBackup), expected,
+    [&doc](File& f) { return serializeJson(doc, f); },
+    [](const String& path) {
+      File check = LittleFS.open(path, "r");
+      JsonDocument verified;
+      return check && !deserializeJson(verified, check);
+    });
+}
+
+bool playlistRecover() {
+  if (!storage::recoverReplacement(LittleFS, String(kPath), String(kBackup))) return false;
+  if (LittleFS.exists(kTmp)) LittleFS.remove(kTmp);
+  return true;
 }

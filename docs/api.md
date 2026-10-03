@@ -11,6 +11,9 @@ The JSON API is implemented in [firmware/src/net/api.cpp](../firmware/src/net/ap
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/info` | version, board, display (`width`, `height`, `color`, `shape`), storage `fs`, Wi-Fi, player status |
+| GET | `/api/commands/status?id=<id>` | settings receipt: `{state: "pending" | "saved" | "failed"}`; failures include `error` |
+
+Display, Wi-Fi, playlist and brightness updates return HTTP `202` with `{ok: true, command_id}`. The loop task saves and applies the queued settings; a full queue leaves persisted settings unchanged. Clients poll `/api/commands/status` before announcing success. Failed persistence returns a `failed` receipt and does not reboot. Display/Wi-Fi changes reboot 400 ms after a completed receipt is read, or after a 3-second grace period for clients that do not poll. The browser also supports older firmware returning no receipt. Settings and uploads share the 16-slot receipt pool.
 
 ## Animations
 
@@ -32,6 +35,8 @@ Uploads require enough **free** storage for the whole temporary file plus 8 KB m
 
 The loop task renames the old file to `.dpa.bak`, installs the validated temporary file, then removes the backup. If installation fails, it restores the old file; boot recovery retries unfinished recovery and cleans up interrupted temporary uploads. Upload commits and deletion also work while the display is unavailable.
 
+HTTP disconnects discard temporary uploads immediately until ownership passes to a queued commit. A disconnect after acceptance leaves that commit intact.
+
 Command endpoints return `503` when their command cannot be queued. Playback, test-pattern, live-preview and brightness requests also fail explicitly if the display did not initialise.
 
 ## Live preview
@@ -47,6 +52,8 @@ Command endpoints return `503` when their command cannot be queued. Playback, te
 |--------|------|-------------|
 | GET | `/api/playlist` | `{enabled, shuffle, items: [{name, seconds}]}` |
 | PUT | `/api/playlist` | save (same JSON). `seconds: 0` means play the animation once (or its own loop count), then move to the next item |
+
+Playlist writes use `/playlist.tmp`, verify the complete JSON write, and replace `/playlist.json` with a recoverable `/playlist.json.bak`. Boot recovery restores an interrupted replacement. Wi-Fi SSID/password are stored together in one NVS blob; existing separate-key credentials remain readable until their next save.
 
 ## Display
 

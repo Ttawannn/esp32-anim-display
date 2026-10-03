@@ -26,6 +26,7 @@ export function ImportVideoDialog() {
   const [previewTime, setPreviewTime] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const abort = useRef<AbortController | null>(null);
+  useEffect(() => () => abort.current?.abort(), []);
 
   const w = Math.floor(preset.width / divisor), h = Math.floor(preset.height / divisor);
   const frameCount = Math.max(1, Math.floor((end - start) * fps));
@@ -60,14 +61,15 @@ export function ImportVideoDialog() {
   useEffect(() => {
     if (!info || !canvasRef.current || progress !== null) return;
     let cancelled = false;
+    const controller = new AbortController();
     (async () => {
-      await seek(info.video, Math.min(previewTime, info.duration - 0.001));
+      await seek(info.video, Math.min(previewTime, info.duration - 0.001), controller.signal);
       if (cancelled) return;
       const data = new Uint8ClampedArray(placeImage(info.video, info.width, info.height, w, h, pl));
       const p = createProject({ presetId: target, width: w, height: h, scale: divisor, frames: [newFrame(w, h, 100, data)], source: 'video' });
       canvasRef.current?.getContext('2d')!.putImageData(composeScreen(p, outputFrame(p, p.frames[0]), store.state.oledTint), 0, 0);
-    })();
-    return () => { cancelled = true; };
+    })().catch((error) => { if (!cancelled) setError((error as Error).message); });
+    return () => { cancelled = true; controller.abort(); };
   }, [info, previewTime, pl, divisor, progress]);
 
   const doImport = async () => {

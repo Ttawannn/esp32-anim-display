@@ -19,8 +19,8 @@ const char* apPassword();
 const char* hostname();
 String savedSsid();
 
-void saveCredentials(const String& ssid, const String& pass);
-void forgetCredentials();
+bool saveCredentials(const String& ssid, const String& pass);
+bool forgetCredentials();
 
 // Starts an async scan on first call; later calls return {"scanning":true} or the results.
 void scanJson(JsonObject out);

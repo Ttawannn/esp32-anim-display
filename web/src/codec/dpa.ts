@@ -7,6 +7,7 @@ import { hexToRgb } from '../model/project';
 import type { Project } from '../model/types';
 import { isMono, processFrame } from '../render/output';
 import { rleDecode, rleEncode } from './rle';
+import { cancelled, checkFrameBudget } from '../import/limits';
 
 export const FRAME_INDEXED = 0;
 export const FRAME_JPEG = 1;
@@ -37,7 +38,9 @@ export function resolveMode(p: Project): OutputMode {
   return p.source === 'video' ? 'jpeg' : 'indexed';
 }
 
-export async function encodeDpa(p: Project, onProgress?: (done: number, total: number) => void): Promise<EncodeResult> {
+export async function encodeDpa(p: Project, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<EncodeResult> {
+  if (signal?.aborted) throw cancelled();
+  checkFrameBudget(p.width, p.height, p.frames.length);
   const mode = resolveMode(p);
   let palette: Uint16Array = new Uint16Array(0);
   let exactColors = true;
@@ -54,11 +57,13 @@ export async function encodeDpa(p: Project, onProgress?: (done: number, total: n
   } else {
     frames = [];
     for (let i = 0; i < p.frames.length; i++) {
+      if (signal?.aborted) throw cancelled();
       frames.push(await encodeJpegFrame(p, i));
       onProgress?.(i + 1, p.frames.length);
     }
   }
 
+  if (signal?.aborted) throw cancelled();
   return {
     bytes: assemble(p, mode, palette, frames),
     mode,

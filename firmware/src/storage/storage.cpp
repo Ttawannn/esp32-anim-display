@@ -5,6 +5,7 @@
 #include "replace.h"
 
 #include "player/dpa.h"
+#include "player/playlist.h"
 
 namespace storage {
 
@@ -25,7 +26,7 @@ bool begin() {
     if (!recoverReplacement(LittleFS, dest, backup)) return false;
   }
   for (const auto& p : stale) LittleFS.remove(p);
-  return true;
+  return playlistRecover();
 }
 
 size_t totalBytes() { return LittleFS.totalBytes(); }

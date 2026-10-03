@@ -4,6 +4,7 @@
 
 #include "app/app.h"
 #include "app/commands.h"
+#include "app/settings.h"
 #include "board.h"
 #include "display/presets.h"
 #include "player/dpa.h"
@@ -29,6 +30,14 @@ static int enqueue(JsonDocument& out, Cmd type, const char* name = "", int value
   if (!appPanelOk() && (type == Cmd::Play || type == Cmd::Next || type == Cmd::TestPattern || type == Cmd::Brightness))
     return fail(out, 503, "display unavailable");
   return commandPost(type, name, value) ? ok(out) : fail(out, 503, "command queue full");
+}
+
+static int confirmed(JsonDocument& out, Cmd type, const void* data = nullptr, size_t len = 0, int value = 0) {
+  const uint32_t id = commandPostConfirmed(type, data, len, value);
+  if (!id) return fail(out, 503, "command queue full");
+  out["ok"] = true;
+  out["command_id"] = id;
+  return 202;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -144,8 +153,7 @@ static int saveDisplay(JsonVariantConst json, JsonDocument& out) {
     pin("rst", cfg.pins.rst);
     pin("bl", cfg.pins.bl);
   }
-  configSave(cfg);
-  return enqueue(out, Cmd::Reboot);  // the panel is re-created at boot
+  return confirmed(out, Cmd::SaveDisplay, &cfg, sizeof(cfg));
 }
 
 static void presets(JsonDocument& doc) {
@@ -169,6 +177,14 @@ int apiHandle(const String& method, const String& path, const ApiParams& params,
   const bool put = method == "PUT" || post;  // JSON updates accept PUT or POST
 
   if (path == "/api/info" && get) return info(out), 200;
+  if (path == "/api/commands/status" && get) {
+    UploadResult result;
+    if (!commandRead(strtoul(params("id").c_str(), nullptr, 10), result)) return fail(out, 404, "command not found");
+    out["state"] = result.state == UploadState::Pending ? "pending" :
+                   result.state == UploadState::Saved ? "saved" : "failed";
+    if (result.error) out["error"] = result.error;
+    return 200;
+  }
   if (path == "/api/uploads/status" && get) {
     UploadResult result;
     const String raw = params("id");
@@ -207,8 +223,11 @@ int apiHandle(const String& method, const String& path, const ApiParams& params,
     if (put) {
       Playlist pl;
       if (!playlistFromJson(body, pl)) return fail(out, 400, "invalid playlist");
-      if (!playlistSave(pl)) return fail(out, 500, "cannot save playlist");
-      return enqueue(out, Cmd::ReloadPlaylist);
+      JsonDocument normalized;
+      playlistToJson(pl, normalized.to<JsonObject>());
+      String json;
+      serializeJson(normalized, json);
+      return confirmed(out, Cmd::SavePlaylist, json.c_str(), json.length());
     }
   }
 
@@ -219,7 +238,8 @@ int apiHandle(const String& method, const String& path, const ApiParams& params,
   if (path == "/api/display/presets" && get) return presets(out), 200;
   if (path == "/api/display/test" && post) return enqueue(out, Cmd::TestPattern);
   if (path == "/api/brightness" && post) {
-    return enqueue(out, Cmd::Brightness, "", constrain(params("value").toInt(), 0, 255));
+    if (!appPanelOk()) return fail(out, 503, "display unavailable");
+    return confirmed(out, Cmd::Brightness, nullptr, 0, constrain(params("value").toInt(), 0, 255));
   }
 
   if (path == "/api/wifi") {
@@ -232,14 +252,17 @@ int apiHandle(const String& method, const String& path, const ApiParams& params,
       return 200;
     }
     if (del) {
-      wifi::forgetCredentials();
-      return enqueue(out, Cmd::Reboot);
+      return confirmed(out, Cmd::ForgetWifi);
     }
     if (put) {
       const String ssid = body["ssid"] | "";
+      const String password = body["password"] | "";
       if (ssid.isEmpty() || ssid.length() > 32) return fail(out, 400, "invalid ssid");
-      wifi::saveCredentials(ssid, body["password"] | "");
-      return enqueue(out, Cmd::Reboot);
+      if (password.length() > 64) return fail(out, 400, "invalid password");
+      WifiCredentials credentials{};
+      strlcpy(credentials.ssid, ssid.c_str(), sizeof(credentials.ssid));
+      strlcpy(credentials.password, password.c_str(), sizeof(credentials.password));
+      return confirmed(out, Cmd::SaveWifi, &credentials, sizeof(credentials));
     }
   }
   if (path == "/api/wifi/scan" && get) return wifi::scanJson(out.to<JsonObject>()), 200;

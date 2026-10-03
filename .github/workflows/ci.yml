@@ -1,0 +1,49 @@
+name: Validate editor and firmware
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.6.0'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          npm ci --prefix web
+          python -m pip install platformio==6.2.0
+      - name: Typecheck, web tests and regenerate embedded assets
+        working-directory: web
+        run: |
+          npm run typecheck
+          npm test
+          npm run build:device
+      - name: Native decoder and failure-path tests
+        run: |
+          mkdir -p build
+          g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/src firmware/test/native/decode_test.cpp -o build/decode_test
+          build/decode_test shared/test-vectors
+          g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/robustness_test.cpp firmware/src/app/commands.cpp -o build/robustness_test
+          build/robustness_test shared/test-vectors
+          g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/controller_test.cpp firmware/src/app/controller.cpp firmware/src/app/commands.cpp -o build/controller_test
+          build/controller_test
+      - name: Build ESP32-C3 and ESP32-C6
+        working-directory: firmware
+        run: python -m platformio run -e c3_supermini -e c6_supermini

@@ -145,7 +145,7 @@ Presets (geometry, offsets, flags, init sequence) are compiled into `display/pre
 ### Partitions
 Both boards have 4 MB of flash and use the same layouts:
 - **Default (storage-first):** `nvs | app 1.75 MB | littlefs ~2.1 MB`. Firmware updates over USB.
-- **OTA option:** `app0 1.5 MB | app1 1.5 MB | littlefs ~0.9 MB`. The measured firmware size (1.33–1.36 MB including the editor) fits, at the cost of animation storage.
+- **OTA option:** `app0 1.5 MB | app1 1.5 MB | littlefs ~0.9 MB`. The measured firmware size (about 1.4 MB including the editor) fits, at the cost of animation storage.
 
 ### Performance targets
 | Case | Target fps |
@@ -160,7 +160,7 @@ These targets still need to be measured on hardware (`bench` command).
 ## 6. Web app
 
 ### Technology
-- **Vite + Preact + TypeScript.** The whole app is about 41 KB gzipped (budget: 150 KB), embedded in the firmware.
+- **Vite + Preact + TypeScript.** The compressed editor assets total about 57 KB (budget: 150 KB), embedded in the firmware.
 - `gifuct-js` decodes GIFs. Video uses the browser's `<video>` element + canvas (no heavy ffmpeg.wasm).
 - The ESP32 serves the editor itself, so it also works in AP mode without internet. During development, `vite dev` proxies the API to a board or to the mock board.
 
@@ -173,6 +173,7 @@ These targets still need to be measured on hardware (`bench` command).
 - **True-to-hardware display preview**, including round displays and OLED tint.
 - **Export:** `.dpa` with a size estimate, upload to the board, live preview on the board.
 - **Encoding:** Web Worker and a bounded cache shared by estimates, downloads, uploads and live preview.
+- **Cancellation and budgets:** unused estimates are cancelled; GIF decoding runs in a Worker; GIF/video imports enforce decoded-frame memory and count limits.
 - **USB:** Web Serial connection controls, complete-operation sequencing, upload progress and storage confirmation.
 - **Board manager:** files (play/delete, storage), playlist, display settings (preset, rotation, offset, invert, BGR, mirror, bus speed, pins, brightness, test pattern), Wi-Fi (scan, connect, forget).
 
@@ -228,6 +229,8 @@ Built before phases 1–2 so the editor could be tried early.
 ## 9. Testing
 - **Codec:** Vitest (JS) + a native C++ test using the same `shared/test-vectors`; results must match exactly. ✅
 - **Board API:** the editor was tested against `web/scripts/mock-board.mjs`. ✅
+- **Failure paths:** native queue/receipts, partial writes, file recovery, interrupted-upload cleanup, Stop during overlays, and failed brightness saves; web cancellation, cache invalidation and confirmed settings saves. ✅
+- **CI:** GitHub Actions checks web/native tests and both firmware builds with pinned dependencies. ✅ (workflow added; hosted run occurs after push)
 - **Displays:** check each preset's test pattern for offset, rotation and color order (RGB/BGR, invert). ⏳
 - **Performance:** fps, heap and free space are reported by `/api/info` and the `bench` command. ⏳
 - **Robustness:** large uploads, Wi-Fi dropping mid-upload, full storage. ⏳

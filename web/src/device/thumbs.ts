@@ -4,17 +4,11 @@
 import { decodeDpa, decodeFirstFrame, type FirstFrame } from '../codec/dpa';
 import { expand565Table } from '../color/rgb565';
 import { device, deviceConnectionKey, type AnimFile } from './api';
+import { thumbnails, type ThumbnailLease } from './thumbnailCache';
 
-const cache = new Map<string, Promise<string | null>>();
-
-export function thumbnail(host: string, f: AnimFile): Promise<string | null> {
-  const key = `${deviceConnectionKey(host)}|${f.name}|${f.size}`;
-  let p = cache.get(key);
-  if (!p) {
-    p = render(host, f).catch(() => null);
-    cache.set(key, p);
-  }
-  return p;
+export function thumbnail(host: string, f: AnimFile): ThumbnailLease {
+  const key = JSON.stringify([deviceConnectionKey(host), f.name, f.size]);
+  return thumbnails.acquire(key, () => render(host, f));
 }
 
 // Small files are decoded completely so the thumbnail can show the most characteristic pose:
@@ -76,6 +70,7 @@ async function render(host: string, f: AnimFile): Promise<string | null> {
   } else if (frame.jpeg) {
     const bmp = await createImageBitmap(new Blob([frame.jpeg as BlobPart], { type: 'image/jpeg' }));
     ctx.drawImage(bmp, frame.offsetX + x * s, frame.offsetY + y * s, bmp.width * s, bmp.height * s);
+    bmp.close();
   }
   return URL.createObjectURL(await canvas.convertToBlob({ type: 'image/png' }));
 }

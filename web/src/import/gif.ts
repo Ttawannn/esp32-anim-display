@@ -1,5 +1,6 @@
-import { decompressFrames, parseGIF } from 'gifuct-js';
+import { decompressFrame, parseGIF } from 'gifuct-js';
 import type { Pixels } from '../model/types';
+import { checkFrameBudget, MAX_GIF_BYTES } from './limits';
 
 export interface DecodedGif {
   width: number;
@@ -8,14 +9,19 @@ export interface DecodedGif {
 }
 
 // Decodes and composites a GIF into full frames (handles frame patches and disposal modes).
-export function decodeGif(buffer: ArrayBuffer): DecodedGif {
+export function decodeGif(buffer: ArrayBuffer, progress?: (done: number, total: number) => void): DecodedGif {
+  if (buffer.byteLength > MAX_GIF_BYTES) throw new Error('GIF ใหญ่เกิน 16 MB — ลดขนาดไฟล์ก่อนนำเข้า');
   const gif = parseGIF(buffer);
-  const parts = decompressFrames(gif, true);
+  const parts = gif.frames.filter((frame): frame is Extract<typeof frame, { image: unknown }> => 'image' in frame);
   const width = gif.lsd.width, height = gif.lsd.height;
+  checkFrameBudget(width, height, parts.length);
   const canvas = new Uint8ClampedArray(width * height * 4);
   const frames: DecodedGif['frames'] = [];
 
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const descriptor = parts[i].image.descriptor;
+    checkFrameBudget(descriptor.width, descriptor.height, 1);
+    const part = decompressFrame(parts[i], gif.gct, true);
     const { left, top, width: pw, height: ph } = part.dims;
     const before = part.disposalType === 3 ? canvas.slice() : null;
     for (let y = 0; y < ph; y++) {
@@ -48,6 +54,7 @@ export function decodeGif(buffer: ArrayBuffer): DecodedGif {
     } else if (before) {
       canvas.set(before);
     }
+    progress?.(i + 1, parts.length);
   }
   return { width, height, frames };
 }

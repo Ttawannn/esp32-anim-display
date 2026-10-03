@@ -29,9 +29,10 @@ export function OutputPanel({ s }: { s: EditorState }) {
     setEstimating(true);
     clearTimeout(timer.current);
     let cancelled = false;
+    const controller = new AbortController();
     timer.current = window.setTimeout(async () => {
       try {
-        const r = await encodeProject(p);
+        const r = await encodeProject(p, undefined, controller.signal);
         if (!cancelled) setEstimate(r);
       } catch {
         if (!cancelled) setEstimate(null);
@@ -41,6 +42,7 @@ export function OutputPanel({ s }: { s: EditorState }) {
     }, mode === 'jpeg' ? 900 : 400);
     return () => {
       cancelled = true;
+      controller.abort();
       clearTimeout(timer.current);
     };
   }, [p, mode]);

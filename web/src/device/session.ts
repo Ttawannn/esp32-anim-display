@@ -19,6 +19,8 @@ export function connectUsb(reuseGranted = false): Promise<DeviceInfo> {
       if (usb !== link) return;
       usb = null;
       setUsbLink(null);
+      generation++;
+      liveAbort?.abort();
       store.set({ deviceInfo: null, deviceTransport: null, live: false });
       toast('สาย USB หลุด — เชื่อมต่อใหม่เพื่อใช้งานต่อ', true);
     };
@@ -55,7 +57,11 @@ export async function refreshDevice(): Promise<DeviceInfo> {
     store.set({ deviceInfo: info, deviceTransport: usbConnected() ? 'usb' : 'wifi' });
     return info;
   } catch (e) {
-    if (current()) store.set({ deviceInfo: null, deviceTransport: usbConnected() ? 'usb' : null, live: false });
+    if (current()) {
+      generation++;
+      liveAbort?.abort();
+      store.set({ deviceInfo: null, deviceTransport: usbConnected() ? 'usb' : null, live: false });
+    }
     throw e;
   }
 }
@@ -83,6 +89,7 @@ function matchDisplay(info: DeviceInfo) {
 // Live preview: sends the current frame as a single-frame .dpa. Only one request is in flight;
 // edits made meanwhile are coalesced into the next send.
 let liveTask: Promise<void> | null = null;
+let liveAbort: AbortController | null = null;
 let pending = false;
 let generation = 0;
 
@@ -93,12 +100,14 @@ export async function sendLiveFrame() {
     return liveTask;
   }
   const g = generation;
+  const controller = new AbortController();
+  liveAbort = controller;
   const task = (async () => {
     try {
       do {
         pending = false;
         const { project: p, frameIndex, deviceHost } = store.state;
-        const { bytes } = await encodeProject({ ...p, frames: [p.frames[frameIndex]], loop: 0 });
+        const { bytes } = await encodeProject({ ...p, frames: [p.frames[frameIndex]], loop: 0 }, undefined, controller.signal);
         if (!store.state.live || generation !== g) break;
         await device.live(deviceHost, bytes);
       } while (pending && store.state.live && generation === g);
@@ -113,12 +122,14 @@ export async function sendLiveFrame() {
   try { await task; }
   finally {
     if (liveTask === task) liveTask = null;
+    if (liveAbort === controller) liveAbort = null;
     if (pending && store.state.live) queueMicrotask(sendLiveFrame);
   }
 }
 
 export async function setLive(on: boolean) {
   const g = ++generation;
+  liveAbort?.abort();
   store.set({ live: on });
   if (on) {
     await sendLiveFrame();

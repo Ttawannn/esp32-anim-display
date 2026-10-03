@@ -49,12 +49,49 @@ bool uploadRead(uint32_t id, UploadResult& out) {
   return found;
 }
 
-void uploadComplete(uint32_t id, bool saved) {
+void uploadComplete(uint32_t id, bool saved, const char* error) {
   portENTER_CRITICAL(&statusLock);
   for (auto& result : uploads) {
-    if (id && result.id == id) { result.state = saved ? UploadState::Saved : UploadState::Failed; break; }
+    if (id && result.id == id) {
+      result.state = saved ? UploadState::Saved : UploadState::Failed;
+      result.error = saved ? nullptr : error;
+      break;
+    }
   }
   portEXIT_CRITICAL(&statusLock);
+}
+
+uint32_t commandPostConfirmed(Cmd type, const void* data, size_t len, int value) {
+  const uint32_t id = uploadBegin();
+  if (!id) return 0;
+  uint8_t* copy = len ? (uint8_t*)malloc(len) : nullptr;
+  if (len && !copy) { uploadComplete(id, false, "out of memory"); return 0; }
+  if (len) memcpy(copy, data, len);
+  if (!commandPost(type, "", value, copy, len, id)) {
+    uploadComplete(id, false, "command queue full");
+    return 0;
+  }
+  return id;
+}
+
+bool commandRead(uint32_t id, UploadResult& out) {
+  bool found = false;
+  portENTER_CRITICAL(&statusLock);
+  for (auto& result : uploads) {
+    if (id && result.id == id) {
+      if (result.state != UploadState::Pending) result.acknowledged = true;
+      out = result;
+      found = true;
+      break;
+    }
+  }
+  portEXIT_CRITICAL(&statusLock);
+  return found;
+}
+
+bool commandAcknowledged(uint32_t id) {
+  UploadResult result;
+  return uploadRead(id, result) && result.acknowledged;
 }
 
 bool commandCommitUpload(const Command& c) {

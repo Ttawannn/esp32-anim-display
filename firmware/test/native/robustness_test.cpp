@@ -30,6 +30,15 @@ static void wr16(std::vector<uint8_t>& bytes, size_t off, uint16_t value) {
 struct Fs {
   std::map<std::string, std::string> files;
   std::set<std::string> failRename;
+  struct File {
+    std::string& bytes;
+    bool closed = false;
+    explicit operator bool() const { return true; }
+    void flush() {}
+    void close() { closed = true; }
+    size_t size() const { return bytes.size(); }
+  };
+  File open(const std::string& p, const char*) { files[p].clear(); return File{files[p]}; }
   bool exists(const std::string& p) { return files.count(p); }
   bool remove(const std::string& p) { return files.erase(p); }
   bool rename(const std::string& from, const std::string& to) {
@@ -87,16 +96,43 @@ int main(int argc, char** argv) {
   fs.failRename.clear(); assert(storage::recoverReplacement(fs, dest, backup)); assert(fs.files[dest] == "old");
   fs = Fs{{{backup, "old"}, {dest, "new"}}, {}};
   assert(storage::recoverReplacement(fs, dest, backup)); assert(fs.files[dest] == "new" && !fs.exists(backup));
+  fs = Fs{{{dest, "old"}}, {}};
+  assert(!storage::writeReplacement(fs, tmp, dest, backup, 4,
+    [](Fs::File& f) { f.bytes = "ne"; return size_t(2); }, [](const std::string&) { return true; }));
+  assert(fs.files[dest] == "old" && !fs.exists(tmp));
+  assert(!storage::writeReplacement(fs, tmp, dest, backup, 3,
+    [](Fs::File& f) { f.bytes = "bad"; return size_t(3); }, [](const std::string&) { return false; }));
+  assert(fs.files[dest] == "old" && !fs.exists(tmp));
+  assert(storage::writeReplacement(fs, tmp, dest, backup, 3,
+    [](Fs::File& f) { f.bytes = "new"; return size_t(3); }, [](const std::string&) { return true; }));
+  assert(fs.files[dest] == "new");
+  auto interrupted = fs.open(tmp, "w"); interrupted.bytes = "partial";
+  storage::discardInterruptedUpload(fs, interrupted, tmp, false);
+  assert(interrupted.closed && !fs.exists(tmp) && fs.files[dest] == "new");
+  auto queued = fs.open(tmp, "w"); queued.bytes = "pending";
+  storage::discardInterruptedUpload(fs, queued, tmp, true);
+  assert(!queued.closed && fs.exists(tmp));
   printf("ok   storage: replacement, rename failures, rollback, interrupted-save recovery\n");
 
   commandsBegin();
   for (int i = 0; i < 12; i++) assert(commandPost(Cmd::Next, "", i));
   assert(!commandPost(Cmd::Next));
+  const uint8_t settings[] = {42, 7};
+  assert(commandPostConfirmed(Cmd::SaveDisplay, settings, sizeof(settings)) == 0);
   Command c;
+  UploadResult result;
   for (int i = 0; i < 12; i++) { assert(commandTake(c)); assert(c.value == i); }
   assert(!commandTake(c));
+  const uint32_t settingId = commandPostConfirmed(Cmd::SaveDisplay, settings, sizeof(settings));
+  assert(settingId && commandRead(settingId, result) && result.state == UploadState::Pending);
+  assert(!commandAcknowledged(settingId));
+  assert(commandTake(c) && c.type == Cmd::SaveDisplay && c.len == sizeof(settings));
+  assert(c.data != settings && memcmp(c.data, settings, sizeof(settings)) == 0);
+  free(c.data);
+  uploadComplete(settingId, true);
+  assert(!commandAcknowledged(settingId));
+  assert(commandRead(settingId, result) && commandAcknowledged(settingId));
   const uint32_t id = uploadBegin();
-  UploadResult result;
   assert(id && uploadRead(id, result) && result.state == UploadState::Pending);
   assert(commandPost(Cmd::CommitUpload, "a", 0, (uint8_t*)strdup("tmp"), 4, id));
   assert(commandTake(c) && commandCommitUpload(c)); free(c.data);

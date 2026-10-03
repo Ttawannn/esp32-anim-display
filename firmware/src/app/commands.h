@@ -16,6 +16,10 @@ enum class Cmd : uint8_t {
   ShowInfo,
   Brightness,     // value
   ReloadPlaylist,
+  SaveDisplay,    // data: DisplayConfig
+  SavePlaylist,   // data: normalized playlist JSON
+  SaveWifi,       // data: WifiCredentials
+  ForgetWifi,
   Reboot,
 };
 
@@ -34,10 +38,14 @@ bool commandPost(Cmd type, const char* name = "", int value = 0, uint8_t* data =
 bool commandTake(Command& out);
 
 enum class UploadState : uint8_t { Pending, Saved, Failed };
-struct UploadResult { uint32_t id; UploadState state; };
+struct UploadResult { uint32_t id; UploadState state; const char* error = nullptr; bool acknowledged = false; };
 uint32_t uploadBegin();  // 0 when all receipt slots are pending
 bool uploadRead(uint32_t id, UploadResult& out);
-void uploadComplete(uint32_t id, bool saved);
+void uploadComplete(uint32_t id, bool saved, const char* error = "cannot save file");
+// Settings share the bounded receipt pool. Reading a completed receipt permits reboot.
+uint32_t commandPostConfirmed(Cmd type, const void* data = nullptr, size_t len = 0, int value = 0);
+bool commandRead(uint32_t id, UploadResult& out);
+bool commandAcknowledged(uint32_t id);
 // Called only by the loop task, including when the panel failed to initialise.
 bool commandCommitUpload(const Command& c);
 

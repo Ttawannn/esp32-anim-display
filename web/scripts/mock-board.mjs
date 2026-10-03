@@ -30,6 +30,15 @@ const state = {
 const used = () => [...state.anims.values()].reduce((s, b) => s + b.length + 512, 4096);
 const uploads = new Map();
 let nextUploadId = 0;
+const commands = new Map();
+let nextCommandId = 0;
+function confirmed(res, apply) {
+  const id = ++nextCommandId;
+  commands.set(id, { state: 'pending' });
+  setTimeout(() => { apply(); commands.set(id, { state: 'saved' }); }, 30);
+  if (commands.size > 16) commands.delete(commands.keys().next().value);
+  return send(res, 202, { ok: true, command_id: id });
+}
 const preset = () => PRESETS.find((p) => p.id === state.display.preset);
 
 function header(buf) {
@@ -77,6 +86,10 @@ createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
   switch (route) {
+    case 'GET /api/commands/status': {
+      const result = commands.get(Number(q('id')));
+      return result ? send(res, 200, result) : send(res, 404, { error: 'command not found' });
+    }
     case 'GET /api/info': {
       const p = preset();
       return send(res, 200, {
@@ -146,30 +159,31 @@ createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     case 'GET /api/playlist':
       return send(res, 200, state.playlist);
-    case 'PUT /api/playlist':
-      state.playlist = JSON.parse((await readBody(req)).toString());
-      return send(res, 200, { ok: true });
+    case 'PUT /api/playlist': {
+      const playlist = JSON.parse((await readBody(req)).toString());
+      return confirmed(res, () => { state.playlist = playlist; });
+    }
     case 'GET /api/display':
       return send(res, 200, state.display);
-    case 'PUT /api/display':
-      state.display = { ...state.display, ...JSON.parse((await readBody(req)).toString()) };
-      return send(res, 200, { ok: true });
+    case 'PUT /api/display': {
+      const display = JSON.parse((await readBody(req)).toString());
+      return confirmed(res, () => { state.display = { ...state.display, ...display }; });
+    }
     case 'GET /api/display/presets':
       return send(res, 200, { presets: PRESETS });
     case 'POST /api/display/test':
     case 'POST /api/reboot':
       return send(res, 200, { ok: true });
     case 'POST /api/brightness':
-      state.display.brightness = Number(q('value'));
-      return send(res, 200, { ok: true });
+      return confirmed(res, () => { state.display.brightness = Number(q('value')); });
     case 'GET /api/wifi':
       return send(res, 200, state.wifi);
-    case 'PUT /api/wifi':
-      state.wifi.saved_ssid = JSON.parse((await readBody(req)).toString()).ssid;
-      return send(res, 200, { ok: true });
+    case 'PUT /api/wifi': {
+      const wifi = JSON.parse((await readBody(req)).toString());
+      return confirmed(res, () => { state.wifi.saved_ssid = wifi.ssid; });
+    }
     case 'DELETE /api/wifi':
-      state.wifi.saved_ssid = '';
-      return send(res, 200, { ok: true });
+      return confirmed(res, () => { state.wifi.saved_ssid = ''; });
     case 'GET /api/wifi/scan':
       if (!state.scanStarted) {
         state.scanStarted = Date.now();

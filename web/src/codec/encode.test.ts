@@ -4,6 +4,47 @@ import { encodeDpa } from './dpa';
 import { EncodingCache, projectEncodingKey } from './encode';
 
 describe('encoding cache', () => {
+  it('cancels unused estimates while keeping a shared export alive', async () => {
+    let finish!: (value: Awaited<ReturnType<typeof encodeDpa>>) => void;
+    let workSignal!: AbortSignal;
+    const run = vi.fn((_p, _progress, signal: AbortSignal) => {
+      workSignal = signal;
+      return new Promise<Awaited<ReturnType<typeof encodeDpa>>>((resolve) => { finish = resolve; });
+    });
+    const cache = new EncodingCache(run);
+    const p = createProject({ presetId: 'st7789_240x240', width: 4, height: 4 });
+    const estimate = new AbortController();
+    const pending = cache.encode(p, undefined, estimate.signal);
+    const rejected = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    const exporting = cache.encode(p);
+    await vi.waitFor(() => expect(run).toHaveBeenCalledOnce());
+    estimate.abort();
+    await rejected;
+    expect(workSignal.aborted).toBe(false);
+    finish(await encodeDpa(p));
+    expect((await exporting).bytes.length).toBeGreaterThan(0);
+  });
+
+  it('aborts the underlying job when its last caller leaves and permits retry', async () => {
+    let workSignal!: AbortSignal;
+    const run = vi.fn((_p, _progress, signal: AbortSignal) => {
+      workSignal = signal;
+      return new Promise<Awaited<ReturnType<typeof encodeDpa>>>((_resolve, reject) =>
+        signal.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError'))));
+    });
+    const cache = new EncodingCache(run);
+    const p = createProject({ presetId: 'st7789_240x240', width: 4, height: 4 });
+    const controller = new AbortController();
+    const pending = cache.encode(p, undefined, controller.signal);
+    const rejected = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    await vi.waitFor(() => expect(run).toHaveBeenCalledOnce());
+    controller.abort();
+    await rejected;
+    expect(workSignal.aborted).toBe(true);
+    run.mockImplementation(encodeDpa);
+    expect((await cache.encode(p)).bytes.length).toBeGreaterThan(0);
+  });
+
   it('shares an in-flight estimate with export and ignores name changes', async () => {
     const run = vi.fn(encodeDpa);
     const cache = new EncodingCache(run);

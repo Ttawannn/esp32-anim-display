@@ -6,7 +6,7 @@ Creates and edits animations for the ESP32 displays. Runs entirely in the browse
 
 ```bash
 cd web
-npm install
+npm ci
 npm run dev
 ```
 

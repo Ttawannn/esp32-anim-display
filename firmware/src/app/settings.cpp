@@ -8,7 +8,8 @@
 static uint32_t rebootReceipt = 0, rebootQueuedAt = 0;
 
 bool isSettingsCommand(Cmd type) {
-  return type == Cmd::SaveDisplay || type == Cmd::SavePlaylist || type == Cmd::SaveWifi || type == Cmd::ForgetWifi;
+  return type == Cmd::SaveDisplay || type == Cmd::SavePlaylist || type == Cmd::SaveWifi || type == Cmd::ForgetWifi ||
+         type == Cmd::SaveName;
 }
 
 bool settingsApply(const Command& c) {
@@ -37,6 +38,9 @@ bool settingsApply(const Command& c) {
     case Cmd::ForgetWifi:
       saved = wifi::forgetCredentials();
       reboot = true;
+      break;
+    case Cmd::SaveName:
+      saved = wifi::saveName(String((const char*)c.data, c.len));
       break;
     default: return false;
   }

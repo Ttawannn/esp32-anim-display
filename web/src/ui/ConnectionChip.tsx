@@ -2,11 +2,13 @@ import { useState } from 'preact/hooks';
 import { presetForDevice, usbConnected } from '../device/api';
 import { SerialLink } from '../device/serial';
 import { firmwareInstallerUrl } from '../device/send';
+import { firmwareOutdated } from '../device/version';
 import { connectUsb, disconnectUsb, refreshDevice, setLive } from '../device/session';
 import { getPreset } from '../model/presets';
 import { retarget } from '../model/project';
 import { store, toast, useEditor } from '../model/store';
 import { Icon } from './common';
+import { FirmwareNotice } from './FirmwareNotice';
 import { useDismiss } from './Menu';
 
 // Board connection in one place: status chip in the top bar, popover with USB / Wi-Fi,
@@ -36,13 +38,14 @@ export function ConnectionChip() {
   const devicePreset = info ? presetForDevice(info) : null;
   const mismatch = !!devicePreset && devicePreset !== s.project.presetId;
 
-  const label = info ? (usb ? 'USB' : 'Wi-Fi') : 'ยังไม่เชื่อมบอร์ด';
+  const label = info ? info.name || (usb ? 'USB' : 'Wi-Fi') : 'ยังไม่เชื่อมบอร์ด';
+  const outdated = !!info && firmwareOutdated(info.version);
 
   return (
     <div class="menu" ref={ref}>
       <button class={`chip${info ? ' on' : ''}${open ? ' active' : ''}`} onClick={() => setOpen(!open)}
         title="การเชื่อมต่อบอร์ด">
-        <span class="dot" />
+        <span class={`dot${outdated ? ' warn' : ''}`} title={outdated ? 'เฟิร์มแวร์บนบอร์ดเก่า' : undefined} />
         <Icon name={info ? (usb ? 'usb' : 'wifi') : 'board'} />
         <span class="lbl">{label}</span>
         {s.live && <span class="badge">LIVE</span>}
@@ -52,7 +55,8 @@ export function ConnectionChip() {
           {info ? (
             <div class="conn-status">
               <div class="conn-title"><span class="dot on" /> เชื่อมต่อแล้วผ่าน {usb ? 'USB' : 'Wi-Fi'}</div>
-              <div class="hint">{info.board_name} · {info.display.name}{!usb && ` · ${info.wifi.ip}`}</div>
+              <div class="hint">{info.name && <b>{info.name} · </b>}{info.board_name} · {info.display.name}{!usb && ` · ${info.wifi.ip}`}</div>
+              <FirmwareNotice info={info} />
               {mismatch && (
                 <div class="callout warn">
                   โปรเจกต์นี้ทำสำหรับ {getPreset(s.project.presetId).name} แต่บอร์ดใช้ {info.display.name}

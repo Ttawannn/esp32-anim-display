@@ -47,7 +47,7 @@ The board receives files already sized for its display; it only decodes RLE/JPEG
 | `net/web` | HTTP transport + embedded editor (`web_assets.h`) |
 | `net/api` | shared JSON API, streaming file validation, upload receipts |
 | `app/serial_rpc` | USB JSON-line transport, chunked uploads/reads, interrupted-transfer cleanup |
-| `net/wifi_manager` | joins the saved network, otherwise starts an AP + captive portal; mDNS `display.local` |
+| `net/wifi_manager` | joins the saved network, otherwise starts an AP + captive portal; mDNS `<board name>.local` (default `display-xxxx.local`, unique per board) |
 | `bench/` | display and JPEG benchmarks (`bench` command) |
 
 **Threading:** HTTP handlers run in the AsyncTCP task and must never draw. They send commands with `commandPost()`, and `controllerLoop()` in the loop task carries them out.

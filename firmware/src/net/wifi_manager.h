@@ -16,7 +16,10 @@ String ssid();  // joined network, or our AP name
 String ip();
 int rssi();
 const char* apPassword();
-const char* hostname();
+const char* hostname();  // without ".local"; derived from the board name
+const String& name();    // board name shown in the editor and remote
+constexpr size_t kMaxNameBytes = 48;
+bool saveName(const String& name);  // loop task; empty restores the default "display-xxxx"
 String savedSsid();
 
 bool saveCredentials(const String& ssid, const String& pass);

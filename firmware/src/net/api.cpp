@@ -44,6 +44,7 @@ static int confirmed(JsonDocument& out, Cmd type, const void* data = nullptr, si
 
 static void info(JsonDocument& doc) {
   doc["version"] = FIRMWARE_VERSION;
+  doc["name"] = wifi::name();
   doc["board"] = BOARD_ID;
   doc["board_name"] = BOARD_NAME;
   doc["chip"] = ESP.getChipModel();
@@ -266,6 +267,20 @@ int apiHandle(const String& method, const String& path, const ApiParams& params,
     }
   }
   if (path == "/api/wifi/scan" && get) return wifi::scanJson(out.to<JsonObject>()), 200;
+
+  if (path == "/api/device") {
+    if (get) {
+      out["name"] = wifi::name();
+      out["hostname"] = String(wifi::hostname()) + ".local";
+      return 200;
+    }
+    if (put) {
+      if (!body["name"].is<const char*>()) return fail(out, 400, "invalid name");
+      const String name = body["name"].as<const char*>();
+      if (name.length() > wifi::kMaxNameBytes) return fail(out, 400, "invalid name");
+      return confirmed(out, Cmd::SaveName, name.c_str(), name.length());
+    }
+  }
 
   if (path == "/api/reboot" && post) return enqueue(out, Cmd::Reboot);
 

@@ -2,6 +2,8 @@
 // (docs/api.md) in memory.
 //   node scripts/mock-board.mjs            (listens on :8787)
 //   DEVICE=localhost:8787 npm run dev      (editor proxies /api to it)
+//   MOCK_VERSION=0.1.0 ...                 (pretend to run old firmware)
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -13,6 +15,11 @@ const PRESETS = [
   { id: 'ssd1306_128x32', name: 'OLED 0.91" SSD1306 128x32', width: 128, height: 32, color: 'mono', round: false },
 ];
 const FS_TOTAL = 2_228_224;
+const VERSION = process.env.MOCK_VERSION
+  ?? /FIRMWARE_VERSION "([^"]+)"/.exec(readFileSync(new URL('../../firmware/src/app/app.h', import.meta.url), 'utf8'))?.[1];
+
+// Same rule as firmware/src/net/wifi_manager.cpp: ASCII letters/digits, '-' between words.
+const hostFor = (name) => (name.toLowerCase().match(/[a-z0-9]+/g) ?? []).join('-').slice(0, 24).replace(/-$/, '') || 'display-a1b2';
 
 const state = {
   anims: new Map(), // name -> Buffer
@@ -22,6 +29,7 @@ const state = {
     mirror_x: false, spi_hz: 40000000, spi_mode: 3, i2c_hz: 800000, i2c_addr: 60, brightness: 255,
     pins: { clk: 6, data: 7, cs: 10, dc: 4, rst: 3, bl: 5 },
   },
+  name: 'display-a1b2',
   wifi: { mode: 'ap', ssid: 'DisplayEditor-MOCK', ip: '192.168.4.1', rssi: 0, saved_ssid: '' },
   player: { name: '', playing: false, live: false, playlist: false, frame: 0, frames: 0, fps: 0 },
   scanStarted: 0,
@@ -93,10 +101,10 @@ createServer(async (req, res) => {
     case 'GET /api/info': {
       const p = preset();
       return send(res, 200, {
-        version: '0.2.0-mock', board: 'c3', board_name: 'Mock board', chip: 'mock', heap_free: 180000, heap_min: 150000, uptime_s: Math.round(process.uptime()),
+        version: VERSION, name: state.name, board: 'c3', board_name: 'Mock board', chip: 'mock', heap_free: 180000, heap_min: 150000, uptime_s: Math.round(process.uptime()),
         display: { ok: true, preset: p.id, name: p.name, width: p.width, height: p.height, color: p.color, shape: p.round ? 'round' : 'rect', brightness: state.display.brightness },
         fs: { total: FS_TOTAL, used: used(), free: FS_TOTAL - used() },
-        wifi: { ...state.wifi, hostname: 'display.local' },
+        wifi: { ...state.wifi, hostname: `${hostFor(state.name)}.local` },
         player: state.player,
       });
     }
@@ -176,6 +184,14 @@ createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     case 'POST /api/brightness':
       return confirmed(res, () => { state.display.brightness = Number(q('value')); });
+    case 'GET /api/device':
+      return send(res, 200, { name: state.name, hostname: `${hostFor(state.name)}.local` });
+    case 'PUT /api/device': {
+      const { name } = JSON.parse((await readBody(req)).toString());
+      if (typeof name !== 'string' || Buffer.byteLength(name.trim()) > 48 || /[\u0000-\u001f\u007f]/.test(name))
+        return send(res, 400, { error: 'invalid name' });
+      return confirmed(res, () => { state.name = name.trim() || 'display-a1b2'; });
+    }
     case 'GET /api/wifi':
       return send(res, 200, state.wifi);
     case 'PUT /api/wifi': {

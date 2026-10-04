@@ -175,11 +175,13 @@ These targets still need to be measured on hardware (`bench` command).
 - **Encoding:** Web Worker and a bounded cache shared by estimates, downloads, uploads and live preview.
 - **Cancellation and budgets:** unused estimates are cancelled; GIF decoding runs in a Worker; GIF/video imports enforce decoded-frame memory and count limits.
 - **USB:** Web Serial connection controls, complete-operation sequencing, upload progress and storage confirmation.
-- **Board manager:** files (play/delete, storage), playlist, display settings (preset, rotation, offset, invert, BGR, mirror, bus speed, pins, brightness, test pattern), Wi-Fi (scan, connect, forget).
+- **Board manager:** board name (sets the `.local` address), files (play/delete, storage), playlist (drag to reorder, time per item), display settings (preset, rotation, offset, invert, BGR, mirror, bus speed, pins, brightness, test pattern), Wi-Fi (scan, connect, forget).
+- **Firmware version check:** the editor knows the firmware version it was built with and warns, with a link to the online installer, when a connected board runs older firmware.
+- **Remote:** board name in the header, auto-cycle with a chosen time per page (5 s to 1 min, or play once).
 
 ### Not yet implemented
-- Animated thumbnails in the board's file list, and drag-to-reorder for the playlist.
-- Device name setting and backup/restore of animations.
+- Animated thumbnails in the board's file list.
+- Backup/restore of animations.
 - Loading extra display presets from a JSON file on the board.
 - OTA firmware updates.
 

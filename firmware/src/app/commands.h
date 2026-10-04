@@ -20,6 +20,7 @@ enum class Cmd : uint8_t {
   SavePlaylist,   // data: normalized playlist JSON
   SaveWifi,       // data: WifiCredentials
   ForgetWifi,
+  SaveName,       // data: board name (UTF-8, not NUL-terminated)
   Reboot,
 };
 

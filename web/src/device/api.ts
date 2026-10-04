@@ -7,6 +7,7 @@ import { invalidateThumbnails } from './thumbnailCache';
 
 export interface DeviceInfo {
   version: string;
+  name?: string; // board name (firmware 0.3.0+)
   board: string;
   board_name: string;
   heap_free: number;
@@ -88,6 +89,7 @@ const ERRORS: Record<string, string> = {
   'write failed (storage full?)': 'พื้นที่บนบอร์ดไม่พอสำหรับบันทึกไฟล์',
   'display unavailable': 'จอบนบอร์ดยังไม่พร้อม — ตรวจสายและตั้งค่าจอ',
   'cannot save settings': 'บอร์ดบันทึกค่าตั้งไม่ได้ — ลองอีกครั้ง',
+  'invalid name': 'ชื่อบอร์ดใช้ไม่ได้ (ยาวเกินหรือมีอักขระพิเศษ)',
   'cannot save playlist': 'บอร์ดบันทึก playlist ไม่ได้ — รายการเดิมยังเก็บไว้',
 };
 
@@ -308,6 +310,7 @@ export const device = {
     await transport(host).api('PUT', '/api/wifi', undefined, { ssid, password });
   },
   forgetWifi: async (host: string) => { await transport(host).api('DELETE', '/api/wifi'); },
+  saveName: async (host: string, name: string) => { await transport(host).api('PUT', '/api/device', undefined, { name }); },
   reboot: async (host: string) => { await transport(host).api('POST', '/api/reboot'); },
 };
 

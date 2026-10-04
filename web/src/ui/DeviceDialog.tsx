@@ -6,6 +6,7 @@ import { uploadDpaFile } from '../device/send';
 import { connectUsb, refreshDevice } from '../device/session';
 import { store, toast, useEditor } from '../model/store';
 import { formatBytes, Icon, IconButton, Modal } from './common';
+import { FirmwareNotice } from './FirmwareNotice';
 import { UsbControls } from './UsbControls';
 
 type Tab = 'files' | 'playlist' | 'display' | 'wifi';
@@ -68,6 +69,8 @@ export function DeviceDialog() {
         <p class="err">{error || 'กำลังติดต่อบอร์ด...'}</p>
       ) : (
         <>
+          <BoardName host={host} />
+          <FirmwareNotice info={info} />
           <p class="hint">
             {info.board_name} · เฟิร์มแวร์ {info.version} · จอ {info.display.name}
             {!info.display.ok && <span class="err"> (จอไม่ทำงาน: {info.display.error})</span>}
@@ -89,6 +92,41 @@ export function DeviceDialog() {
         </>
       )}
     </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+
+// The name also sets the board's address on the network: "Kitchen Eyes" -> http://kitchen-eyes.local
+function BoardName({ host }: { host: string }) {
+  const info = store.state.deviceInfo!;
+  const [name, setName] = useState(info.name ?? '');
+  const [saving, setSaving] = useState(false);
+  useEffect(() => setName(info.name ?? ''), [info.name]);
+  if (info.name === undefined) return null; // firmware older than 0.3.0
+  const bytes = new TextEncoder().encode(name.trim()).length;
+  const changed = name.trim() !== info.name;
+  const save = async () => {
+    setSaving(true);
+    if (await run(() => device.saveName(host, name.trim()), 'เปลี่ยนชื่อบอร์ดแล้ว')) await refreshDevice().catch(() => {});
+    setSaving(false);
+  };
+  return (
+    <>
+      <div class="name-field">
+        <span class="hint">ชื่อบอร์ด</span>
+        <input type="text" value={name} placeholder="ชื่อบอร์ด เช่น ตาหุ่นยนต์ หรือ desk-eyes" maxLength={48}
+          onInput={(e) => setName((e.target as HTMLInputElement).value)}
+          onKeyDown={(e) => e.key === 'Enter' && changed && bytes <= 48 && save()} />
+        <button class="btn primary" disabled={!changed || saving || bytes > 48} onClick={save}>บันทึกชื่อ</button>
+      </div>
+      {info.wifi.mode === 'sta' && (
+        <p class="hint" style={{ marginTop: -4 }}>
+          เปิดจากเครื่องอื่นใน Wi-Fi เดียวกันได้ที่ <a href={`http://${info.wifi.hostname}`} target="_blank" rel="noopener">http://{info.wifi.hostname}</a>
+          {' '}(ตั้งชื่อเป็นภาษาอังกฤษเพื่อให้ที่อยู่จำง่าย)
+        </p>
+      )}
+    </>
   );
 }
 
@@ -155,6 +193,8 @@ function PlaylistTab({ host }: { host: string }) {
   const [pl, setPl] = useState<PlaylistData | null>(null);
   const [files, setFiles] = useState<AnimFile[]>([]);
   const [add, setAdd] = useState('');
+  const [drag, setDrag] = useState<number | null>(null);
+  const [over, setOver] = useState<number | null>(null);
   useEffect(() => {
     device.playlist(host).then(setPl, (e) => toast((e as Error).message, true));
     device.list(host).then((r) => { setFiles(r.anims); setAdd(r.anims[0]?.name ?? ''); }, () => {});
@@ -163,11 +203,14 @@ function PlaylistTab({ host }: { host: string }) {
 
   const items = pl.items;
   const setItems = (next: PlaylistData['items']) => setPl({ ...pl, items: next });
-  const move = (i: number, d: number) => {
+  const moveTo = (from: number, to: number) => {
+    if (from === to) return;
     const next = items.slice();
-    [next[i], next[i + d]] = [next[i + d], next[i]];
+    const [it] = next.splice(from, 1);
+    next.splice(to > from ? to - 1 : to, 0, it);
     setItems(next);
   };
+  const missing = files.filter((f) => !items.some((it) => it.name === f.name));
 
   return (
     <>
@@ -180,7 +223,12 @@ function PlaylistTab({ host }: { host: string }) {
       <table class="list">
         <tbody>
           {items.map((it, i) => (
-            <tr key={i}>
+            <tr key={i} draggable class={`${drag === i ? 'dragging' : ''}${over === i && drag !== null && drag !== i && drag !== i - 1 ? ' drop' : ''}`}
+              onDragStart={(e) => { setDrag(i); e.dataTransfer?.setData('text/plain', String(i)); }}
+              onDragOver={(e) => { e.preventDefault(); setOver(i); }}
+              onDrop={(e) => { e.preventDefault(); if (drag !== null) moveTo(drag, i); setDrag(null); setOver(null); }}
+              onDragEnd={() => { setDrag(null); setOver(null); }}>
+              <td class="grip" title="ลากเพื่อเรียงลำดับ"><Icon name="grip" /></td>
               <td class="grow">{it.name}{!files.some((f) => f.name === it.name) && <small class="warn"> · ไม่พบไฟล์</small>}</td>
               <td>
                 <input type="number" min={0} max={3600} value={it.seconds} title="วินาที (0 = เล่นจบหนึ่งรอบ)"
@@ -188,8 +236,8 @@ function PlaylistTab({ host }: { host: string }) {
                 <span class="hint"> วินาที</span>
               </td>
               <td class="actions">
-                <IconButton icon="left" title="ขึ้น" disabled={i === 0} onClick={() => move(i, -1)} />
-                <IconButton icon="right" title="ลง" disabled={i === items.length - 1} onClick={() => move(i, 1)} />
+                <IconButton icon="up" title="ขึ้น" disabled={i === 0} onClick={() => moveTo(i, i - 1)} />
+                <IconButton icon="down" title="ลง" disabled={i === items.length - 1} onClick={() => moveTo(i, i + 2)} />
                 <IconButton icon="trash" title="เอาออก" onClick={() => setItems(items.filter((_, k) => k !== i))} />
               </td>
             </tr>
@@ -202,8 +250,10 @@ function PlaylistTab({ host }: { host: string }) {
           {files.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
         </select>
         <button class="btn" disabled={!add} onClick={() => setItems([...items, { name: add, seconds: 0 }])}>เพิ่ม</button>
+        <button class="btn" disabled={!missing.length} title="เพิ่มทุกไฟล์ที่ยังไม่อยู่ในรายการ"
+          onClick={() => setItems([...items, ...missing.map((f) => ({ name: f.name, seconds: 0 }))])}>เพิ่มทั้งหมด ({missing.length})</button>
       </div>
-      <p class="hint">0 วินาที = เล่นแอนิเมชันจบหนึ่งรอบแล้วไปรายการถัดไป · กดปุ่ม BOOT บนบอร์ดเพื่อข้ามได้</p>
+      <p class="hint">ลากแถวเพื่อเรียงลำดับ · 0 วินาที = เล่นแอนิเมชันจบหนึ่งรอบแล้วไปรายการถัดไป · กดปุ่ม BOOT บนบอร์ดเพื่อข้ามได้</p>
       <div class="row" style={{ justifyContent: 'flex-end' }}>
         <button class="btn primary" onClick={() => run(() => device.savePlaylist(host, pl), 'บันทึก playlist แล้ว')}>บันทึก</button>
       </div>
@@ -342,7 +392,7 @@ function WifiTab({ host }: { host: string }) {
   };
 
   const save = async () => {
-    if (!confirm(`ให้บอร์ดเชื่อม Wi-Fi "${ssid}" แล้วรีบูต?\nหลังจากนั้นเปิด http://display.local หรือดู IP บนจอ (กดปุ่ม BOOT ค้าง 2 วินาที)`)) return;
+    if (!confirm(`ให้บอร์ดเชื่อม Wi-Fi "${ssid}" แล้วรีบูต?\nหลังจากนั้นเปิด http://${info.wifi.hostname} หรือดู IP บนจอ (กดปุ่ม BOOT ค้าง 2 วินาที)`)) return;
     if (await run(() => device.saveWifi(host, ssid, password))) await waitForReboot();
   };
 

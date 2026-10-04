@@ -12,7 +12,13 @@ import { store, toast, useEditor } from '../model/store';
 import { defaultEyeOptions, installMoodSet } from '../templates/eyeProject';
 import type { EyeStyle } from '../templates/eyes';
 import { formatBytes, Icon } from './common';
+import { FirmwareNotice } from './FirmwareNotice';
 import { UsbControls } from './UsbControls';
+
+// Auto-cycle time per page; 0 = play each animation once, then move on.
+const CYCLE_CHOICES: [number, string][] = [[5, '5 วิ'], [10, '10 วิ'], [30, '30 วิ'], [60, '1 นาที'], [0, 'จบรอบ']];
+const DEFAULT_CYCLE = 10;
+const cycleLabel = (sec: number) => (sec ? `หน้าละ ${CYCLE_CHOICES.find(([v]) => v === sec)?.[1] ?? `${sec} วิ`}` : 'เล่นจบรอบแล้วไปหน้าถัดไป');
 
 function Tile(props: { host: string; file: AnimFile; info: DeviceInfo; revision: number; active: boolean; onPlay: () => void }) {
   const src = useThumbnail(props.host, props.file, props.revision);
@@ -85,14 +91,33 @@ export function RemoteApp() {
     act(() => device.play(host, name));
   };
 
-  const toggleAuto = async () => {
-    if (!playlist || !files) return;
-    const enabled = !playlist.enabled;
-    // Turning auto-cycle on with an empty playlist cycles through every file, 8 s each.
-    const items = playlist.items.length ? playlist.items : files.map((f) => ({ name: f.name, seconds: 8 }));
-    const next = { ...playlist, enabled, items };
+  // One shared time when every item uses the same one; null = mixed (set in the board manager).
+  const cycleSeconds = !playlist?.items.length ? DEFAULT_CYCLE
+    : playlist.items.every((it) => it.seconds === playlist.items[0].seconds) ? playlist.items[0].seconds : null;
+
+  const savePlaylist = async (next: PlaylistData) => {
+    const before = playlist;
     setPlaylist(next);
-    await act(() => device.savePlaylist(host, next));
+    try {
+      await device.savePlaylist(host, next);
+      refreshDevice().catch(() => {});
+    } catch (e) {
+      setPlaylist(before);
+      toast((e as Error).message, true);
+    }
+  };
+
+  const toggleAuto = () => {
+    if (!playlist || !files) return;
+    // Turning auto-cycle on with an empty playlist cycles through every file.
+    const items = playlist.items.length ? playlist.items : files.map((f) => ({ name: f.name, seconds: DEFAULT_CYCLE }));
+    savePlaylist({ ...playlist, enabled: !playlist.enabled, items });
+  };
+
+  const setCycle = (seconds: number) => {
+    if (!playlist || !files) return;
+    const base = playlist.items.length ? playlist.items : files.map((f) => ({ name: f.name, seconds }));
+    savePlaylist({ ...playlist, items: base.map((it) => ({ ...it, seconds })) });
   };
 
   const installSet = async () => {
@@ -126,7 +151,7 @@ export function RemoteApp() {
       <header class="remote-bar">
         <div class="brand">
           <span class="logo"><i /><i /></span>
-          <span>Display <b>Remote</b></span>
+          <span>{info?.name ? <b class="board-name">{info.name}</b> : <>Display <b>Remote</b></>}</span>
         </div>
         <div class="spacer" />
         <span class={`chip${info ? ' on' : ''}`}>
@@ -136,6 +161,7 @@ export function RemoteApp() {
       </header>
       {SerialLink.supported() && <UsbControls />}
 
+      <FirmwareNotice info={info} />
       {!info ? (
         <section class="card">
           <h3>เชื่อมต่อบอร์ด</h3>
@@ -177,8 +203,18 @@ export function RemoteApp() {
             <label class="toggle">
               <input type="checkbox" checked={!!playlist?.enabled} disabled={!playlist || !files?.length} onChange={toggleAuto} />
               <span class="track" />
-              <span><b>เปลี่ยนหน้าอัตโนมัติ</b><small>วนเล่นทุกหน้า หน้าละ 8 วินาที</small></span>
+              <span><b>เปลี่ยนหน้าอัตโนมัติ</b>
+                <small>{playlist?.shuffle ? 'สุ่มลำดับ · ' : ''}{cycleSeconds === null ? 'แต่ละหน้าตั้งเวลาไว้ต่างกัน' : cycleLabel(cycleSeconds)}</small></span>
             </label>
+            {playlist?.enabled && (
+              <div class="seg cycle" role="radiogroup" aria-label="เวลาต่อหน้า">
+                {CYCLE_CHOICES.map(([sec, label]) => (
+                  <button key={sec} role="radio" aria-checked={cycleSeconds === sec} class={cycleSeconds === sec ? 'active' : ''}
+                    onClick={() => setCycle(sec)}>{label}</button>
+                ))}
+              </div>
+            )}
+            <p class="hint boot-hint">ปุ่ม BOOT บนบอร์ด: กด = หน้าถัดไป · กดค้าง 2 วิ = แสดง IP บนจอ</p>
           </section>
 
           <section>

@@ -8,12 +8,13 @@
 namespace wifi {
 
 static constexpr const char* kApPassword = "displayedit";
-static constexpr const char* kHostname = "display";
 static constexpr uint32_t kConnectTimeoutMs = 15000;
 
 static DNSServer dns;
 static bool apMode = false;
 static String apName;
+static String devName;    // user-visible name, any UTF-8 (Thai is fine)
+static char host[25];     // mDNS hostname derived from the name: <host>.local
 
 struct StoredCredentials { uint8_t version; char ssid[33]; char password[65]; };
 static StoredCredentials credentials() {
@@ -39,11 +40,49 @@ static void applyTxPower() {
 #endif
 }
 
-static String makeApName() {
+static String macSuffix(bool upper) {
   const uint64_t mac = ESP.getEfuseMac();
-  char buf[32];
-  snprintf(buf, sizeof(buf), "DisplayEditor-%02X%02X", (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
+  char buf[8];
+  snprintf(buf, sizeof(buf), upper ? "%02X%02X" : "%02x%02x", (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
   return buf;
+}
+
+static String makeApName() { return "DisplayEditor-" + macSuffix(true); }
+
+// Unique per board, so two boards on one network don't fight over the same .local name.
+static String defaultName() { return "display-" + macSuffix(false); }
+
+// "Kitchen Eyes" -> "kitchen-eyes". Names without ASCII letters/digits fall back to the default.
+static void deriveHost(const String& name) {
+  size_t n = 0;
+  bool dash = false;
+  for (size_t i = 0; i < name.length() && n < sizeof(host) - 1; i++) {
+    char ch = name[i];
+    if (ch >= 'A' && ch <= 'Z') ch += 'a' - 'A';
+    if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
+      if (dash && n) host[n++] = '-';
+      if (n < sizeof(host) - 1) host[n++] = ch;
+      dash = false;
+    } else {
+      dash = true;
+    }
+  }
+  host[n] = 0;
+  if (!n) strlcpy(host, defaultName().c_str(), sizeof(host));
+}
+
+static void loadName() {
+  Preferences p;
+  devName = p.begin("device", true) ? p.getString("name", "") : String();
+  p.end();
+  if (devName.isEmpty()) devName = defaultName();
+  deriveHost(devName);
+}
+
+static void startMdns() {
+  if (!MDNS.begin(host)) return;
+  MDNS.addService("http", "tcp", 80);
+  MDNS.addServiceTxt("http", "tcp", "name", devName.c_str());
 }
 
 static void startAP() {
@@ -57,6 +96,7 @@ static void startAP() {
 
 void begin(StatusFn onStatus) {
   apName = makeApName();
+  loadName();
   WiFi.persistent(false);
   const auto saved = credentials();
   const String ssid = saved.ssid;
@@ -67,7 +107,7 @@ void begin(StatusFn onStatus) {
     if (onStatus) onStatus(line);
     WiFi.mode(WIFI_STA);
     applyTxPower();
-    WiFi.setHostname(kHostname);
+    WiFi.setHostname(host);
     WiFi.begin(ssid.c_str(), pass.c_str());
     const uint32_t start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < kConnectTimeoutMs) delay(100);
@@ -80,7 +120,7 @@ void begin(StatusFn onStatus) {
   } else {
     startAP();
   }
-  if (MDNS.begin(kHostname)) MDNS.addService("http", "tcp", 80);
+  startMdns();
 }
 
 void loop() {
@@ -92,7 +132,27 @@ String ssid() { return apMode ? apName : WiFi.SSID(); }
 String ip() { return apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString(); }
 int rssi() { return apMode ? 0 : WiFi.RSSI(); }
 const char* apPassword() { return kApPassword; }
-const char* hostname() { return kHostname; }
+const char* hostname() { return host; }
+const String& name() { return devName; }
+
+bool saveName(const String& raw) {
+  String next = raw;
+  next.trim();
+  if (next.length() > kMaxNameBytes) return false;
+  for (size_t i = 0; i < next.length(); i++) {
+    if ((uint8_t)next[i] < 0x20 || next[i] == 0x7f) return false;
+  }
+  Preferences p;
+  if (!p.begin("device", false)) return false;
+  // Empty = back to the default name.
+  const bool saved = next.isEmpty() ? (p.remove("name") || !p.isKey("name")) : p.putString("name", next) == next.length();
+  p.end();
+  if (!saved) return false;
+  loadName();
+  MDNS.end();  // re-announce under the new name right away (DHCP hostname follows on reboot)
+  startMdns();
+  return true;
+}
 
 String savedSsid() {
   return credentials().ssid;

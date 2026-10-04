@@ -167,6 +167,8 @@ kbd {
 .chip.on { color: var(--text); border-color: rgba(52, 211, 153, .35); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
 .chip.on .dot, .dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(52, 211, 153, .18); }
+.chip.on .dot.warn, .dot.warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(245, 183, 78, .2); }
+.chip .lbl { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .badge {
   font-size: 10px; font-weight: 700; letter-spacing: .5px; padding: 1px 6px; border-radius: 6px;
   background: var(--danger); color: #fff; animation: pulse 1.6s infinite;
@@ -375,6 +377,12 @@ table.list td small.warn { color: var(--warn); }
 table.list td.actions { white-space: nowrap; }
 table.list td.actions .btn { margin-left: 4px; }
 table.list tr.sel td { background: var(--accent-soft); }
+table.list td.grip { cursor: grab; color: var(--faint); padding-right: 0; }
+table.list td.grip svg { width: 16px; height: 16px; display: block; }
+table.list tr.dragging td { opacity: .45; }
+table.list tr.drop td { box-shadow: inset 0 2px 0 var(--accent); }
+.name-field { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.name-field input { flex: 1; min-width: 0; }
 
 .overlay {
   position: fixed; inset: 0; background: rgba(5, 7, 12, .7); backdrop-filter: blur(4px); display: flex;
@@ -474,6 +482,10 @@ video.src-video { width: 100%; border-radius: var(--radius); background: #000; m
 .seg button { height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; font-weight: 500; }
 .seg button.active { background: var(--panel-3); color: var(--text); box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
 .remote-bar .brand { font-size: 16px; }
+.remote-bar .brand .board-name { max-width: 52vw; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.seg.cycle { grid-template-columns: repeat(5, 1fr); margin-top: 8px; }
+.seg.cycle button { font-size: 13px; padding: 0 2px; }
+.boot-hint { margin: 12px 0 0; font-size: 12px; }
 label.switch { margin-top: 8px; font-size: 15px; }
 label.switch input { width: 20px; height: 20px; }
 

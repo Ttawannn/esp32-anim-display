@@ -58,7 +58,7 @@ The display model is selected from the web UI at runtime, so changing it needs n
 3. **Pick your display.** The editor's interface is in Thai: click the connection chip in the top bar → **จัดการบอร์ด** (Board manager) → **ตั้งค่าจอ** (Display settings), choose the model, then press **ภาพทดสอบ** (Test pattern) to check orientation and colors.
 4. **Make an animation**, for example **แม่แบบดวงตา** (Eye templates) → create, then press **ส่งไปบอร์ด** (Send to board).
 
-To use your home network instead, go to **จัดการบอร์ด** → **Wi-Fi**. After that, the board is reachable at http://display.local.
+To use your home network instead, go to **จัดการบอร์ด** → **Wi-Fi**. After that, the board is reachable at `http://display-xxxx.local` (shown on the board's info screen). Give it a name in **จัดการบอร์ด** to get a friendlier address, e.g. naming it *Desk Eyes* gives http://desk-eyes.local.
 
 **Using the online editor:** browsers block an HTTPS site from talking to a plain-HTTP board over Wi-Fi, so the [online editor](https://ttawannn.github.io/esp32-anim-display/) connects over USB instead: connection chip → **ผ่านสาย USB** (Over USB). Everything else (sending, live preview, the remote, board settings) works the same.
 

@@ -1,6 +1,6 @@
 # Board REST API
 
-Every endpoint lives at `http://<board ip>/api/...` (or `http://display.local/api/...`) and responds with JSON.
+Every endpoint lives at `http://<board ip>/api/...` (or `http://<hostname>.local/api/...`, see [Board name](#wi-fi-and-system)) and responds with JSON.
 Errors respond with `{"error": "..."}` and an appropriate HTTP status. CORS headers are always sent, so an editor running on a PC can call the board directly.
 
 The JSON API is implemented in [firmware/src/net/api.cpp](../firmware/src/net/api.cpp), shared by HTTP and [USB serial](usb-protocol.md).
@@ -10,10 +10,10 @@ The JSON API is implemented in [firmware/src/net/api.cpp](../firmware/src/net/ap
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/info` | version, board, display (`width`, `height`, `color`, `shape`), storage `fs`, Wi-Fi, player status |
+| GET | `/api/info` | version, board `name`, board, display (`width`, `height`, `color`, `shape`), storage `fs`, Wi-Fi, player status |
 | GET | `/api/commands/status?id=<id>` | settings receipt: `{state: "pending" | "saved" | "failed"}`; failures include `error` |
 
-Display, Wi-Fi, playlist and brightness updates return HTTP `202` with `{ok: true, command_id}`. The loop task saves and applies the queued settings; a full queue leaves persisted settings unchanged. Clients poll `/api/commands/status` before announcing success. Failed persistence returns a `failed` receipt and does not reboot. Display/Wi-Fi changes reboot 400 ms after a completed receipt is read, or after a 3-second grace period for clients that do not poll. The browser also supports older firmware returning no receipt. Settings and uploads share the 16-slot receipt pool.
+Display, Wi-Fi, board name, playlist and brightness updates return HTTP `202` with `{ok: true, command_id}`. The loop task saves and applies the queued settings; a full queue leaves persisted settings unchanged. Clients poll `/api/commands/status` before announcing success. Failed persistence returns a `failed` receipt and does not reboot. Display/Wi-Fi changes reboot 400 ms after a completed receipt is read, or after a 3-second grace period for clients that do not poll. The browser also supports older firmware returning no receipt. Settings and uploads share the 16-slot receipt pool.
 
 ## Animations
 
@@ -73,7 +73,11 @@ Playlist writes use `/playlist.tmp`, verify the complete JSON write, and replace
 | PUT | `/api/wifi` | `{ssid, password}`; saves and then **reboots**. If joining fails within 15 seconds, the board falls back to its own AP |
 | DELETE | `/api/wifi` | forget the network and return to AP mode (reboots) |
 | GET | `/api/wifi/scan` | the first call returns `{scanning: true}`; call again until it returns `{scanning: false, networks: [{ssid, rssi, secure}]}` |
+| GET | `/api/device` | `{name, hostname}`, e.g. `{"name": "Desk Eyes", "hostname": "desk-eyes.local"}` |
+| PUT | `/api/device` | `{name}` (up to 48 UTF-8 bytes, no control characters; empty restores the default); saved and re-announced over mDNS immediately, no reboot |
 | POST | `/api/reboot` | reboot |
+
+**Board name.** Each board has a name (default `display-xxxx`, the last four hex digits of its MAC, matching the AP name). The mDNS hostname is derived from it: ASCII letters and digits are lowercased, everything else becomes `-`, and the result is capped at 24 characters (`"Desk Eyes ห้องนอน"` → `desk-eyes.local`). A name with no ASCII letters or digits keeps the default hostname. Firmware older than 0.3.0 used the fixed hostname `display.local` and has no `/api/device`.
 
 ## Web page
 

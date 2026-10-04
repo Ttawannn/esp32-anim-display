@@ -3,6 +3,7 @@ import { setFrameData, store, type EditorState } from '../model/store';
 import { IconButton } from './common';
 
 export const TOOLS: { id: Tool; icon: string; label: string; key: string }[] = [
+  { id: 'select', icon: 'cursor', label: 'เลือก/ย้ายของที่ใส่', key: 'V' },
   { id: 'pencil', icon: 'pencil', label: 'ดินสอ', key: 'B' },
   { id: 'eraser', icon: 'eraser', label: 'ยางลบ', key: 'E' },
   { id: 'line', icon: 'line', label: 'เส้นตรง', key: 'L' },

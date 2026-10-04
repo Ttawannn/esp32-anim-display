@@ -3,7 +3,8 @@
 //   c >= 128 -> next byte repeated c - 126 times (2..129)
 
 export function rleEncode(src: Uint8Array): Uint8Array {
-  const out = new Uint8Array(src.length + Math.ceil(src.length / 128) + 2);
+  // Worst case is a single literal before every 2-byte run ("x yy z ww ..."): 3 bytes -> 4.
+  const out = new Uint8Array(Math.ceil((src.length * 4) / 3) + 4);
   let o = 0, i = 0;
   const n = src.length;
   while (i < n) {

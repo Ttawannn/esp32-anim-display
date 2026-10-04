@@ -8,14 +8,23 @@ import type { Project } from '../model/types';
 import { isMono, processFrame } from '../render/output';
 import { rleDecode, rleEncode } from './rle';
 import { cancelled, checkFrameBudget } from '../import/limits';
+import { widgetCanvasRect, type Rect } from '../layers/widgets';
 
 export const FRAME_INDEXED = 0;
 export const FRAME_JPEG = 1;
 export const FRAME_MONO = 2;
+export const FLAG_WIDGETS = 1;
 const HEADER_SIZE = 32;
 const ENTRY_SIZE = 12;
 
 export type OutputMode = 'indexed' | 'jpeg' | 'mono';
+
+// Live clock widgets (layers/widgets.ts): the block is stored between the palette and the frame
+// table, and every frame redraws the canvas area under the boxes so the board can update the time.
+export interface EncodeWidgets {
+  block: Uint8Array;
+  boxes: Rect[];
+}
 
 export interface EncodeResult {
   bytes: Uint8Array;
@@ -38,22 +47,24 @@ export function resolveMode(p: Project): OutputMode {
   return p.source === 'video' ? 'jpeg' : 'indexed';
 }
 
-export async function encodeDpa(p: Project, onProgress?: (done: number, total: number) => void, signal?: AbortSignal): Promise<EncodeResult> {
+export async function encodeDpa(p: Project, onProgress?: (done: number, total: number) => void, signal?: AbortSignal,
+  widgets?: EncodeWidgets | null): Promise<EncodeResult> {
   if (signal?.aborted) throw cancelled();
   checkFrameBudget(p.width, p.height, p.frames.length);
   const mode = resolveMode(p);
   let palette: Uint16Array = new Uint16Array(0);
   let exactColors = true;
   let frames: EncodedFrame[];
+  const keep = widgets ? widgetCanvasRect(widgets.boxes, p) : null;
 
   if (mode === 'mono') {
-    frames = encodeMono(p);
+    frames = encodeMono(p, keep);
   } else if (mode === 'indexed') {
     const px = p.frames.map((f) => (processFrame(p, f) as { px: Uint16Array }).px);
     const q = quantize(px, p.adjust.colors || 256);
     palette = q.palette;
     exactColors = q.exact || p.adjust.colors > 0;
-    frames = encodeIndexed(p, px.map((f) => toIndices(f, q)));
+    frames = encodeIndexed(p, px.map((f) => toIndices(f, q)), keep);
   } else {
     frames = [];
     for (let i = 0; i < p.frames.length; i++) {
@@ -65,7 +76,7 @@ export async function encodeDpa(p: Project, onProgress?: (done: number, total: n
 
   if (signal?.aborted) throw cancelled();
   return {
-    bytes: assemble(p, mode, palette, frames),
+    bytes: assemble(p, mode, palette, frames, widgets?.block),
     mode,
     paletteSize: palette.length,
     exactColors,
@@ -91,6 +102,13 @@ function diffRect(a: Uint8Array | null, b: Uint8Array, w: number, h: number) {
   return x1 < 0 ? { x: 0, y: 0, w: 0, h: 0 } : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
+function union(a: Rect, b: Rect | null): Rect {
+  if (!b) return a;
+  if (!a.w) return b;
+  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+}
+
 function crop(src: Uint8Array, stride: number, r: { x: number; y: number; w: number; h: number }): Uint8Array {
   const out = new Uint8Array(r.w * r.h);
   for (let y = 0; y < r.h; y++) out.set(src.subarray((r.y + y) * stride + r.x, (r.y + y) * stride + r.x + r.w), y * r.w);
@@ -108,9 +126,9 @@ function rectPayload(x: number, y: number, w: number, h: number, body: Uint8Arra
   return out;
 }
 
-function encodeIndexed(p: Project, indices: Uint8Array[]): EncodedFrame[] {
+function encodeIndexed(p: Project, indices: Uint8Array[], keep: Rect | null): EncodedFrame[] {
   return indices.map((cur, i) => {
-    const r = diffRect(i === 0 ? null : indices[i - 1], cur, p.width, p.height);
+    const r = union(diffRect(i === 0 ? null : indices[i - 1], cur, p.width, p.height), keep);
     const body = r.w ? rleEncode(crop(cur, p.width, r)) : new Uint8Array(0);
     return { type: FRAME_INDEXED, key: i === 0, delay: p.frames[i].delay, data: rectPayload(r.x, r.y, r.w, r.h, body) };
   });
@@ -137,12 +155,14 @@ function monoBgBit(p: Project): number {
   return (r * 77 + g * 150 + b * 29) >> 8 >= 128 ? 1 : 0;
 }
 
-function encodeMono(p: Project): EncodedFrame[] {
+function encodeMono(p: Project, keep: Rect | null): EncodedFrame[] {
   const pages = Math.ceil(p.height / 8);
+  // In page units (8 rows).
+  const keepPages = keep && { x: keep.x, y: keep.y >> 3, w: keep.w, h: ((keep.y + keep.h + 7) >> 3) - (keep.y >> 3) };
   const pad = monoBgBit(p);
   const all = p.frames.map((f) => toPages((processFrame(p, f) as { bits: Uint8Array }).bits, p.width, p.height, pad));
   return all.map((cur, i) => {
-    const r = diffRect(i === 0 ? null : all[i - 1], cur, p.width, pages); // y/h in pages
+    const r = union(diffRect(i === 0 ? null : all[i - 1], cur, p.width, pages), keepPages); // y/h in pages
     const body = r.w ? rleEncode(crop(cur, p.width, r)) : new Uint8Array(0);
     return { type: FRAME_MONO, key: i === 0, delay: p.frames[i].delay, data: rectPayload(r.x, r.y * 8, r.w, r.h * 8, body) };
   });
@@ -166,9 +186,10 @@ async function encodeJpegFrame(p: Project, i: number): Promise<EncodedFrame> {
   return { type: FRAME_JPEG, key: true, delay: p.frames[i].delay, data: rectPayload(0, 0, p.width, p.height, jpeg) };
 }
 
-function assemble(p: Project, mode: OutputMode, palette: Uint16Array, frames: EncodedFrame[]): Uint8Array {
+function assemble(p: Project, mode: OutputMode, palette: Uint16Array, frames: EncodedFrame[], widgets?: Uint8Array): Uint8Array {
   const preset = getPreset(p.presetId);
-  const tableOffset = HEADER_SIZE + palette.length * 2;
+  const widgetsOffset = HEADER_SIZE + palette.length * 2;
+  const tableOffset = widgetsOffset + (widgets?.length ?? 0);
   let dataOffset = tableOffset + frames.length * ENTRY_SIZE;
   const total = dataOffset + frames.reduce((s, f) => s + f.data.length, 0);
   const out = new Uint8Array(total);
@@ -189,9 +210,10 @@ function assemble(p: Project, mode: OutputMode, palette: Uint16Array, frames: En
   v.setUint16(20, frames.length, true);
   v.setUint16(22, palette.length, true);
   v.setUint16(24, mode === 'mono' ? monoBgBit(p) : to565(br, bgc, bb), true);
-  v.setUint16(26, 0, true);
+  v.setUint16(26, widgets ? FLAG_WIDGETS : 0, true);
   v.setUint32(28, tableOffset, true);
   palette.forEach((c, i) => v.setUint16(HEADER_SIZE + i * 2, c, true));
+  if (widgets) out.set(widgets, widgetsOffset);
 
   frames.forEach((f, i) => {
     const e = tableOffset + i * ENTRY_SIZE;

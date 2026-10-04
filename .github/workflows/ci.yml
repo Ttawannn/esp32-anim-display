@@ -40,6 +40,8 @@ jobs:
           mkdir -p build
           g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/src firmware/test/native/decode_test.cpp -o build/decode_test
           build/decode_test shared/test-vectors
+          g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/src firmware/test/native/widgets_test.cpp -o build/widgets_test
+          build/widgets_test shared/test-vectors
           g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/robustness_test.cpp firmware/src/app/commands.cpp -o build/robustness_test
           build/robustness_test shared/test-vectors
           g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/controller_test.cpp firmware/src/app/controller.cpp firmware/src/app/commands.cpp -o build/controller_test

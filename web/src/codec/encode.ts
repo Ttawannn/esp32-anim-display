@@ -1,4 +1,5 @@
-import { encodeDpa, type EncodeResult } from './dpa';
+import { encodeDpa, type EncodeResult, type EncodeWidgets } from './dpa';
+import { widgetsFor } from '../layers/raster';
 import type { Project } from '../model/types';
 import { cancelled, checkFrameBudget } from '../import/limits';
 import { TaskQueue } from './taskQueue';
@@ -9,7 +10,7 @@ type Runner = (project: Project, progress: EncodeProgress, signal: AbortSignal) 
 // Every setting that changes the encoded bytes. Names and editor UI state do not.
 export function projectEncodingKey(p: Project): string {
   return JSON.stringify([p.presetId, p.width, p.height, p.scale, p.offsetX, p.offsetY, p.loop,
-    p.background, p.encoding, p.jpegQuality, p.source, p.adjust]);
+    p.background, p.encoding, p.jpegQuality, p.source, p.adjust, p.layers ?? []]);
 }
 
 interface Entry {
@@ -93,12 +94,20 @@ const queue = new TaskQueue();
 
 function inWorker(p: Project, progress: EncodeProgress, signal: AbortSignal): Promise<EncodeResult> {
   if (signal.aborted) return Promise.reject(cancelled());
-  if (typeof Worker === 'undefined') return encodeDpa(p, progress, signal);
+  // Clock glyphs are rendered here, with the page's fonts, so the board matches the preview.
+  let widgets: EncodeWidgets | null;
+  try {
+    const w = widgetsFor(p);
+    widgets = w && { block: w.block, boxes: w.boxes };
+  } catch (error) {
+    return Promise.reject(error);
+  }
+  if (typeof Worker === 'undefined') return encodeDpa(p, progress, signal, widgets);
   if (!worker) {
     try {
       worker = new Worker(new URL('./encode.worker.ts', import.meta.url), { type: 'module' });
     } catch {
-      return encodeDpa(p, progress, signal);
+      return encodeDpa(p, progress, signal, widgets);
     }
   }
   const target = worker;
@@ -124,7 +133,7 @@ function inWorker(p: Project, progress: EncodeProgress, signal: AbortSignal): Pr
       finish(); target.terminate(); worker = null;
       reject(new Error('เข้ารหัสภาพไม่ได้ — ลองอีกครั้ง'));
     };
-    try { target.postMessage({ id, project: p }); }
+    try { target.postMessage({ id, project: p, widgets }); }
     catch (error) { finish(); reject(error); }
   });
 }

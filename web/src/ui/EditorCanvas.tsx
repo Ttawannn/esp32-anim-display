@@ -3,10 +3,14 @@ import {
   ellipse, floodFill, getPixel, hexToRgba, line, rect, shifted, TRANSPARENT,
   type RGBA, type Surface,
 } from '../editor/tools';
+import { usesSeconds } from '../layers/clock';
+import { clockOverlay } from '../layers/preview';
+import { stickerBitmap, type Bitmap } from '../layers/raster';
+import { addLayer, INSERT_MIME, layerBounds, layersOf, updateLayer, type InsertItem } from '../model/layers';
 import { getPreset } from '../model/presets';
 import { rgbToHex } from '../model/project';
 import { setFrameData, store, type EditorState } from '../model/store';
-import type { Pixels } from '../model/types';
+import type { Layer, Pixels } from '../model/types';
 import { IconButton } from './common';
 
 interface Stroke {
@@ -20,15 +24,45 @@ interface Stroke {
   changed: boolean;
 }
 
+// Dragging a layer with the select tool (positions in canvas pixels, fractional).
+interface LayerDrag {
+  id: string;
+  mode: 'move' | 'resize';
+  startX: number;
+  startY: number;
+  layer: Layer;
+  bounds: { x: number; y: number; w: number; h: number };
+  moved: boolean;
+}
+
+const bitmapCanvases = new WeakMap<Bitmap, OffscreenCanvas>();
+function bitmapCanvas(b: Bitmap): OffscreenCanvas {
+  let c = bitmapCanvases.get(b);
+  if (!c) {
+    c = new OffscreenCanvas(b.w, b.h);
+    c.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(b.data), b.w, b.h), 0, 0);
+    bitmapCanvases.set(b, c);
+  }
+  return c;
+}
+
+const HANDLE = 10; // resize handle size, screen pixels
+
 export function EditorCanvas({ s }: { s: EditorState }) {
   const { project: p, frameIndex, zoom, grid, onion, tool } = s;
   const frame = p.frames[frameIndex];
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Stroke | null>(null);
+  const drag = useRef<LayerDrag | null>(null);
   const [fitZoom, setFitZoom] = useState(4);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+  const [dropping, setDropping] = useState(false);
+  const [, setTick] = useState(0);
   const z = zoom || fitZoom;
+  const layers = layersOf(p);
+  const hasClock = layers.some((l) => l.kind === 'clock');
+  const seconds = layers.some((l) => l.kind === 'clock' && usesSeconds(l.format));
 
   // Auto zoom: largest integer zoom that fits the stage.
   useLayoutEffect(() => {
@@ -42,6 +76,52 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, [p.width, p.height]);
+
+  // Clocks show the real time while editing.
+  useEffect(() => {
+    if (!hasClock) return;
+    const t = setInterval(() => setTick((n) => n + 1), seconds ? 1000 : 15000);
+    return () => clearInterval(t);
+  }, [hasClock, seconds]);
+
+  const drawLayers = (ctx: CanvasRenderingContext2D) => {
+    ctx.imageSmoothingEnabled = false;
+    for (const l of layers) {
+      if (l.kind !== 'sticker') continue;
+      const b = stickerBitmap(l);
+      if (b) ctx.drawImage(bitmapCanvas(b), Math.round(l.x) * z, Math.round(l.y) * z, b.w * z, b.h * z);
+    }
+    if (hasClock) {
+      const preset = getPreset(p.presetId);
+      const overlay = clockOverlay(p, preset.width, preset.height);
+      if (overlay) {
+        const k = z / p.scale;
+        ctx.imageSmoothingEnabled = k < 1;
+        ctx.drawImage(overlay, -p.offsetX * k, -p.offsetY * k, preset.width * k, preset.height * k);
+        ctx.imageSmoothingEnabled = false;
+      }
+    }
+  };
+
+  const drawSelection = (ctx: CanvasRenderingContext2D) => {
+    const sel = layers.find((l) => l.id === s.selectedLayer);
+    if (!sel || tool !== 'select') return;
+    const b = layerBounds(p, sel);
+    const x = b.x * z, y = b.y * z, w = b.w * z, h = b.h * z;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#4f8cff';
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#4f8cff';
+    ctx.beginPath();
+    ctx.rect(x + w + 2 - HANDLE / 2, y + h + 2 - HANDLE / 2, HANDLE, HANDLE);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  };
 
   const draw = (data: Pixels) => {
     const c = canvasRef.current;
@@ -59,6 +139,7 @@ export function EditorCanvas({ s }: { s: EditorState }) {
       ctx.drawImage(prev, 0, 0, p.width * z, p.height * z);
       ctx.globalAlpha = 1;
     }
+    drawLayers(ctx);
     if (grid && z >= 6) {
       ctx.strokeStyle = 'rgba(255,255,255,0.09)';
       ctx.lineWidth = 1;
@@ -67,21 +148,26 @@ export function EditorCanvas({ s }: { s: EditorState }) {
       for (let y = 1; y < p.height; y++) { ctx.moveTo(0, y * z + 0.5); ctx.lineTo(p.width * z, y * z + 0.5); }
       ctx.stroke();
     }
-    if (hover && tool !== 'move') {
+    if (hover && tool !== 'move' && tool !== 'select') {
       const size = tool === 'pencil' || tool === 'eraser' ? s.brush : 1;
       const o = Math.floor((size - 1) / 2);
       ctx.strokeStyle = 'rgba(255,255,255,0.8)';
       ctx.strokeRect((hover.x - o) * z + 0.5, (hover.y - o) * z + 0.5, size * z - 1, size * z - 1);
     }
+    drawSelection(ctx);
   };
 
   useEffect(() => {
     if (!stroke.current) draw(frame.data);
   });
 
-  const toCell = (e: PointerEvent) => {
+  const toPoint = (e: { clientX: number; clientY: number }) => {
     const r = canvasRef.current!.getBoundingClientRect();
-    return { x: Math.floor((e.clientX - r.left) / z), y: Math.floor((e.clientY - r.top) / z) };
+    return { x: (e.clientX - r.left) / z, y: (e.clientY - r.top) / z };
+  };
+  const toCell = (e: PointerEvent) => {
+    const pt = toPoint(e);
+    return { x: Math.floor(pt.x), y: Math.floor(pt.y) };
   };
 
   const surface = (data: Pixels): Surface => ({ data, w: p.width, h: p.height, mirror: s.mirror });
@@ -111,9 +197,41 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     st.changed = true;
   };
 
+  // Topmost layer under the point, and whether the point is on the selected layer's resize handle.
+  const hitLayer = (pt: { x: number; y: number }) => {
+    const sel = layers.find((l) => l.id === s.selectedLayer);
+    if (sel) {
+      const b = layerBounds(p, sel);
+      const hx = b.x + b.w + 2 / z, hy = b.y + b.h + 2 / z, r = HANDLE / z;
+      if (Math.abs(pt.x - hx) <= r && Math.abs(pt.y - hy) <= r) return { layer: sel, mode: 'resize' as const, bounds: b };
+    }
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const b = layerBounds(p, layers[i]);
+      const pad = 3 / z;
+      if (pt.x >= b.x - pad && pt.y >= b.y - pad && pt.x <= b.x + b.w + pad && pt.y <= b.y + b.h + pad) {
+        return { layer: layers[i], mode: 'move' as const, bounds: b };
+      }
+    }
+    return null;
+  };
+
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0 && e.button !== 2) return;
     if (store.state.playing) store.set({ playing: false });
+
+    if (tool === 'select') {
+      const pt = toPoint(e);
+      const hit = hitLayer(pt);
+      if (!hit) {
+        store.set({ selectedLayer: null });
+        return;
+      }
+      store.set({ selectedLayer: hit.layer.id, sideTab: 'insert' });
+      canvasRef.current!.setPointerCapture(e.pointerId);
+      drag.current = { id: hit.layer.id, mode: hit.mode, startX: pt.x, startY: pt.y, layer: hit.layer, bounds: hit.bounds, moved: false };
+      return;
+    }
+
     const { x, y } = toCell(e);
     const secondary = e.button === 2;
     const hex = secondary ? s.secondary : s.primary;
@@ -139,7 +257,27 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     draw(st.work);
   };
 
+  const dragLayer = (d: LayerDrag, pt: { x: number; y: number }) => {
+    const dx = pt.x - d.startX, dy = pt.y - d.startY;
+    const l = d.layer;
+    if (d.mode === 'move') {
+      if (l.kind === 'sticker') updateLayer(d.id, { x: Math.round(l.x + dx), y: Math.round(l.y + dy) }, true);
+      else updateLayer(d.id, { x: Math.round(l.x + dx * p.scale), y: Math.round(l.y + dy * p.scale) }, true);
+    } else {
+      // Resize from the bottom-right corner, keeping the top-left in place.
+      const factor = Math.max(0.1, Math.max((d.bounds.w + dx) / d.bounds.w, (d.bounds.h + dy) / d.bounds.h));
+      const max = l.kind === 'sticker' ? Math.max(p.width, p.height) * 2 : getPreset(p.presetId).height;
+      updateLayer(d.id, { size: Math.max(6, Math.min(max, Math.round(l.size * factor))) }, true);
+    }
+    d.moved = true;
+  };
+
   const onPointerMove = (e: PointerEvent) => {
+    const d = drag.current;
+    if (d) {
+      dragLayer(d, toPoint(e));
+      return;
+    }
     const cell = toCell(e);
     const st = stroke.current;
     if (st) {
@@ -154,6 +292,12 @@ export function EditorCanvas({ s }: { s: EditorState }) {
   };
 
   const onPointerUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (d) {
+      if (d.moved) store.endLive();
+      return;
+    }
     const st = stroke.current;
     stroke.current = null;
     if (st?.changed) setFrameData(frameIndex, st.work);
@@ -165,11 +309,29 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     store.set({ zoom: Math.max(1, Math.min(40, z + (e.deltaY < 0 ? 1 : -1))) });
   };
 
+  // Drag & drop from the insert panel.
+  const accepts = (e: DragEvent) => !!e.dataTransfer?.types.includes(INSERT_MIME);
+  const onDragOver = (e: DragEvent) => {
+    if (!accepts(e)) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'copy';
+    if (!dropping) setDropping(true);
+  };
+  const onDrop = (e: DragEvent) => {
+    setDropping(false);
+    if (!accepts(e)) return;
+    e.preventDefault();
+    const item = JSON.parse(e.dataTransfer!.getData(INSERT_MIME)) as InsertItem;
+    addLayer(item, toPoint(e));
+  };
+
   const preset = getPreset(p.presetId);
   const fitsExactly = p.width * p.scale === preset.width && p.height * p.scale === preset.height;
+  const cursor = tool === 'move' ? 'move' : tool === 'select' ? 'default' : 'crosshair';
 
   return (
-    <div class="stage" ref={stageRef} onWheel={onWheel}>
+    <div class={`stage${dropping ? ' dropping' : ''}`} ref={stageRef} onWheel={onWheel}
+      onDragOver={onDragOver} onDragLeave={(e) => e.target === stageRef.current && setDropping(false)} onDrop={onDrop}>
       <div class="stage-bar">
         <IconButton icon="zoomOut" title="ซูมออก" onClick={() => store.set({ zoom: Math.max(1, z - 1) })} />
         <button class={`btn${zoom === 0 ? ' active' : ''}`} onClick={() => store.set({ zoom: 0 })} title="พอดีหน้าจอ">
@@ -182,7 +344,7 @@ export function EditorCanvas({ s }: { s: EditorState }) {
         ref={canvasRef}
         width={p.width * z}
         height={p.height * z}
-        style={{ cursor: tool === 'move' ? 'move' : 'crosshair' }}
+        style={{ cursor }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -190,11 +352,13 @@ export function EditorCanvas({ s }: { s: EditorState }) {
         onPointerLeave={() => setHover(null)}
         onContextMenu={(e) => e.preventDefault()}
       />
+      {dropping && <div class="drop-hint">ปล่อยเพื่อวางตรงนี้</div>}
       <div class="meta">
         ภาพ {p.width}×{p.height}
         {p.scale > 1 && <> · ขยาย ×{p.scale}</>} → จอ {preset.width}×{preset.height}
         {!fitsExactly && <> · ระยะขอบ {p.offsetX},{p.offsetY}</>}
-        {hover && <> · ({hover.x}, {hover.y})</>}
+        {hover && tool !== 'select' && <> · ({hover.x}, {hover.y})</>}
+        {tool === 'select' && <> · ลากเพื่อย้าย · ลากมุมขวาล่างเพื่อปรับขนาด</>}
       </div>
     </div>
   );

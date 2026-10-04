@@ -24,6 +24,8 @@ describe('rle', () => {
     ['mixed', [1, 1, 2, 3, 3, 3, 4, 5, 6, 6]],
     ['long literal', Array.from({ length: 400 }, (_, i) => i % 251)],
     ['pair at end', [1, 2, 3, 3]],
+    // Worst case for output size (3 bytes -> 4): used to overflow the output buffer.
+    ['single + pair', Array.from({ length: 999 }, (_, i) => (i % 3 === 0 ? 2 * i : 2 * i - (i % 3 === 2 ? 2 : 0)) & 255)],
   ];
   for (const [name, data] of cases) {
     it(`round-trips ${name}`, () => {

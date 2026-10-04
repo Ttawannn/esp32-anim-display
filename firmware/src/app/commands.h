@@ -21,6 +21,7 @@ enum class Cmd : uint8_t {
   SaveWifi,       // data: WifiCredentials
   ForgetWifi,
   SaveName,       // data: board name (UTF-8, not NUL-terminated)
+  SetTime,        // data: TimeSetting (app/clock.h)
   Reboot,
 };
 

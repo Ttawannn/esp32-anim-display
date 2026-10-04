@@ -55,6 +55,7 @@ export async function refreshDevice(): Promise<DeviceInfo> {
     const info = await device.info(host);
     if (!current()) throw new Error('การเชื่อมต่อบอร์ดเปลี่ยนแล้ว');
     store.set({ deviceInfo: info, deviceTransport: usbConnected() ? 'usb' : 'wifi' });
+    syncClock(host, connection, info);
     return info;
   } catch (e) {
     if (current()) {
@@ -64,6 +65,17 @@ export async function refreshDevice(): Promise<DeviceInfo> {
     }
     throw e;
   }
+}
+
+// The board has no battery-backed clock: give it ours whenever it is unset or drifting.
+let clockSynced = { connection: '', at: 0 };
+function syncClock(host: string, connection: string, info: DeviceInfo) {
+  if (info.time === undefined) return; // firmware without clock support
+  const drift = Math.abs(info.time - Date.now() / 1000);
+  const recent = clockSynced.connection === connection && Date.now() - clockSynced.at < 60000;
+  if (drift < 3 || recent) return;
+  clockSynced = { connection, at: Date.now() };
+  device.setTime(host).catch(() => { clockSynced.at = 0; });
 }
 
 // When the editor is opened from the board, connect automatically and match its display.

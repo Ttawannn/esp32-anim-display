@@ -15,6 +15,8 @@ Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then 
 - **Built-in web editor:** the board serves the editor itself. Nothing to install, and it works on desktop and mobile.
 - **Phone remote:** phones open a remote page with a thumbnail for every animation on the board; tap one to show it. It also has next/stop, brightness, auto-cycle, and a one-tap install of all 12 eye moods.
 - **Pixel art editor:** drawing tools, frames, onion skin, palette presets, undo/redo.
+- **Animation templates:** 21 ready-made animations generated for your display: fire, rain, snow, stars, ocean waves, plasma, fireworks, a bouncing ball, Pac-Man, scrolling text, emoji, spinners, an equalizer, radar, and more. Colours and speed are adjustable.
+- **Drag-and-drop objects:** drop emoji, icons, text, and the **live date and time** onto the animation, then move and resize them. The clock keeps running on the board (Thai or English names, Buddhist-era years). The board takes the time from the internet, or from the editor or remote whenever they connect.
 - **Eye templates:** 12 moods in 3 styles (robot, cartoon, single eye for round displays). Color, size and smoothness are adjustable.
 - **GIF and video import:** trim, crop and choose the frame rate. All conversion happens in the browser.
 - **Color tools:** brightness, contrast, saturation, hue and color count. OLEDs get 1-bit conversion with dithering.

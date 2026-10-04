@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { clockTimeOf, usesSeconds } from '../layers/clock';
+import { widgetsFor } from '../layers/raster';
 import { getPreset, PRESETS } from '../model/presets';
 import { retarget } from '../model/project';
 import { store, type EditorState } from '../model/store';
@@ -15,9 +17,24 @@ export function PreviewPanel({ s }: { s: EditorState }) {
   const zoom = Math.min(180 / preset.width, 180 / preset.height);
   const mono = isMono(p);
 
+  // Clock layers tick in the preview like they will on the board.
+  const [, setTick] = useState(0);
+  const clockLayers = (p.layers ?? []).filter((l) => l.kind === 'clock');
+  const seconds = clockLayers.some((l) => l.kind === 'clock' && usesSeconds(l.format));
+  useEffect(() => {
+    if (!clockLayers.length) return;
+    const t = setInterval(() => setTick((n) => n + 1), seconds ? 1000 : 10000);
+    return () => clearInterval(t);
+  }, [clockLayers.length > 0, seconds]);
+
   useEffect(() => {
     const frame = p.frames[s.frameIndex];
-    const img = composeScreen(p, outputFrame(p, frame), s.oledTint);
+    let clock;
+    try {
+      const w = widgetsFor(p);
+      clock = w ? { parsed: w.parsed, time: clockTimeOf(new Date()) } : undefined;
+    } catch { /* too large: the layer panel shows the error */ }
+    const img = composeScreen(p, outputFrame(p, frame), s.oledTint, clock);
     ref.current!.getContext('2d')!.putImageData(img, 0, 0);
   });
 

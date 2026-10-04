@@ -1,6 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { projectEncodingKey } from '../codec/encode';
 import { autoConnect, sendLiveFrame } from '../device/session';
+import { nudgeLayer, removeLayer } from '../model/layers';
 import { addFrame, deleteFrame, selectFrame, store, useEditor } from '../model/store';
 import { DeviceDialog } from './DeviceDialog';
 import { EditorCanvas } from './EditorCanvas';
@@ -10,6 +11,7 @@ import { ImportVideoDialog } from './ImportVideoDialog';
 import { NewProjectDialog } from './NewProjectDialog';
 import { SidePanel } from './SidePanel';
 import { isBlankProject, StartScreen } from './StartScreen';
+import { TemplatesDialog } from './TemplatesDialog';
 import { Timeline } from './Timeline';
 import { ToolBar, TOOLS } from './ToolBar';
 import { TopBar } from './TopBar';
@@ -51,6 +53,15 @@ export function App() {
       if (ctrl && key === 'z') { e.preventDefault(); e.shiftKey ? store.redo() : store.undo(); return; }
       if (ctrl && key === 'y') { e.preventDefault(); store.redo(); return; }
       if (ctrl) return;
+      // A selected layer takes Delete, arrows (Shift = 10 px) and Esc.
+      const layer = st.tool === 'select' ? st.selectedLayer : null;
+      if (layer) {
+        const step = e.shiftKey ? 10 : 1;
+        const arrows: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+        if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeLayer(layer); return; }
+        if (arrows[e.key]) { e.preventDefault(); nudgeLayer(layer, ...arrows[e.key]); return; }
+        if (e.key === 'Escape') { store.set({ selectedLayer: null }); return; }
+      }
       if (e.key === ' ') { e.preventDefault(); store.set({ playing: !st.playing }); return; }
       if (e.key === 'ArrowLeft' || e.key === ',') { selectFrame(st.frameIndex - 1); return; }
       if (e.key === 'ArrowRight' || e.key === '.') { selectFrame(st.frameIndex + 1); return; }
@@ -83,6 +94,7 @@ export function App() {
       {s.dialog === 'gif' && <ImportGifDialog />}
       {s.dialog === 'video' && <ImportVideoDialog />}
       {s.dialog === 'eyes' && <EyesDialog />}
+      {s.dialog === 'templates' && <TemplatesDialog />}
       {s.dialog === 'device' && <DeviceDialog />}
       {s.toast && <div class={`toast${s.toast.error ? ' error' : ''}`} role="status">{s.toast.text}</div>}
     </div>

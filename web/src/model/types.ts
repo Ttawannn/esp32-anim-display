@@ -39,7 +39,47 @@ export interface Project {
   encoding: Encoding;
   jpegQuality: number; // 0.3..0.95
   source: 'pixel' | 'gif' | 'video';
+  layers?: Layer[]; // objects on top of every frame (absent in older projects)
 }
+
+// ---------------------------------------------------------------------------------------------
+// Layers: things placed on top of the animation, editable after placing.
+//   sticker: emoji / icon / text, rasterized at canvas resolution and baked into every frame.
+//   clock:   date/time text drawn live by the board (screen resolution), see layers/widgets.ts.
+
+export type FontId = 'sans' | 'round' | 'serif' | 'mono' | 'pixel';
+
+export type StickerSource =
+  | { type: 'emoji'; char: string }
+  | { type: 'icon'; name: string }
+  | { type: 'text'; text: string; font: FontId; bold: boolean };
+
+export interface StickerLayer {
+  kind: 'sticker';
+  id: string;
+  x: number; // top-left, canvas pixels
+  y: number;
+  size: number; // height in canvas pixels
+  color: string; // icons and text (emoji keep their own colors)
+  outline: boolean; // dark outline for readability (text and icons)
+  crisp: boolean; // hard pixel edges instead of anti-aliasing
+  source: StickerSource;
+}
+
+export interface ClockLayer {
+  kind: 'clock';
+  id: string;
+  x: number; // top-left of the text box, screen pixels
+  y: number;
+  size: number; // text height in screen pixels
+  color: string;
+  font: FontId;
+  bold: boolean;
+  align: 'left' | 'center' | 'right';
+  format: string; // tokens, see layers/clock.ts
+}
+
+export type Layer = StickerLayer | ClockLayer;
 
 export const DEFAULT_ADJUST: ColorAdjust = {
   brightness: 0,

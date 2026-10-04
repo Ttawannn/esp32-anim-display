@@ -7,6 +7,7 @@ import { download, loadProjectFile, saveProjectFile } from '../storage/projectFi
 import { Icon, IconButton, pickFile } from './common';
 import { ConnectionChip } from './ConnectionChip';
 import { Menu, MenuItem, MenuSeparator } from './Menu';
+import { openTemplates } from './TemplatesDialog';
 
 export async function openProjectFile() {
   const file = await pickFile('.dpe');
@@ -56,7 +57,9 @@ export function TopBar({ s }: { s: EditorState }) {
           onClick={() => window.open(firmwareInstallerUrl(), '_blank', 'noopener')} />
       </Menu>
       <Menu label="สร้าง" icon="sparkle" open={menu === 'create'} onToggle={toggle('create')}>
+        <MenuItem icon="wand" label="แม่แบบแอนิเมชัน" hint="ไฟ ฝน ดาว พลุ นาฬิกา และอีก 20+ แบบ" onClick={() => openTemplates()} />
         <MenuItem icon="sparkle" label="แม่แบบดวงตา" hint="12 อารมณ์ พร้อมใช้" onClick={() => open('eyes')} />
+        <MenuItem icon="clock" label="นาฬิกาดิจิทัล" hint="เวลาเดินจริงบนบอร์ด" onClick={() => openTemplates('clock')} />
         <MenuItem icon="image" label="นำเข้า GIF" hint="ภาพเคลื่อนไหวสำเร็จรูป" onClick={() => open('gif')} />
         <MenuItem icon="film" label="นำเข้าวิดีโอ" hint="MP4, WebM, MOV" onClick={() => open('video')} />
       </Menu>

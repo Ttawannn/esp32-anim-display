@@ -2,6 +2,7 @@
 
 #include <LittleFS.h>
 
+#include "app/clock.h"
 #include "display/panel_i2c_mono.h"
 #include "storage/storage.h"
 
@@ -12,8 +13,9 @@ static constexpr size_t kMaxJpegFrame = 96 * 1024;
 // pushes full bands to the panel.
 class BandWriter {
 public:
-  BandWriter(Panel& p, uint16_t* band, size_t cap, int16_t x, int16_t y, int16_t w, uint8_t s)
-      : p_(p), band_(band), cap_(cap), x_(x), y_(y), sw_(w * s), s_(s), ok_((size_t)w * s * s <= cap) {}
+  BandWriter(Panel& p, uint16_t* band, size_t cap, int16_t x, int16_t y, int16_t w, uint8_t s,
+             const dpa::Widgets* overlay)
+      : p_(p), band_(band), cap_(cap), x_(x), y_(y), sw_(w * s), s_(s), ok_((size_t)w * s * s <= cap), overlay_(overlay) {}
 
   bool ok() const { return ok_; }
 
@@ -40,6 +42,7 @@ public:
 
   void flush() {
     if (!rows_) return;
+    if (overlay_) overlay_->blendRgb565(x_, y_, sw_, rows_, band_);
     p_.pushRect(x_, y_, sw_, rows_, band_);
     y_ += rows_;
     used_ = 0;
@@ -53,6 +56,7 @@ private:
   int16_t x_, y_, sw_;
   uint8_t s_;
   bool ok_;
+  const dpa::Widgets* overlay_;
   size_t used_ = 0;
   int16_t rows_ = 0;
 };
@@ -70,6 +74,9 @@ void Player::begin(Panel* panel) {
 
 void Player::stop() {
   src_.reset();
+  widgets_.clear();
+  colorOverlay_ = false;
+  shown_ = -1;
   free(table_);
   table_ = nullptr;
   free(row_);
@@ -152,6 +159,13 @@ bool Player::open(std::unique_ptr<Source> src) {
   const uint16_t bg = h_.colorMode == dpa::kColorMono ? (h_.bgColor ? 0xFFFF : 0x0000) : h_.bgColor;
   panel_->fillScreen(bg);
 
+  // Clock widgets: optional (an out-of-memory board still plays the animation without them).
+  if (widgets_.load(*src, h_)) {
+    widgets_.place(baseX_ - h_.offsetX, baseY_ - h_.offsetY, baseX_, baseY_, h_.canvasW * h_.scale, h_.canvasH * h_.scale);
+    widgets_.update(clockNow());
+    colorOverlay_ = panel_->colorMode() != ColorMode::Mono;
+  }
+
   src_ = std::move(src);
   frame_ = 0;
   loops_ = 0;
@@ -162,9 +176,47 @@ bool Player::open(std::unique_ptr<Source> src) {
   return true;
 }
 
+// Draws frame i (and, on OLEDs, the widgets on top) and puts it on the glass.
+bool Player::show(uint16_t i) {
+  if (!drawFrame(i)) return false;
+  if (widgets_.active() && !colorOverlay_) drawMonoWidgets();
+  panel_->flush();
+  shown_ = i;
+  return true;
+}
+
+void Player::drawMonoWidgets() {
+  if (panel_->colorMode() != ColorMode::Mono) return;
+  auto* oled = static_cast<PanelI2cMono*>(panel_);
+  uint8_t* fb = oled->framebuffer();
+  const int16_t w = panel_->width(), h = panel_->height();
+  uint8_t dirty = 0;
+  widgets_.forEachPixel([&](int16_t x, int16_t y, uint8_t a, uint16_t color) {
+    if (a < 8 || x < 0 || y < 0 || x >= w || y >= h) return;
+    uint8_t& b = fb[(y >> 3) * w + x];
+    if (color) b |= 1 << (y & 7);
+    else b &= ~(1 << (y & 7));
+    dirty |= 1 << (y >> 3);
+  });
+  oled->markDirty(dirty);
+}
+
 void Player::tick() {
-  if (!src_ || finished_) return;
+  if (!src_) return;
   const uint32_t now = millis();
+  // The time changed while a frame is held (or the animation has finished): redraw it. Every frame
+  // repaints the area under the widgets, so redrawing restores the background before new digits.
+  if (widgets_.active() && now - clockAt_ >= 100) {
+    clockAt_ = now;
+    const bool changed = widgets_.update(clockNow());
+    const bool frameDue = !finished_ && (int32_t)(now - nextAt_) >= 0 && frame_ < h_.frameCount;
+    if (changed && !frameDue && shown_ >= 0 && !show(shown_)) {
+      error_ = "frame decode failed";
+      finished_ = true;
+      return;
+    }
+  }
+  if (finished_) return;
   if ((int32_t)(now - nextAt_) < 0) return;
 
   if (frame_ >= h_.frameCount) {  // the last frame has been shown for its full delay
@@ -181,12 +233,11 @@ void Player::tick() {
     }
   }
 
-  if (!drawFrame(frame_)) {
+  if (!show(frame_)) {
     error_ = "frame decode failed";
     finished_ = true;
     return;
   }
-  panel_->flush();
 
   const uint16_t delay = table_[frame_].delay;
   nextAt_ += delay;
@@ -223,7 +274,7 @@ bool Player::drawIndexed(const dpa::FrameEntry& e) {
   if (!dpa::readRect(*src_, e, r)) return false;
   if (r.w == 0) return true;  // unchanged frame
   const uint8_t s = h_.scale;
-  BandWriter out(*panel_, band_, bandPixels_, baseX_ + r.x * s, baseY_ + r.y * s, r.w, s);
+  BandWriter out(*panel_, band_, bandPixels_, baseX_ + r.x * s, baseY_ + r.y * s, r.w, s, overlay());
   if (!out.ok()) return false;
   uint16_t* px = rowPx_;
   const bool ok = dpa::decodeIndexed(*src_, e, h_, r, palette_, row_, px, [&](uint16_t, const uint16_t* row) { out.addRow(row); });
@@ -252,7 +303,7 @@ bool Player::drawMono(const dpa::FrameEntry& e) {
 
   // Generic path (scaled, unaligned or on a color panel): expand bits to white/black pixels.
   const uint8_t s = h_.scale;
-  BandWriter out(*panel_, band_, bandPixels_, baseX_ + r.x * s, baseY_ + r.y * s, r.w, s);
+  BandWriter out(*panel_, band_, bandPixels_, baseX_ + r.x * s, baseY_ + r.y * s, r.w, s, overlay());
   if (!out.ok()) return false;
   uint16_t* px = rowPx_;
   const bool ok = dpa::decodeMono(*src_, e, h_, r, row_, [&](uint16_t page, const uint8_t* bytes) {
@@ -299,10 +350,11 @@ int Player::jpegDraw(JPEGDRAW* d) {
   if (w <= 0 || h <= 0) return 1;
   const int16_t x = self->baseX_ + (r[0] + d->x) * s, y = self->baseY_ + (r[1] + d->y) * s;
   if (s == 1 && w == d->iWidth) {
+    if (const dpa::Widgets* o = self->overlay()) o->blendRgb565(x, y, w, h, d->pPixels);
     self->panel_->pushRect(x, y, w, h, d->pPixels);
     return 1;
   }
-  BandWriter out(*self->panel_, self->band_, self->bandPixels_, x, y, w, s);
+  BandWriter out(*self->panel_, self->band_, self->bandPixels_, x, y, w, s, self->overlay());
   if (!out.ok()) return 0;
   for (int16_t row = 0; row < h; row++) out.addRow(d->pPixels + row * d->iWidth);
   out.flush();

@@ -30,11 +30,13 @@ const state = {
     pins: { clk: 6, data: 7, cs: 10, dc: 4, rst: 3, bl: 5 },
   },
   name: 'display-a1b2',
+  clock: { epoch: 0, setAt: 0, tz: 420 }, // unknown until the editor sets it, like a fresh board
   wifi: { mode: 'ap', ssid: 'DisplayEditor-MOCK', ip: '192.168.4.1', rssi: 0, saved_ssid: '' },
   player: { name: '', playing: false, live: false, playlist: false, frame: 0, frames: 0, fps: 0 },
   scanStarted: 0,
 };
 
+const clockNow = () => (state.clock.epoch ? state.clock.epoch + Math.round((Date.now() - state.clock.setAt) / 1000) : 0);
 const used = () => [...state.anims.values()].reduce((s, b) => s + b.length + 512, 4096);
 const uploads = new Map();
 let nextUploadId = 0;
@@ -101,7 +103,7 @@ createServer(async (req, res) => {
     case 'GET /api/info': {
       const p = preset();
       return send(res, 200, {
-        version: VERSION, name: state.name, board: 'c3', board_name: 'Mock board', chip: 'mock', heap_free: 180000, heap_min: 150000, uptime_s: Math.round(process.uptime()),
+        version: VERSION, name: state.name, time: clockNow(), board: 'c3', board_name: 'Mock board', chip: 'mock', heap_free: 180000, heap_min: 150000, uptime_s: Math.round(process.uptime()),
         display: { ok: true, preset: p.id, name: p.name, width: p.width, height: p.height, color: p.color, shape: p.round ? 'round' : 'rect', brightness: state.display.brightness },
         fs: { total: FS_TOTAL, used: used(), free: FS_TOTAL - used() },
         wifi: { ...state.wifi, hostname: `${hostFor(state.name)}.local` },
@@ -184,6 +186,13 @@ createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     case 'POST /api/brightness':
       return confirmed(res, () => { state.display.brightness = Number(q('value')); });
+    case 'GET /api/time':
+      return send(res, 200, { epoch: clockNow(), tz_minutes: state.clock.tz });
+    case 'PUT /api/time': {
+      const t = JSON.parse((await readBody(req)).toString());
+      if (!(t.epoch >= 1704067200) || !(t.tz_minutes >= -720 && t.tz_minutes <= 840)) return send(res, 400, { error: 'invalid time' });
+      return confirmed(res, () => { state.clock = { epoch: t.epoch, setAt: Date.now(), tz: t.tz_minutes }; });
+    }
     case 'GET /api/device':
       return send(res, 200, { name: state.name, hostname: `${hostFor(state.name)}.local` });
     case 'PUT /api/device': {

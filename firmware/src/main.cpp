@@ -9,6 +9,7 @@
 #include <Arduino.h>
 
 #include "app/app.h"
+#include "app/clock.h"
 #include "app/commands.h"
 #include "app/console.h"
 #include "app/controller.h"
@@ -97,7 +98,9 @@ void setup() {
 
   if (!storage::begin()) bootStatus("storage FAILED");
   commandsBegin();
+  clockBegin();
   wifi::begin(bootStatus);
+  if (!wifi::isAP()) clockStartNtp();
   webBegin();
   ledSet(wifi::isAP() ? 160 : 0, 0, 255);  // blue = joined Wi-Fi, purple = own AP
   Serial.printf("ready: http://%s  (%s %s)\n", wifi::ip().c_str(), wifi::isAP() ? "AP" : "Wi-Fi", wifi::ssid().c_str());

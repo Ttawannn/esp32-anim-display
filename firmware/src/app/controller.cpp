@@ -200,6 +200,8 @@ static void handle(Command& c) {
     case Cmd::SaveDisplay:
     case Cmd::SaveWifi:
     case Cmd::ForgetWifi:
+    case Cmd::SaveName:
+    case Cmd::SetTime:
       settingsApply(c);
       break;
     case Cmd::SavePlaylist:

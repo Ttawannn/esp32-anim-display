@@ -1,9 +1,12 @@
 import { getPreset } from '../model/presets';
 import { store, type EditorState } from '../model/store';
+import { openTemplates } from './TemplatesDialog';
 import { openProjectFile } from './TopBar';
 
 const CARDS: { emoji: string; title: string; text: string; badge?: string; run: () => void }[] = [
-  { emoji: '👀', title: 'แม่แบบดวงตา', text: 'ตาแสดงอารมณ์ 12 แบบ เลือกแล้วส่งขึ้นจอได้เลย', badge: 'แนะนำ', run: () => store.set({ dialog: 'eyes' }) },
+  { emoji: '🎨', title: 'แม่แบบแอนิเมชัน', text: 'ไฟ ฝน ดาว พลุ ตัวอักษรวิ่ง และอีก 20+ แบบ', badge: 'ใหม่', run: () => openTemplates() },
+  { emoji: '👀', title: 'แม่แบบดวงตา', text: 'ตาแสดงอารมณ์ 12 แบบ เลือกแล้วส่งขึ้นจอได้เลย', run: () => store.set({ dialog: 'eyes' }) },
+  { emoji: '🕒', title: 'นาฬิกาดิจิทัล', text: 'เวลาและวันที่เดินจริงบนจอ', run: () => openTemplates('clock') },
   { emoji: '✏️', title: 'วาดเอง', text: 'วาด pixel art ทีละเฟรม', run: () => store.set({ startDismissed: true }) },
   { emoji: '🎞️', title: 'นำเข้า GIF', text: 'ใช้ภาพเคลื่อนไหวที่มีอยู่แล้ว', run: () => store.set({ dialog: 'gif' }) },
   { emoji: '🎬', title: 'นำเข้าวิดีโอ', text: 'ตัดคลิปสั้นมาเล่นบนจอ', run: () => store.set({ dialog: 'video' }) },

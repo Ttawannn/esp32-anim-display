@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 
 #include "app/app.h"
+#include "app/clock.h"
 #include "app/commands.h"
 #include "app/settings.h"
 #include "board.h"
@@ -51,6 +52,7 @@ static void info(JsonDocument& doc) {
   doc["heap_free"] = ESP.getFreeHeap();
   doc["heap_min"] = ESP.getMinFreeHeap();
   doc["uptime_s"] = millis() / 1000;
+  doc["time"] = clockEpoch();  // 0 = unknown; the editor sets it with PUT /api/time
 
   const DisplayConfig& cfg = appConfig();
   const Preset& p = kPresets[cfg.preset];
@@ -279,6 +281,19 @@ int apiHandle(const String& method, const String& path, const ApiParams& params,
       const String name = body["name"].as<const char*>();
       if (name.length() > wifi::kMaxNameBytes) return fail(out, 400, "invalid name");
       return confirmed(out, Cmd::SaveName, name.c_str(), name.length());
+    }
+  }
+
+  if (path == "/api/time") {
+    if (get) {
+      out["epoch"] = clockEpoch();
+      out["tz_minutes"] = clockTzMinutes();
+      return 200;
+    }
+    if (put) {
+      TimeSetting t{body["epoch"] | 0u, (int16_t)(body["tz_minutes"] | 420)};
+      if (t.epoch < 1704067200u || t.tzMinutes < -720 || t.tzMinutes > 840) return fail(out, 400, "invalid time");
+      return confirmed(out, Cmd::SetTime, &t, sizeof(t));
     }
   }
 

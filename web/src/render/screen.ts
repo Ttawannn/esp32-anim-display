@@ -1,4 +1,6 @@
 import { expand565Table, to565 } from '../color/rgb565';
+import type { ClockTime } from '../layers/clock';
+import { blend565, drawWidgets, type ParsedBlock } from '../layers/widgets';
 import { getPreset } from '../model/presets';
 import { hexToRgb } from '../model/project';
 import type { OledTint, Project } from '../model/types';
@@ -13,7 +15,8 @@ const OLED_ON: Record<OledTint, number[][]> = {
 
 // Renders an output frame onto a screen-sized ImageData exactly as the panel would place it:
 // scaled by `scale`, positioned at the project offset, background around it.
-export function composeScreen(p: Project, frame: OutFrame, tint: OledTint = 'white'): ImageData {
+export function composeScreen(p: Project, frame: OutFrame, tint: OledTint = 'white',
+  clock?: { parsed: ParsedBlock; time: ClockTime }): ImageData {
   const preset = getPreset(p.presetId);
   const sw = preset.width, sh = preset.height;
   const img = new ImageData(sw, sh);
@@ -57,6 +60,21 @@ export function composeScreen(p: Project, frame: OutFrame, tint: OledTint = 'whi
         }
       }
     }
+  }
+  if (clock) {
+    // Live clock widgets, blended exactly like the board does (layers/widgets.ts).
+    const clip = { x: ox, y: oy, w: cw * s, h: ch * s };
+    drawWidgets(clock.parsed, clock.time, { clip, dx: 0, dy: 0, pixel: (x, y, a, c) => {
+      if (x < 0 || y < 0 || x >= sw || y >= sh) return;
+      const i = y * sw + x;
+      if (frame.kind === 'mono') {
+        if (a >= 8) d[i] = c ? onPix[onPix.length > 1 && y < 16 ? 0 : onPix.length - 1] : offPix;
+        return;
+      }
+      const v = d[i];
+      const rgb = expand565Table()[blend565(to565(v & 255, (v >> 8) & 255, (v >> 16) & 255), c, a)];
+      d[i] = pack(rgb >> 16, (rgb >> 8) & 255, rgb & 255);
+    } });
   }
   if (preset.round) maskRound(d, sw, sh);
   return img;

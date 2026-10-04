@@ -1,5 +1,6 @@
 #pragma once
 #include "decoder.h"
+#include "widgets.h"
 
 namespace dpa {
 constexpr uint32_t kMaxJpegBytes = 96 * 1024;
@@ -60,6 +61,7 @@ inline bool validate(Source& src, bool singleFrame = false) {
   const uint32_t paletteEnd = kHeaderSize + uint32_t(h.paletteSize) * 2;
   const uint32_t tableBytes = uint32_t(h.frameCount) * kEntrySize;
   if (h.tableOffset < paletteEnd || h.tableOffset > size || tableBytes > size - h.tableOffset) return false;
+  if ((h.flags & kFlagWidgets) && !validWidgetBlock(src, paletteEnd, h.tableOffset)) return false;
   uint32_t previousEnd = h.tableOffset + tableBytes;
   uint8_t scratch[1024];
   for (uint32_t i = 0; i < h.frameCount; i++) {

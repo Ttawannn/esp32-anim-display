@@ -41,6 +41,8 @@ python -m platformio device monitor               # 115200, type "help"
 ```bash
 python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/decode_test.cpp -o build/decode_test.exe
 build/decode_test.exe shared/test-vectors
+python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/widgets_test.cpp -o build/widgets_test.exe
+build/widgets_test.exe shared/test-vectors   # clock widgets vs the JS reference renderer
 ```
 
 ## Hosting
@@ -71,7 +73,9 @@ When changing the format, update all of these together, then rerun both test sui
 - the decoder
 - the vectors
 
-Frame types are INDEXED (palette + RLE), JPEG (baseline, decoded by JPEGDEC), and MONO (SSD1306 page layout + RLE). Two properties of every file:
+Frame types are INDEXED (palette + RLE), JPEG (baseline, decoded by JPEGDEC), and MONO (SSD1306 page layout + RLE).
+
+Live date/time ("clock widgets") travel in an optional widget block between the palette and the frame table (header flag bit 0; older firmware ignores it). The editor pre-renders every glyph as 4-bit alpha. The board lays out the current time and blends glyphs into pixels on their way to the panel (`player/widgets.h`), so the JS renderer in `web/src/layers/widgets.ts` and the C++ one must match exactly. Because the panel cannot be read back, every frame's rect includes the canvas area under the widgets, and the player redraws the held frame when the displayed time changes. Two properties of every file:
 
 - **Delta frames:** each frame stores only the rect that changed, so the panel itself holds the previous frame. Frame 0 is always a keyframe.
 - **Holds:** a still pose is stored as a longer delay on one frame, not as duplicate frames.
@@ -111,7 +115,11 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. Boards are matched
   - `load()`: replaces the project and clears history.
 - **Frames are immutable:** every edit replaces a frame's `data` buffer (`Pixels = Uint8ClampedArray<ArrayBuffer>`). Undo snapshots share untouched frames by reference, and caches are keyed on buffer identity (`WeakMap`).
 - **Single source of truth for the panel image:** `render/output.ts` (adjustments, RGB565 or 1-bit, color limit). The device preview, the import dialogs, and the encoder all go through it.
-- **Generated animations:** `templates/eyes.ts` produces procedural eye animations from keyframes (tween, then hold-as-delay).
+- **Generated animations:** `templates/eyes.ts` produces procedural eye animations from keyframes (tween, then hold-as-delay). `templates/gallery.ts` holds the template gallery. Templates are pure pixel code (`kit.ts`) so tests can run them, except those marked `canvas` (text/emoji).
+- **Layers (`project.layers`, `layers/`):** objects placed on top of every frame.
+  - Stickers (emoji / icon / text) are rasterized at canvas resolution and baked in `processFrame`, so the preview, encoder and live view all see them.
+  - Clocks are screen-resolution widgets drawn by the board. Their glyph atlas is built on the main thread with the page's fonts (`widgetsFor`) and passed to the encode worker.
+  - The select tool (`V`) moves and resizes layers on the canvas. The insert tab's tiles are drag sources (`INSERT_MIME`).
 - **Board client:** `device/api.ts` uses HTTP or Web Serial. `firmware/src/net/api.cpp` is shared by HTTP (`net/web.cpp`) and USB (`app/serial_rpc.cpp`); see `docs/usb-protocol.md`. Serialize entire USB transfers, including their save receipt. Keep `web/scripts/mock-board.mjs` in sync with API changes.
 - **Encoding:** use `codec/encode.ts` for estimates, downloads, uploads, and live preview. It shares a bounded cache and runs `codec/dpa.ts` in a Worker without detaching immutable project buffers.
 - **Editor shell:**

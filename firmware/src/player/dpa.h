@@ -24,6 +24,7 @@ struct Header {
   uint16_t frameCount;
   uint16_t paletteSize;
   uint16_t bgColor;
+  uint16_t flags;  // bit 0: widget block after the palette (player/widgets.h)
   uint32_t tableOffset;
 };
 
@@ -54,6 +55,7 @@ inline bool parseHeader(const uint8_t* b, size_t len, Header& h) {
   h.frameCount = rd16(b + 20);
   h.paletteSize = rd16(b + 22);
   h.bgColor = rd16(b + 24);
+  h.flags = rd16(b + 26);
   h.tableOffset = rd32(b + 28);
   return h.version == 1 && h.colorMode <= kColorMono && h.scale >= 1 && h.scale <= 8 && h.canvasW > 0 &&
          h.canvasH > 0 && h.canvasW <= 1024 && h.frameCount > 0 && h.paletteSize <= 256;

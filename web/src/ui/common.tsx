@@ -51,6 +51,16 @@ const PATHS: Record<string, string> = {
   palette: 'M12 3a9 9 0 100 18c1 0 1.5-.8 1.5-1.5 0-1.2-1-1.5-1-2.5 0-.8.7-1.5 1.5-1.5H16a5 5 0 005-5c0-4.4-4-7.5-9-7.5zM7.5 11h.01M10 7.5h.01M14.5 7.5h.01',
   sliders: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4',
   check: 'M5 12l5 5L20 7',
+  cursor: 'M5 3l13 7.5-5.5 1.8L10.7 18z',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
+  smile: 'M12 3a9 9 0 100 18 9 9 0 000-18zM8.5 14.5a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01',
+  clock: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2',
+  text: 'M5 7V5h14v2M12 5v14M9 19h6',
+  layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
+  wand: 'M4 20L15 9M13 7l4 4M18 3v3M21 6h-3M16 4.5l2 1.5',
+  front: 'M8 8h12v12H8zM4 4h12v2M4 4v12h2',
+  back: 'M4 4h12v12H4zM20 8v12H8',
+  stamp: 'M12 3a3 3 0 00-3 3c0 2 2 3 2 5H7a2 2 0 00-2 2v2h14v-2a2 2 0 00-2-2h-4c0-2 2-3 2-5a3 3 0 00-3-3zM5 20h14',
 };
 
 export function Icon({ name, fill }: { name: string; fill?: boolean }) {

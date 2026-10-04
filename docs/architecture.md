@@ -47,6 +47,8 @@ The board receives files already sized for its display; it only decodes RLE/JPEG
 | `net/web` | HTTP transport + embedded editor (`web_assets.h`) |
 | `net/api` | shared JSON API, streaming file validation, upload receipts |
 | `app/serial_rpc` | USB JSON-line transport, chunked uploads/reads, interrupted-transfer cleanup |
+| `app/clock` | wall clock for date/time widgets: NTP in station mode, otherwise set by the browser (`PUT /api/time`); UTC offset kept in NVS |
+| `player/widgets.h` | live clock widgets from the .dpa widget block, blended into frames on their way to the panel (Arduino-free, natively tested) |
 | `net/wifi_manager` | joins the saved network, otherwise starts an AP + captive portal; mDNS `<board name>.local` (default `display-xxxx.local`, unique per board) |
 | `bench/` | display and JPEG benchmarks (`bench` command) |
 
@@ -65,7 +67,8 @@ The browser waits for an upload receipt confirming the rename. Replacement keeps
 |--------|----------------|
 | `model/` | project, display presets, palettes, store (state + undo + autosave) |
 | `editor/` | drawing tools |
-| `templates/` | procedurally generated templates (12 eye animations) |
+| `templates/` | procedurally generated animations: 12 eye moods (`eyes.ts`) and the 21-template gallery (`gallery.ts`, pixel helpers in `kit.ts`) |
+| `layers/` | things placed on top of the animation: sticker catalogue (emoji, icons, fonts), rasterizing and baking stickers into frames, clock formats, the widget block writer/reader and its reference renderer |
 | `color/` | RGB565, color adjustment, dithering, color reduction |
 | `render/` | the image the panel will actually show + display preview |
 | `codec/` | RLE, .dpa writer/reader, worker encoding and cached results, unit tests, test vectors |

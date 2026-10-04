@@ -8,6 +8,7 @@ import { invalidateThumbnails } from './thumbnailCache';
 export interface DeviceInfo {
   version: string;
   name?: string; // board name (firmware 0.3.0+)
+  time?: number; // board clock, unix seconds, 0 = unknown (firmware 0.4.0+)
   board: string;
   board_name: string;
   heap_free: number;
@@ -89,6 +90,7 @@ const ERRORS: Record<string, string> = {
   'write failed (storage full?)': 'พื้นที่บนบอร์ดไม่พอสำหรับบันทึกไฟล์',
   'display unavailable': 'จอบนบอร์ดยังไม่พร้อม — ตรวจสายและตั้งค่าจอ',
   'cannot save settings': 'บอร์ดบันทึกค่าตั้งไม่ได้ — ลองอีกครั้ง',
+  'invalid time': 'ตั้งเวลาบอร์ดไม่ได้',
   'invalid name': 'ชื่อบอร์ดใช้ไม่ได้ (ยาวเกินหรือมีอักขระพิเศษ)',
   'cannot save playlist': 'บอร์ดบันทึก playlist ไม่ได้ — รายการเดิมยังเก็บไว้',
 };
@@ -310,6 +312,10 @@ export const device = {
     await transport(host).api('PUT', '/api/wifi', undefined, { ssid, password });
   },
   forgetWifi: async (host: string) => { await transport(host).api('DELETE', '/api/wifi'); },
+  // Board clock for date/time widgets: unix seconds and the UTC offset in minutes (east positive).
+  setTime: async (host: string, epoch = Math.round(Date.now() / 1000), tzMinutes = -new Date().getTimezoneOffset()) => {
+    await transport(host).api('PUT', '/api/time', undefined, { epoch, tz_minutes: tzMinutes });
+  },
   saveName: async (host: string, name: string) => { await transport(host).api('PUT', '/api/device', undefined, { name }); },
   reboot: async (host: string) => { await transport(host).api('POST', '/api/reboot'); },
 };

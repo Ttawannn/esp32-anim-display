@@ -7,6 +7,7 @@
 #include "display/panel.h"
 #include "dpa.h"
 #include "source.h"
+#include "widgets.h"
 
 // Plays DPA animations onto a Panel, streaming frames from flash (no full frame buffer needed).
 // Single-threaded: call everything from the loop task.
@@ -39,6 +40,10 @@ private:
   bool drawJpeg(const dpa::FrameEntry& e);
   bool readRect(const dpa::FrameEntry& e, uint16_t r[4]);
   static int jpegDraw(JPEGDRAW* d);
+  // Clock widgets blended into colour output, or drawn into the OLED framebuffer after a frame.
+  const dpa::Widgets* overlay() const { return colorOverlay_ ? &widgets_ : nullptr; }
+  void drawMonoWidgets();
+  bool show(uint16_t i);
 
   Panel* panel_ = nullptr;
   std::unique_ptr<Source> src_;
@@ -51,6 +56,11 @@ private:
   uint16_t* rowPx_ = nullptr;  // the same row as RGB565
   uint16_t* band_ = nullptr;   // screen pixels waiting for pushRect
   size_t bandPixels_ = 0;
+
+  dpa::Widgets widgets_;
+  bool colorOverlay_ = false;
+  uint32_t clockAt_ = 0;
+  int32_t shown_ = -1;  // frame currently on the panel
 
   JPEGDEC* jpeg_ = nullptr;
   uint8_t* jpegBuf_ = nullptr;

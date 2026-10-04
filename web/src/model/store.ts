@@ -6,7 +6,7 @@ import { cloneFrame, createProject, newFrame } from './project';
 import type { Frame, OledTint, Project } from './types';
 import type { Pixels } from './types';
 
-export type Dialog = null | 'new' | 'gif' | 'video' | 'eyes' | 'device';
+export type Dialog = null | 'new' | 'gif' | 'video' | 'eyes' | 'templates' | 'device';
 
 export interface EditorState {
   project: Project;
@@ -28,7 +28,8 @@ export interface EditorState {
   deviceTransport: 'wifi' | 'usb' | null;
   live: boolean; // mirror the current frame on the board while editing
   dialog: Dialog;
-  sideTab: 'color' | 'adjust' | 'export';
+  sideTab: 'insert' | 'color' | 'adjust' | 'export';
+  selectedLayer: string | null; // layer being moved / edited (select tool)
   connectOpen: boolean; // connection popover in the top bar
   sending: { label: string; pct: number } | null; // send-to-board progress (0..1)
   startDismissed: boolean; // hide the start screen on a blank project
@@ -68,6 +69,7 @@ class Store {
       live: false,
       dialog: null,
       sideTab: 'color',
+      selectedLayer: null,
       connectOpen: false,
       sending: null,
       startDismissed: false,

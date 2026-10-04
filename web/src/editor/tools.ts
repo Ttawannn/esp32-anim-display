@@ -1,7 +1,7 @@
 // Pixel drawing operations on RGBA buffers. Colors are packed as [r, g, b, a].
 import type { Pixels } from '../model/types';
 
-export type Tool = 'pencil' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill' | 'picker' | 'move';
+export type Tool = 'select' | 'pencil' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill' | 'picker' | 'move';
 export type RGBA = [number, number, number, number];
 
 export const TRANSPARENT: RGBA = [0, 0, 0, 0];

@@ -143,13 +143,15 @@ export function usesSeconds(format: string): boolean {
 }
 
 // Ready-made formats for the insert panel.
-export const CLOCK_PRESETS: { id: string; label: string; format: string }[] = [
-  { id: 'hm', label: 'เวลา', format: 'HH:mm' },
-  { id: 'hms', label: 'เวลา + วินาที', format: 'HH:mm:ss' },
-  { id: 'h12', label: 'เวลา 12 ชม.', format: 'h:mm A' },
-  { id: 'date-th', label: 'วันที่ (ไทย)', format: 'd MMM BBBB' },
-  { id: 'date-full', label: 'วันที่เต็ม', format: 'dddd[ที่] d MMMM BBBB' },
-  { id: 'weekday', label: 'วันในสัปดาห์', format: 'dddd' },
-  { id: 'date-num', label: 'วันที่ตัวเลข', format: 'dd/MM/yyyy' },
-  { id: 'date-en', label: 'Date (EN)', format: 'Lddd d MMM' },
+export const CLOCK_PRESETS: { id: string; label: string; format: string; lang?: 'en' | 'th' }[] = [
+  { id: 'hm', label: 'Time', format: 'HH:mm' },
+  { id: 'hms', label: 'Time + seconds', format: 'HH:mm:ss' },
+  { id: 'h12', label: '12-hour time', format: 'h:mm A' },
+  { id: 'date-en', label: 'Date', format: 'Lddd d MMM yyyy', lang: 'en' },
+  { id: 'date-full-en', label: 'Full date', format: 'Ldddd, MMMM d', lang: 'en' },
+  { id: 'weekday-en', label: 'Weekday', format: 'Ldddd', lang: 'en' },
+  { id: 'date-th', label: 'Date (Thai)', format: 'd MMM BBBB', lang: 'th' },
+  { id: 'date-full-th', label: 'Full date (Thai)', format: 'dddd[ที่] d MMMM BBBB', lang: 'th' },
+  { id: 'weekday-th', label: 'Weekday (Thai)', format: 'dddd', lang: 'th' },
+  { id: 'date-num', label: 'Numeric date', format: 'dd/MM/yyyy' },
 ];

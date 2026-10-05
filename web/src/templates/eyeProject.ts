@@ -3,6 +3,7 @@ import { device, deviceFileName } from '../device/api';
 import { createProject, newFrame } from '../model/project';
 import type { Project } from '../model/types';
 import { EYE_ANIMS, generateEyes, type EyeOptions, type GeneratedEyes } from './eyes';
+import { t } from '../i18n';
 
 // Wraps generated eye frames in an editor project for the given display preset.
 export function eyeProject(presetId: string, g: GeneratedEyes, o: EyeOptions, name: string): Project {
@@ -39,8 +40,8 @@ export async function installMoodSet(
 ): Promise<string[]> {
   const names: string[] = [];
   for (const [i, anim] of EYE_ANIMS.entries()) {
-    const name = deviceFileName(`${anim.emoji} ${anim.name}`);
-    onProgress(i, EYE_ANIMS.length, anim.name);
+    const name = deviceFileName(`${anim.emoji} ${t(anim.name)}`);
+    onProgress(i, EYE_ANIMS.length, t(anim.name));
     const g = generateEyes(screen.width, screen.height, anim, o);
     const { bytes } = await encodeProject(eyeProject(presetId, g, o, name));
     await device.upload(host, name, bytes, false);

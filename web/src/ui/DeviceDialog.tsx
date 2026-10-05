@@ -1,44 +1,15 @@
 import { useEffect, useState } from 'preact/hooks';
-import {
-  device, deviceConnectionKey, usbConnected, type AnimFile, type DevicePreset, type DisplaySettings, type PlaylistData, type WifiNetwork,
-} from '../device/api';
+import { device, deviceConnectionKey, type AnimFile, type PlaylistData } from '../device/api';
 import { uploadDpaFile } from '../device/send';
-import { connectUsb, refreshDevice } from '../device/session';
+import { refreshDevice } from '../device/session';
 import { store, toast, useEditor } from '../model/store';
+import { BoardName, DisplayTab, run, WifiTab } from './BoardSettings';
 import { formatBytes, Icon, IconButton, Modal } from './common';
 import { FirmwareNotice } from './FirmwareNotice';
 import { UsbControls } from './UsbControls';
+import { t } from '../i18n';
 
 type Tab = 'files' | 'playlist' | 'display' | 'wifi';
-
-async function run(fn: () => Promise<unknown>, ok?: string) {
-  try {
-    await fn();
-    if (ok) toast(ok);
-    return true;
-  } catch (e) {
-    toast((e as Error).message, true);
-    return false;
-  }
-}
-
-// After a reboot the board is gone for a few seconds; poll until it answers again.
-async function waitForReboot() {
-  const viaUsb = usbConnected();
-  toast('กำลังรีบูตบอร์ด...');
-  await new Promise((r) => setTimeout(r, 4000));
-  for (let i = 0; i < 20; i++) {
-    try {
-      if (viaUsb && !usbConnected()) await connectUsb(true);
-      await refreshDevice();
-      toast('บอร์ดกลับมาแล้ว');
-      return;
-    } catch {
-      await new Promise((r) => setTimeout(r, 1500));
-    }
-  }
-  toast('ยังติดต่อบอร์ดไม่ได้ — ถ้าเปลี่ยน Wi-Fi ให้เปิดหน้านี้ใหม่จาก IP ที่แสดงบนจอ', true);
-}
 
 export function DeviceDialog() {
   const s = useEditor();
@@ -56,30 +27,30 @@ export function DeviceDialog() {
   }, [connection]);
 
   return (
-    <Modal title="จัดการบอร์ด" onClose={close}>
+    <Modal title={t('Board manager')} onClose={close}>
       <div class="row">
-        <input type="text" class="grow" placeholder="IP บอร์ด (ว่าง = บอร์ดที่เปิดหน้านี้)" value={host}
+        <input type="text" class="grow" placeholder={t('Board IP (empty = the board serving this page)')} value={host}
           onChange={(e) => { store.set({ deviceHost: (e.target as HTMLInputElement).value }); store.savePrefs(); }} />
         <button class="btn" onClick={() => refreshDevice().then(() => setError(''), (e) => setError((e as Error).message))}>
-          เชื่อมต่อ
+          {t('Connect')}
         </button>
       </div>
       <UsbControls />
       {!info ? (
-        <p class="err">{error || 'กำลังติดต่อบอร์ด...'}</p>
+        <p class="err">{error || t('Contacting the board…')}</p>
       ) : (
         <>
           <BoardName host={host} />
           <FirmwareNotice info={info} />
           <p class="hint">
-            {info.board_name} · เฟิร์มแวร์ {info.version} · จอ {info.display.name}
-            {!info.display.ok && <span class="err"> (จอไม่ทำงาน: {info.display.error})</span>}
+            {info.board_name} · {t('firmware')} {info.version} · {t('display')} {info.display.name}
+            {!info.display.ok && <span class="err"> ({t('display not working')}: {info.display.error})</span>}
             {' '}· {info.wifi.mode === 'ap' ? `AP ${info.wifi.ssid}` : `Wi-Fi ${info.wifi.ssid}`} · {info.wifi.ip}
           </p>
           <div class="row" style={{ gap: 4 }}>
-            {(['files', 'playlist', 'display', 'wifi'] as Tab[]).map((t) => (
-              <button key={t} class={`btn${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-                {{ files: 'ไฟล์', playlist: 'Playlist', display: 'ตั้งค่าจอ', wifi: 'Wi-Fi' }[t]}
+            {(['files', 'playlist', 'display', 'wifi'] as Tab[]).map((id) => (
+              <button key={id} class={`btn${tab === id ? ' active' : ''}`} onClick={() => setTab(id)}>
+                {t({ files: 'Files', playlist: 'Playlist', display: 'Display settings', wifi: 'Wi-Fi' }[id])}
               </button>
             ))}
           </div>
@@ -97,39 +68,6 @@ export function DeviceDialog() {
 
 // ---------------------------------------------------------------------------------------------
 
-// The name also sets the board's address on the network: "Kitchen Eyes" -> http://kitchen-eyes.local
-function BoardName({ host }: { host: string }) {
-  const info = store.state.deviceInfo!;
-  const [name, setName] = useState(info.name ?? '');
-  const [saving, setSaving] = useState(false);
-  useEffect(() => setName(info.name ?? ''), [info.name]);
-  if (info.name === undefined) return null; // firmware older than 0.3.0
-  const bytes = new TextEncoder().encode(name.trim()).length;
-  const changed = name.trim() !== info.name;
-  const save = async () => {
-    setSaving(true);
-    if (await run(() => device.saveName(host, name.trim()), 'เปลี่ยนชื่อบอร์ดแล้ว')) await refreshDevice().catch(() => {});
-    setSaving(false);
-  };
-  return (
-    <>
-      <div class="name-field">
-        <span class="hint">ชื่อบอร์ด</span>
-        <input type="text" value={name} placeholder="ชื่อบอร์ด เช่น ตาหุ่นยนต์ หรือ desk-eyes" maxLength={48}
-          onInput={(e) => setName((e.target as HTMLInputElement).value)}
-          onKeyDown={(e) => e.key === 'Enter' && changed && bytes <= 48 && save()} />
-        <button class="btn primary" disabled={!changed || saving || bytes > 48} onClick={save}>บันทึกชื่อ</button>
-      </div>
-      {info.wifi.mode === 'sta' && (
-        <p class="hint" style={{ marginTop: -4 }}>
-          เปิดจากเครื่องอื่นใน Wi-Fi เดียวกันได้ที่ <a href={`http://${info.wifi.hostname}`} target="_blank" rel="noopener">http://{info.wifi.hostname}</a>
-          {' '}(ตั้งชื่อเป็นภาษาอังกฤษเพื่อให้ที่อยู่จำง่าย)
-        </p>
-      )}
-    </>
-  );
-}
-
 // ---------------------------------------------------------------------------------------------
 
 function FilesTab({ host }: { host: string }) {
@@ -144,21 +82,21 @@ function FilesTab({ host }: { host: string }) {
     <>
       <div class="row">
         <span class="grow">
-          {pl.live ? 'กำลังแสดงสดจาก Editor' : pl.name ? <>กำลังเล่น <b>{pl.name}</b> · {pl.fps.toFixed(1)} fps{pl.playlist && ' · playlist'}</> : 'ไม่ได้เล่นอะไร'}
+          {pl.live ? t('Live from the editor') : pl.name ? <>{t('Playing')} <b>{pl.name}</b> · {pl.fps.toFixed(1)} fps{pl.playlist && ' · playlist'}</> : t('Nothing playing')}
         </span>
-        <IconButton icon="pause" fill title="หยุด" onClick={() => run(() => device.stop(host))} />
-        <IconButton icon="right" title="ถัดไป" onClick={() => run(() => device.next(host))} />
-        <button class="btn" onClick={() => run(() => device.testPattern(host))} title="แสดงภาพทดสอบ 10 วินาที">ภาพทดสอบ</button>
-        <button class="btn" onClick={async () => { if (await uploadDpaFile()) load(); }} title="ส่งไฟล์ .dpa จากเครื่องนี้ไปบอร์ด">
-          <Icon name="upload" /> อัปโหลด .dpa
+        <IconButton icon="pause" fill title={t('Stop')} onClick={() => run(() => device.stop(host))} />
+        <IconButton icon="right" title={t('Next')} onClick={() => run(() => device.next(host))} />
+        <button class="btn" onClick={() => run(() => device.testPattern(host))} title={t('Show the test pattern for 10 seconds')}>{t('Test pattern')}</button>
+        <button class="btn" onClick={async () => { if (await uploadDpaFile()) load(); }} title={t('Send a .dpa file from this computer to the board')}>
+          <Icon name="upload" /> {t('Upload .dpa')}
         </button>
       </div>
-      <div class="stat"><span>พื้นที่</span><b>{formatBytes(info.fs.used)} / {formatBytes(info.fs.total)}</b></div>
+      <div class="stat"><span>{t('Storage')}</span><b>{formatBytes(info.fs.used)} / {formatBytes(info.fs.total)}</b></div>
       <div class="bar"><div style={{ width: `${usedPct}%` }} /></div>
       {files === null ? (
-        <p class="hint">กำลังโหลด...</p>
+        <p class="hint">{t('Loading…')}</p>
       ) : files.length === 0 ? (
-        <p class="hint">ยังไม่มีแอนิเมชันบนบอร์ด — กด "ส่งไปบอร์ด" ในแผงส่งออก</p>
+        <p class="hint">{t('No animations on the board yet. Press "Send to board" to add one.')}</p>
       ) : (
         <table class="list">
           <tbody>
@@ -168,13 +106,13 @@ function FilesTab({ host }: { host: string }) {
                 <tr key={f.name} class={f.name === pl.name ? 'sel' : ''}>
                   <td class="grow">
                     {f.name}
-                    <small> {f.width}×{f.height} · {f.frames} เฟรม · {formatBytes(f.size)}</small>
-                    {mismatch && <small class="warn"> · ทำมาสำหรับจอคนละขนาด</small>}
+                    <small> {f.width}×{f.height} · {t('{n} frames', { n: f.frames })} · {formatBytes(f.size)}</small>
+                    {mismatch && <small class="warn"> · {t('Made for a different screen size')}</small>}
                   </td>
                   <td class="actions">
-                    <IconButton icon="play" fill title="เล่น" onClick={() => run(() => device.play(host, f.name))} />
-                    <IconButton icon="trash" title="ลบ" onClick={() => {
-                      if (confirm(`ลบ "${f.name}" ออกจากบอร์ด?`)) run(() => device.remove(host, f.name), 'ลบแล้ว').then(load);
+                    <IconButton icon="play" fill title={t('Play')} onClick={() => run(() => device.play(host, f.name))} />
+                    <IconButton icon="trash" title={t('Delete')} onClick={() => {
+                      if (confirm(t('Delete "{name}" from the board?', { name: f.name }))) run(() => device.remove(host, f.name), t('Deleted')).then(load);
                     }} />
                   </td>
                 </tr>
@@ -199,7 +137,7 @@ function PlaylistTab({ host }: { host: string }) {
     device.playlist(host).then(setPl, (e) => toast((e as Error).message, true));
     device.list(host).then((r) => { setFiles(r.anims); setAdd(r.anims[0]?.name ?? ''); }, () => {});
   }, [host]);
-  if (!pl) return <p class="hint">กำลังโหลด...</p>;
+  if (!pl) return <p class="hint">{t('Loading…')}</p>;
 
   const items = pl.items;
   const setItems = (next: PlaylistData['items']) => setPl({ ...pl, items: next });
@@ -216,9 +154,9 @@ function PlaylistTab({ host }: { host: string }) {
     <>
       <div class="row">
         <label class="check"><input type="checkbox" checked={pl.enabled} onChange={() => setPl({ ...pl, enabled: !pl.enabled })} />
-          เปิดใช้ playlist (เล่นต่อกันอัตโนมัติ)</label>
+          {t('Enable the playlist (plays one after another)')}</label>
         <label class="check"><input type="checkbox" checked={pl.shuffle} onChange={() => setPl({ ...pl, shuffle: !pl.shuffle })} />
-          สุ่มลำดับ</label>
+          {t('Shuffle')}</label>
       </div>
       <table class="list">
         <tbody>
@@ -228,34 +166,34 @@ function PlaylistTab({ host }: { host: string }) {
               onDragOver={(e) => { e.preventDefault(); setOver(i); }}
               onDrop={(e) => { e.preventDefault(); if (drag !== null) moveTo(drag, i); setDrag(null); setOver(null); }}
               onDragEnd={() => { setDrag(null); setOver(null); }}>
-              <td class="grip" title="ลากเพื่อเรียงลำดับ"><Icon name="grip" /></td>
-              <td class="grow">{it.name}{!files.some((f) => f.name === it.name) && <small class="warn"> · ไม่พบไฟล์</small>}</td>
+              <td class="grip" title={t('Drag to reorder')}><Icon name="grip" /></td>
+              <td class="grow">{it.name}{!files.some((f) => f.name === it.name) && <small class="warn"> · {t('file not found')}</small>}</td>
               <td>
-                <input type="number" min={0} max={3600} value={it.seconds} title="วินาที (0 = เล่นจบหนึ่งรอบ)"
+                <input type="number" min={0} max={3600} value={it.seconds} title={t('Seconds (0 = play once)')}
                   onChange={(e) => setItems(items.map((x, k) => (k === i ? { ...x, seconds: Number((e.target as HTMLInputElement).value) } : x)))} />
-                <span class="hint"> วินาที</span>
+                <span class="hint"> {t('s')}</span>
               </td>
               <td class="actions">
-                <IconButton icon="up" title="ขึ้น" disabled={i === 0} onClick={() => moveTo(i, i - 1)} />
-                <IconButton icon="down" title="ลง" disabled={i === items.length - 1} onClick={() => moveTo(i, i + 2)} />
-                <IconButton icon="trash" title="เอาออก" onClick={() => setItems(items.filter((_, k) => k !== i))} />
+                <IconButton icon="up" title={t('Up')} disabled={i === 0} onClick={() => moveTo(i, i - 1)} />
+                <IconButton icon="down" title={t('Down')} disabled={i === items.length - 1} onClick={() => moveTo(i, i + 2)} />
+                <IconButton icon="trash" title={t('Remove')} onClick={() => setItems(items.filter((_, k) => k !== i))} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {items.length === 0 && <p class="hint">ยังไม่มีรายการ</p>}
+      {items.length === 0 && <p class="hint">{t('No items yet')}</p>}
       <div class="row">
         <select class="grow" value={add} onChange={(e) => setAdd((e.target as HTMLSelectElement).value)}>
           {files.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
         </select>
-        <button class="btn" disabled={!add} onClick={() => setItems([...items, { name: add, seconds: 0 }])}>เพิ่ม</button>
-        <button class="btn" disabled={!missing.length} title="เพิ่มทุกไฟล์ที่ยังไม่อยู่ในรายการ"
-          onClick={() => setItems([...items, ...missing.map((f) => ({ name: f.name, seconds: 0 }))])}>เพิ่มทั้งหมด ({missing.length})</button>
+        <button class="btn" disabled={!add} onClick={() => setItems([...items, { name: add, seconds: 0 }])}>{t('Add')}</button>
+        <button class="btn" disabled={!missing.length} title={t('Add every file not in the list yet')}
+          onClick={() => setItems([...items, ...missing.map((f) => ({ name: f.name, seconds: 0 }))])}>{t('Add all ({n})', { n: missing.length })}</button>
       </div>
-      <p class="hint">ลากแถวเพื่อเรียงลำดับ · 0 วินาที = เล่นแอนิเมชันจบหนึ่งรอบแล้วไปรายการถัดไป · กดปุ่ม BOOT บนบอร์ดเพื่อข้ามได้</p>
+      <p class="hint">{t('Drag rows to reorder · 0 seconds = play the animation once, then the next · press BOOT on the board to skip')}</p>
       <div class="row" style={{ justifyContent: 'flex-end' }}>
-        <button class="btn primary" onClick={() => run(() => device.savePlaylist(host, pl), 'บันทึก playlist แล้ว')}>บันทึก</button>
+        <button class="btn primary" onClick={() => run(() => device.savePlaylist(host, pl), t('Playlist saved'))}>{t('Save')}</button>
       </div>
     </>
   );
@@ -263,172 +201,5 @@ function PlaylistTab({ host }: { host: string }) {
 
 // ---------------------------------------------------------------------------------------------
 
-const ROTATIONS = ['0°', '90°', '180°', '270°'];
-
-function DisplayTab({ host }: { host: string }) {
-  const [d, setD] = useState<DisplaySettings | null>(null);
-  const [presets, setPresets] = useState<DevicePreset[]>([]);
-  useEffect(() => {
-    device.display(host).then(setD, (e) => toast((e as Error).message, true));
-    device.presets(host).then(setPresets, () => {});
-  }, [host]);
-  if (!d) return <p class="hint">กำลังโหลด...</p>;
-
-  const preset = presets.find((p) => p.id === d.preset);
-  const mono = preset?.color === 'mono';
-  const set = (patch: Partial<DisplaySettings>) => setD({ ...d, ...patch });
-  const num = (v: string) => Number(v);
-  const save = async () => {
-    if (await run(() => device.saveDisplay(host, d))) await waitForReboot();
-  };
-
-  return (
-    <>
-      <div class="row">
-        <span class="hint">รุ่นจอ</span>
-        <select class="grow" value={d.preset} onChange={(e) => set({ preset: (e.target as HTMLSelectElement).value })}>
-          {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </div>
-      <div class="row">
-        <span class="hint">หมุน</span>
-        <select value={d.rotation} onChange={(e) => set({ rotation: num((e.target as HTMLSelectElement).value) })}>
-          {ROTATIONS.map((r, i) => (mono && i % 2 ? null : <option key={i} value={i}>{r}</option>))}
-        </select>
-        {!mono && (
-          <>
-            <span class="hint">offset</span>
-            <input type="number" value={d.offset_x} onChange={(e) => set({ offset_x: num((e.target as HTMLInputElement).value) })} />
-            <input type="number" value={d.offset_y} onChange={(e) => set({ offset_y: num((e.target as HTMLInputElement).value) })} />
-          </>
-        )}
-      </div>
-      <div class="row">
-        <label class="check"><input type="checkbox" checked={d.invert} onChange={() => set({ invert: !d.invert })} /> กลับสี (invert)</label>
-        {!mono && <label class="check"><input type="checkbox" checked={d.bgr} onChange={() => set({ bgr: !d.bgr })} /> สลับแดง/น้ำเงิน (BGR)</label>}
-        {!mono && <label class="check"><input type="checkbox" checked={d.mirror_x} onChange={() => set({ mirror_x: !d.mirror_x })} /> กลับซ้าย-ขวา</label>}
-      </div>
-      <div class="row">
-        {mono ? (
-          <>
-            <span class="hint">I2C</span>
-            <select value={d.i2c_hz} onChange={(e) => set({ i2c_hz: num((e.target as HTMLSelectElement).value) })}>
-              {[400000, 800000, 1000000].map((v) => <option key={v} value={v}>{v / 1000} kHz</option>)}
-            </select>
-            <span class="hint">address</span>
-            <select value={d.i2c_addr} onChange={(e) => set({ i2c_addr: num((e.target as HTMLSelectElement).value) })}>
-              <option value={0x3c}>0x3C</option>
-              <option value={0x3d}>0x3D</option>
-            </select>
-          </>
-        ) : (
-          <>
-            <span class="hint">ความเร็ว SPI</span>
-            <select value={d.spi_hz} onChange={(e) => set({ spi_hz: num((e.target as HTMLSelectElement).value) })}>
-              {[10, 20, 27, 40, 60, 80].map((m) => <option key={m} value={m * 1000000}>{m} MHz</option>)}
-            </select>
-            <span class="hint">mode</span>
-            <select value={d.spi_mode} onChange={(e) => set({ spi_mode: num((e.target as HTMLSelectElement).value) })}>
-              {[0, 1, 2, 3].map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </>
-        )}
-      </div>
-      <details>
-        <summary class="hint" style={{ cursor: 'pointer' }}>ขาที่ต่อ (GPIO, -1 = ไม่ได้ต่อ)</summary>
-        <div class="row">
-          {(['clk', 'data', 'cs', 'dc', 'rst', 'bl'] as const).map((k) => (
-            <label key={k} class="hint">{k.toUpperCase()}{' '}
-              <input type="number" min={-1} max={48} value={d.pins[k]}
-                onChange={(e) => set({ pins: { ...d.pins, [k]: num((e.target as HTMLInputElement).value) } })} />
-            </label>
-          ))}
-        </div>
-      </details>
-      <label class="field">
-        <span>ความสว่าง</span>
-        <input type="range" min={0} max={255} value={d.brightness}
-          onInput={(e) => set({ brightness: num((e.target as HTMLInputElement).value) })}
-          onChange={(e) => run(() => device.brightness(host, num((e.target as HTMLInputElement).value)))} />
-        <span class="v">{Math.round((d.brightness / 255) * 100)}%</span>
-      </label>
-      <p class="hint">
-        ดูภาพทดสอบ: สี่เหลี่ยมแดงต้องอยู่มุมซ้ายบน (จอกลม: ด้านบน) · แดง/น้ำเงินสลับ → BGR · สีเหมือนฟิล์มเนกาทีฟ → invert ·
-        ขอบหายหรือมีเส้นขยะ → offset · ภาพเพี้ยน → ลดความเร็ว
-      </p>
-      <div class="row" style={{ justifyContent: 'flex-end' }}>
-        <button class="btn" onClick={() => run(() => device.testPattern(host))}>ภาพทดสอบ</button>
-        <button class="btn primary" onClick={save}>บันทึกและรีบูต</button>
-      </div>
-    </>
-  );
-}
-
 // ---------------------------------------------------------------------------------------------
 
-function WifiTab({ host }: { host: string }) {
-  const info = store.state.deviceInfo!;
-  const [ssid, setSsid] = useState('');
-  const [password, setPassword] = useState('');
-  const [networks, setNetworks] = useState<WifiNetwork[] | null>(null);
-  const [scanning, setScanning] = useState(false);
-
-  const scan = async () => {
-    setScanning(true);
-    try {
-      for (let i = 0; i < 20; i++) {
-        const r = await device.scan(host);
-        if (!r.scanning) {
-          setNetworks(r.networks ?? []);
-          break;
-        }
-        await new Promise((res) => setTimeout(res, 1000));
-      }
-    } catch (e) {
-      toast((e as Error).message, true);
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const save = async () => {
-    if (!confirm(`ให้บอร์ดเชื่อม Wi-Fi "${ssid}" แล้วรีบูต?\nหลังจากนั้นเปิด http://${info.wifi.hostname} หรือดู IP บนจอ (กดปุ่ม BOOT ค้าง 2 วินาที)`)) return;
-    if (await run(() => device.saveWifi(host, ssid, password))) await waitForReboot();
-  };
-
-  return (
-    <>
-      <p>
-        ตอนนี้: {info.wifi.mode === 'ap'
-          ? <>บอร์ดปล่อย Wi-Fi เอง <b>{info.wifi.ssid}</b> (รหัส displayedit)</>
-          : <>เชื่อม <b>{info.wifi.ssid}</b> · สัญญาณ {info.wifi.rssi} dBm</>} · {info.wifi.ip} · {info.wifi.hostname}
-      </p>
-      <div class="row">
-        <button class="btn" onClick={scan} disabled={scanning}>{scanning ? 'กำลังค้นหา...' : 'ค้นหา Wi-Fi'}</button>
-      </div>
-      {networks && (
-        <div class="swatches" style={{ gridTemplateColumns: '1fr', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
-          {networks.map((n) => (
-            <button key={n.ssid} class={`card${n.ssid === ssid ? ' sel' : ''}`} style={{ padding: '6px 10px' }} onClick={() => setSsid(n.ssid)}>
-              {n.ssid} <small style={{ display: 'inline' }}>{n.rssi} dBm{n.secure ? ' · 🔒' : ''}</small>
-            </button>
-          ))}
-          {networks.length === 0 && <p class="hint">ไม่พบเครือข่าย</p>}
-        </div>
-      )}
-      <div class="row">
-        <input type="text" class="grow" placeholder="ชื่อ Wi-Fi (SSID)" value={ssid} onInput={(e) => setSsid((e.target as HTMLInputElement).value)} />
-        <input type="text" class="grow" placeholder="รหัสผ่าน" value={password} onInput={(e) => setPassword((e.target as HTMLInputElement).value)} />
-      </div>
-      <p class="hint">ถ้าเชื่อมไม่ได้ภายใน 15 วินาที บอร์ดจะกลับมาปล่อย Wi-Fi ของตัวเองให้ตั้งค่าใหม่</p>
-      <div class="row" style={{ justifyContent: 'flex-end' }}>
-        {info.wifi.mode === 'sta' && (
-          <button class="btn" onClick={async () => {
-            if (confirm('ลืม Wi-Fi นี้และกลับไปปล่อย Wi-Fi ของบอร์ดเอง?') && (await run(() => device.forgetWifi(host)))) await waitForReboot();
-          }}>ลืม Wi-Fi</button>
-        )}
-        <button class="btn primary" disabled={!ssid} onClick={save}>เชื่อมต่อและรีบูต</button>
-      </div>
-    </>
-  );
-}

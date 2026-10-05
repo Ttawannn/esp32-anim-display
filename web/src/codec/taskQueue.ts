@@ -1,4 +1,5 @@
 import { cancelled } from '../import/limits';
+import { t } from '../i18n';
 
 // Keep project buffers on the main side until work starts. Cancelled queued jobs never clone them.
 export class TaskQueue {
@@ -6,7 +7,7 @@ export class TaskQueue {
   private busy = false;
   run<T>(work: () => Promise<T>, signal: AbortSignal): Promise<T> {
     if (signal.aborted) return Promise.reject(cancelled());
-    if (this.waiting.length >= 8) return Promise.reject(new Error('งานประมวลผลเต็มคิว — ลองอีกครั้ง'));
+    if (this.waiting.length >= 8) return Promise.reject(new Error(t('Too many jobs queued. Try again.')));
     return new Promise((resolve, reject) => {
       const job = {
         signal,

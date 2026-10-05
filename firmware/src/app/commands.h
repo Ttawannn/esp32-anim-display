@@ -9,6 +9,7 @@ enum class Cmd : uint8_t {
   Stop,
   Next,
   Delete,         // name
+  Rename,         // data: "<from>\0<to>\0", confirmed (receipt)
   CommitUpload,   // name, data = temp file path (C string), value = 1 to play afterwards
   Live,           // data/len: single-frame DPA in RAM (ownership passes to the loop)
   LiveEnd,

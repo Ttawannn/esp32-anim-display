@@ -141,7 +141,7 @@ describe('USB transport', () => {
 
   it('reports settings persistence failures over USB', async () => {
     await connect({ failSettings: true });
-    await expect(device.saveDisplay('', { rotation: 1 })).rejects.toThrow('บันทึกค่าตั้งไม่ได้');
+    await expect(device.saveDisplay('', { rotation: 1 })).rejects.toThrow("couldn't save the settings");
   });
 
   it('handshakes and calls JSON endpoints, ignoring log lines', async () => {
@@ -152,7 +152,7 @@ describe('USB transport', () => {
 
   it('maps error responses to messages', async () => {
     await connect();
-    await expect(device.play('', 'missing')).rejects.toThrow('ไม่พบไฟล์');
+    await expect(device.play('', 'missing')).rejects.toThrow('File not found');
   });
 
   it('uploads in chunks and reads files back', async () => {
@@ -196,18 +196,18 @@ describe('USB transport', () => {
     const board = await connect({ failSave: true });
     const old = Uint8Array.of(9);
     board.files.set('a', old);
-    await expect(device.upload('', 'a', Uint8Array.of(1, 2))).rejects.toThrow('บันทึกไฟล์ไม่ได้');
+    await expect(device.upload('', 'a', Uint8Array.of(1, 2))).rejects.toThrow("couldn't save the file");
     expect(board.files.get('a')).toBe(old);
   });
 
   it('reports queue-full errors', async () => {
     await connect({ queueFull: true });
-    await expect(device.next('')).rejects.toThrow('เต็มคิว');
+    await expect(device.next('')).rejects.toThrow('busy');
   });
 
   it('aborts a failed transfer to release board resources', async () => {
     const board = await connect({ failChunk: true });
-    await expect(device.upload('', 'a', Uint8Array.of(1))).rejects.toThrow('พื้นที่บนบอร์ดไม่พอ');
+    await expect(device.upload('', 'a', Uint8Array.of(1))).rejects.toThrow('Not enough space');
     expect(board.requests.at(-1).op).toBe('put_abort');
   });
 
@@ -215,7 +215,7 @@ describe('USB transport', () => {
     await connect({ disconnectChunk: true });
     const closed = vi.fn();
     link!.onClose = closed;
-    await expect(device.upload('', 'a', Uint8Array.of(1))).rejects.toThrow('สาย USB หลุด');
+    await expect(device.upload('', 'a', Uint8Array.of(1))).rejects.toThrow('USB cable was disconnected');
     expect(link!.isOpen).toBe(false);
     expect(closed).toHaveBeenCalledOnce();
   });
@@ -225,7 +225,7 @@ describe('USB transport', () => {
     link = new SerialLink({ ...board.port, writable: new WritableStream({ write() {} }) });
     link.start();
     const request = link.request({ op: 'hello' });
-    const rejection = expect(request).rejects.toThrow('สาย USB หลุด');
+    const rejection = expect(request).rejects.toThrow('USB cable was disconnected');
     await new Promise((resolve) => setTimeout(resolve, 0));
     await link.close();
     await rejection;
@@ -233,7 +233,7 @@ describe('USB transport', () => {
 
   it('recovers the request queue after a timeout', async () => {
     await connect();
-    await expect(link!.request({ op: 'ignore' }, 20)).rejects.toThrow('บอร์ดไม่ตอบผ่าน USB');
+    await expect(link!.request({ op: 'ignore' }, 20)).rejects.toThrow('not answering over USB');
     expect((await device.info('')).board_name).toBe('sim');
   });
 });

@@ -11,7 +11,7 @@ it('decodes a small GIF and rejects oversized geometry before decoding pixels', 
   expect(decodeGif(gif().buffer)).toMatchObject({ width: 1, height: 1, frames: [{ delay: 100 }] });
   const huge = gif();
   new DataView(huge.buffer).setUint16(6, 65535, true);
-  expect(() => decodeGif(huge.buffer)).toThrow('หน่วยความจำ');
+  expect(() => decodeGif(huge.buffer)).toThrow('too much memory');
   expect(() => decodeGif(new ArrayBuffer(MAX_GIF_BYTES + 1))).toThrow('16 MB');
 });
 
@@ -24,7 +24,7 @@ it('accepts small animations and rejects too many frames or excessive RGBA data'
 
 it('rejects excessive video extraction before allocating its canvas', async () => {
   await expect(extractFrames({ duration: 300 } as any, { start: 0, end: 300, fps: 30, width: 240, height: 240 } as any,
-    () => {}, new AbortController().signal)).rejects.toThrow('หน่วยความจำ');
+    () => {}, new AbortController().signal)).rejects.toThrow('too much memory');
 });
 
 it('cancels while waiting for video seek and clears its timeout', async () => {
@@ -42,7 +42,7 @@ it('reports a seek timeout and releases listeners', async () => {
   vi.useFakeTimers();
   const video = Object.assign(new EventTarget(), { currentTime: 0, readyState: 1 }) as HTMLVideoElement;
   const pending = seek(video, 1);
-  const rejected = expect(pending).rejects.toThrow('ใช้เวลานานเกินไป');
+  const rejected = expect(pending).rejects.toThrow('took too long');
   await vi.advanceTimersByTimeAsync(10000);
   await rejected;
   expect(vi.getTimerCount()).toBe(0);

@@ -67,6 +67,8 @@ static void info(JsonDocument& doc) {
   d["color"] = p.driver == Driver::I2cMonoPage ? "mono" : "rgb565";
   d["shape"] = p.round ? "round" : "rect";
   d["brightness"] = cfg.brightness;
+  d["configured"] = appDisplayConfigured();
+  if (appDisplayDetected()) d["detected"] = appDisplayDetected();
 
   JsonObject fs = doc["fs"].to<JsonObject>();
   fs["total"] = storage::totalBytes();
@@ -205,6 +207,20 @@ int apiHandle(const String& method, const String& path, const ApiParams& params,
       if (name.isEmpty() || !storage::exists(name)) return fail(out, 404, "not found");
       return enqueue(out, Cmd::Delete, name.c_str());
     }
+  }
+
+  if (path == "/api/anims/rename" && post) {
+    const String from = storage::sanitizeName(params("name"));
+    const String to = storage::sanitizeName(params("to"));
+    if (from.isEmpty() || !storage::exists(from)) return fail(out, 404, "not found");
+    if (to.isEmpty()) return fail(out, 400, "invalid file name");
+    if (to == from) return ok(out);
+    if (storage::exists(to)) return fail(out, 409, "name exists");
+    char both[2 * 64 + 2];  // names are at most 48 bytes (sanitizeName)
+    if (from.length() + to.length() + 2 > sizeof(both)) return fail(out, 400, "invalid file name");
+    memcpy(both, from.c_str(), from.length() + 1);
+    memcpy(both + from.length() + 1, to.c_str(), to.length() + 1);
+    return confirmed(out, Cmd::Rename, both, from.length() + to.length() + 2);
   }
 
   if (path == "/api/play" && post) {

@@ -49,11 +49,11 @@ export interface AnimTemplate {
 }
 
 export const CATEGORIES: { id: CategoryId | 'all'; label: string }[] = [
-  { id: 'all', label: 'ทั้งหมด' },
-  { id: 'nature', label: 'ธรรมชาติ' },
-  { id: 'fun', label: 'สนุก ๆ' },
-  { id: 'tech', label: 'เทคโนโลยี' },
-  { id: 'text', label: 'ข้อความ & นาฬิกา' },
+  { id: 'all', label: 'All' },
+  { id: 'nature', label: 'Nature' },
+  { id: 'fun', label: 'Fun' },
+  { id: 'tech', label: 'Tech' },
+  { id: 'text', label: 'Text & clock' },
 ];
 
 const BLACK: RGB = [0, 0, 0];
@@ -87,13 +87,13 @@ const PALETTES: Record<string, RGB[]> = {
   sunset: [[40, 0, 60], [180, 30, 90], [255, 100, 60], [255, 200, 80], [180, 30, 90], [40, 0, 60]],
 };
 
-const PALETTE_CHOICES: [string, string][] = [['fire', 'ไฟ'], ['blue', 'ฟ้า'], ['green', 'เขียว'], ['purple', 'ม่วง']];
+const PALETTE_CHOICES: [string, string][] = [['fire', 'Fire'], ['blue', 'Blue'], ['green', 'Green'], ['purple', 'Purple']];
 
 // ---------------------------------------------------------------------------------------------
 
 const heart: AnimTemplate = {
-  id: 'heart', name: 'หัวใจเต้น', emoji: '❤️', hint: 'เต้นตุบ ๆ สองจังหวะ', category: 'fun', pixel: 4,
-  options: [{ id: 'color', label: 'สีหัวใจ', type: 'color' }, { id: 'bg', label: 'พื้นหลัง', type: 'color' }],
+  id: 'heart', name: 'Beating heart', emoji: '❤️', hint: 'A double heartbeat', category: 'fun', pixel: 4,
+  options: [{ id: 'color', label: 'Heart color', type: 'color' }, { id: 'bg', label: 'Background', type: 'color' }],
   defaults: { color: '#ff2d55', bg: '#000000' },
   generate(c, o) {
     const fg = col(c, o, 'color'), bg = bgCol(c, o), shine = mix(fg, WHITE, 0.55);
@@ -114,8 +114,8 @@ const heart: AnimTemplate = {
 };
 
 const spinner: AnimTemplate = {
-  id: 'spinner', name: 'กำลังโหลด', emoji: '⏳', hint: 'จุดหมุนวน', category: 'tech', pixel: 2,
-  options: [{ id: 'color', label: 'สี', type: 'color' }, { id: 'style', label: 'แบบ', type: 'choice', choices: [['dots', 'จุด'], ['ring', 'วงแหวน']] }],
+  id: 'spinner', name: 'Loading', emoji: '⏳', hint: 'Spinning dots', category: 'tech', pixel: 2,
+  options: [{ id: 'color', label: 'Color', type: 'color' }, { id: 'style', label: 'Style', type: 'choice', choices: [['dots', 'Dots'], ['ring', 'Ring']] }],
   defaults: { color: '#4f8cff', style: 'dots' },
   generate(c, o) {
     const fg = col(c, o, 'color'), cx = c.w / 2, cy = c.h / 2, R = safeRadius(c.w, c.h, c.round) * 0.6;
@@ -145,8 +145,8 @@ const spinner: AnimTemplate = {
 };
 
 const fire: AnimTemplate = {
-  id: 'fire', name: 'ไฟลุก', emoji: '🔥', hint: 'เปลวไฟแบบเกมย้อนยุค', category: 'nature', pixel: 3, smoothMono: true,
-  options: [{ id: 'palette', label: 'สีไฟ', type: 'choice', choices: PALETTE_CHOICES }],
+  id: 'fire', name: 'Fire', emoji: '🔥', hint: 'Retro-game flames', category: 'nature', pixel: 3, smoothMono: true,
+  options: [{ id: 'palette', label: 'Flame color', type: 'choice', choices: PALETTE_CHOICES }],
   defaults: { palette: 'fire' },
   generate(c, o) {
     const pal = ramp(PALETTES[o.palette] ?? PALETTES.fire);
@@ -177,8 +177,8 @@ const fire: AnimTemplate = {
 };
 
 const rain: AnimTemplate = {
-  id: 'rain', name: 'ฝนตก', emoji: '🌧️', hint: 'สายฝนวนต่อเนื่อง', category: 'nature', pixel: 2,
-  options: [{ id: 'color', label: 'สีฝน', type: 'color' }, { id: 'bg', label: 'ท้องฟ้า', type: 'color' }],
+  id: 'rain', name: 'Rain', emoji: '🌧️', hint: 'Endless falling rain', category: 'nature', pixel: 2,
+  options: [{ id: 'color', label: 'Rain color', type: 'color' }, { id: 'bg', label: 'Sky', type: 'color' }],
   defaults: { color: '#7cc4ff', bg: '#0a1022' },
   generate(c, o) {
     const fg = col(c, o, 'color'), bg = bgCol(c, o), rand = rng(3);
@@ -198,8 +198,8 @@ const rain: AnimTemplate = {
 };
 
 const snow: AnimTemplate = {
-  id: 'snow', name: 'หิมะตก', emoji: '❄️', hint: 'เกล็ดหิมะลอยพลิ้ว', category: 'nature', pixel: 2,
-  options: [{ id: 'bg', label: 'ท้องฟ้า', type: 'color' }],
+  id: 'snow', name: 'Snow', emoji: '❄️', hint: 'Drifting snowflakes', category: 'nature', pixel: 2,
+  options: [{ id: 'bg', label: 'Sky', type: 'color' }],
   defaults: { bg: '#0b1534' },
   generate(c, o) {
     const bg = bgCol(c, o), rand = rng(11);
@@ -236,8 +236,8 @@ function drawStars(img: Img, c: TemplateCtx, stars: ReturnType<typeof starField>
 }
 
 const stars: AnimTemplate = {
-  id: 'stars', name: 'ดาวระยิบ', emoji: '✨', hint: 'ดาวกะพริบ มีดาวตก', category: 'nature', pixel: 2,
-  options: [{ id: 'bg', label: 'ท้องฟ้า', type: 'color' }],
+  id: 'stars', name: 'Twinkling stars', emoji: '✨', hint: 'Twinkling stars and a shooting star', category: 'nature', pixel: 2,
+  options: [{ id: 'bg', label: 'Sky', type: 'color' }],
   defaults: { bg: '#050818' },
   generate(c, o) {
     const bg = bgCol(c, o), field = starField(c, 5, 28);
@@ -255,8 +255,8 @@ const stars: AnimTemplate = {
 };
 
 const warp: AnimTemplate = {
-  id: 'warp', name: 'วาร์ปอวกาศ', emoji: '🚀', hint: 'พุ่งทะลุดวงดาว', category: 'tech', pixel: 2,
-  options: [{ id: 'color', label: 'สีดาว', type: 'color' }],
+  id: 'warp', name: 'Warp speed', emoji: '🚀', hint: 'Flying through the stars', category: 'tech', pixel: 2,
+  options: [{ id: 'color', label: 'Star color', type: 'color' }],
   defaults: { color: '#cfe3ff' },
   generate(c, o) {
     const fg = col(c, o, 'color'), rand = rng(9), cx = c.w / 2, cy = c.h / 2, maxR = Math.hypot(c.w, c.h) / 2;
@@ -281,8 +281,8 @@ const glyphBits = (seed: number) => {
 };
 
 const matrix: AnimTemplate = {
-  id: 'matrix', name: 'Matrix', emoji: '🟩', hint: 'ฝนตัวอักษรเขียว', category: 'tech', pixel: 2,
-  options: [{ id: 'color', label: 'สี', type: 'color' }],
+  id: 'matrix', name: 'Matrix', emoji: '🟩', hint: 'Green falling code', category: 'tech', pixel: 2,
+  options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#33ff77' },
   generate(c, o) {
     const fg = col(c, o, 'color'), head = mix(fg, WHITE, 0.7), rand = rng(21);
@@ -307,11 +307,11 @@ const matrix: AnimTemplate = {
 };
 
 const equalizer: AnimTemplate = {
-  id: 'equalizer', name: 'อีควอไลเซอร์', emoji: '🎵', hint: 'แท่งเสียงเต้นตามจังหวะ', category: 'tech', pixel: 2,
+  id: 'equalizer', name: 'Equalizer', emoji: '🎵', hint: 'Bouncing audio bars', category: 'tech', pixel: 2,
   options: [
-    { id: 'bars', label: 'จำนวนแท่ง', type: 'choice', choices: [['8', '8'], ['12', '12'], ['16', '16']] },
-    { id: 'colors', label: 'สี', type: 'choice', choices: [['classic', 'เขียว-เหลือง-แดง'], ['neon', 'นีออน'], ['one', 'สีเดียว']] },
-    { id: 'color', label: 'สีเดียว', type: 'color' },
+    { id: 'bars', label: 'Bars', type: 'choice', choices: [['8', '8'], ['12', '12'], ['16', '16']] },
+    { id: 'colors', label: 'Color', type: 'choice', choices: [['classic', 'Green-yellow-red'], ['neon', 'Neon'], ['one', 'Single color']] },
+    { id: 'color', label: 'Single color', type: 'color' },
   ],
   defaults: { bars: '12', colors: 'classic', color: '#00e0ff' },
   generate(c, o) {
@@ -338,8 +338,8 @@ const equalizer: AnimTemplate = {
 };
 
 const plasma: AnimTemplate = {
-  id: 'plasma', name: 'พลาสมาสีรุ้ง', emoji: '🌈', hint: 'คลื่นสีไหลวน', category: 'fun', pixel: 4, smoothMono: true,
-  options: [{ id: 'palette', label: 'โทนสี', type: 'choice', choices: [['rainbow', 'สีรุ้ง'], ['ocean', 'ทะเล'], ['sunset', 'พระอาทิตย์ตก'], ['purple', 'ม่วง']] }],
+  id: 'plasma', name: 'Rainbow plasma', emoji: '🌈', hint: 'Flowing color waves', category: 'fun', pixel: 4, smoothMono: true,
+  options: [{ id: 'palette', label: 'Palette', type: 'choice', choices: [['rainbow', 'Rainbow'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['purple', 'Purple']] }],
   defaults: { palette: 'rainbow' },
   generate(c, o) {
     const pal = ramp(PALETTES[o.palette] ?? PALETTES.rainbow);
@@ -359,8 +359,8 @@ const plasma: AnimTemplate = {
 };
 
 const bounce: AnimTemplate = {
-  id: 'bounce', name: 'ลูกบอลเด้ง', emoji: '⚽', hint: 'เด้งดึ๋ง มีเงา', category: 'fun', pixel: 2,
-  options: [{ id: 'color', label: 'สีลูกบอล', type: 'color' }, { id: 'bg', label: 'พื้นหลัง', type: 'color' }],
+  id: 'bounce', name: 'Bouncing ball', emoji: '⚽', hint: 'Bounces with a shadow', category: 'fun', pixel: 2,
+  options: [{ id: 'color', label: 'Ball color', type: 'color' }, { id: 'bg', label: 'Background', type: 'color' }],
   defaults: { color: '#ff5a36', bg: '#101a30' },
   generate(c, o) {
     const fg = col(c, o, 'color'), bg = bgCol(c, o), hi = mix(fg, WHITE, 0.6), dark = mix(fg, BLACK, 0.45);
@@ -382,8 +382,8 @@ const bounce: AnimTemplate = {
 };
 
 const pacman: AnimTemplate = {
-  id: 'pacman', name: 'แพคแมน', emoji: '🟡', hint: 'กินจุด มีผีไล่', category: 'fun', pixel: 4,
-  options: [{ id: 'ghost', label: 'ผีไล่', type: 'choice', choices: [['yes', 'มี'], ['no', 'ไม่มี']] }],
+  id: 'pacman', name: 'Pac-Man', emoji: '🟡', hint: 'Eats dots, chased by a ghost', category: 'fun', pixel: 4,
+  options: [{ id: 'ghost', label: 'Ghost', type: 'choice', choices: [['yes', 'Yes'], ['no', 'No']] }],
   defaults: { ghost: 'yes' },
   generate(c, o) {
     const r = Math.max(3, Math.min(c.h * 0.22, c.w * 0.14)), cy = c.h / 2;
@@ -420,7 +420,7 @@ const pacman: AnimTemplate = {
 };
 
 const battery: AnimTemplate = {
-  id: 'battery', name: 'ชาร์จแบต', emoji: '🔋', hint: 'แบตค่อย ๆ เต็ม', category: 'tech', pixel: 4,
+  id: 'battery', name: 'Charging battery', emoji: '🔋', hint: 'Battery fills up', category: 'tech', pixel: 4,
   options: [],
   defaults: {},
   generate(c) {
@@ -443,8 +443,8 @@ const battery: AnimTemplate = {
 };
 
 const wifi: AnimTemplate = {
-  id: 'wifi', name: 'สัญญาณ Wi-Fi', emoji: '📶', hint: 'คลื่นสัญญาณทีละขีด', category: 'tech', pixel: 2,
-  options: [{ id: 'color', label: 'สี', type: 'color' }],
+  id: 'wifi', name: 'Wi-Fi signal', emoji: '📶', hint: 'Signal bars one by one', category: 'tech', pixel: 2,
+  options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#4fd1ff' },
   generate(c, o) {
     const fg = col(c, o, 'color'), cx = c.w / 2, R = safeRadius(c.w, c.h, c.round) * 0.9, cy = c.h / 2 + R * 0.45;
@@ -462,8 +462,8 @@ const wifi: AnimTemplate = {
 };
 
 const wave: AnimTemplate = {
-  id: 'wave', name: 'คลื่นทะเล', emoji: '🌊', hint: 'คลื่นซ้อนกันกับพระอาทิตย์', category: 'nature', pixel: 3,
-  options: [{ id: 'time', label: 'ช่วงเวลา', type: 'choice', choices: [['day', 'กลางวัน'], ['sunset', 'เย็น'], ['night', 'กลางคืน']] }],
+  id: 'wave', name: 'Ocean waves', emoji: '🌊', hint: 'Layered waves and a sun', category: 'nature', pixel: 3,
+  options: [{ id: 'time', label: 'Time of day', type: 'choice', choices: [['day', 'Day'], ['sunset', 'Sunset'], ['night', 'Night']] }],
   defaults: { time: 'sunset' },
   generate(c, o) {
     const sky = { day: [[110, 190, 255], [200, 235, 255]], sunset: [[60, 30, 110], [255, 140, 90]], night: [[5, 8, 30], [30, 40, 90]] }[o.time as 'day'] as RGB[];
@@ -488,7 +488,7 @@ const wave: AnimTemplate = {
 };
 
 const fireworks: AnimTemplate = {
-  id: 'fireworks', name: 'พลุ', emoji: '🎆', hint: 'พลุหลากสีระเบิดต่อเนื่อง', category: 'fun', pixel: 2,
+  id: 'fireworks', name: 'Fireworks', emoji: '🎆', hint: 'Colorful bursts, one after another', category: 'fun', pixel: 2,
   options: [],
   defaults: {},
   generate(c) {
@@ -524,8 +524,8 @@ const fireworks: AnimTemplate = {
 };
 
 const life: AnimTemplate = {
-  id: 'life', name: 'Game of Life', emoji: '🧬', hint: 'เซลล์เกิด-ตายตามกฎ', category: 'tech', pixel: 4,
-  options: [{ id: 'color', label: 'สี', type: 'color' }],
+  id: 'life', name: 'Game of Life', emoji: '🧬', hint: 'Cells live and die by the rules', category: 'tech', pixel: 4,
+  options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#7cff6b' },
   generate(c, o) {
     const fg = col(c, o, 'color'), w = c.w, h = c.h, rand = rng(23);
@@ -555,8 +555,8 @@ const life: AnimTemplate = {
 };
 
 const radar: AnimTemplate = {
-  id: 'radar', name: 'เรดาร์', emoji: '📡', hint: 'กวาดหาเป้าหมาย', category: 'tech', pixel: 2,
-  options: [{ id: 'color', label: 'สี', type: 'color' }],
+  id: 'radar', name: 'Radar', emoji: '📡', hint: 'Sweeping for targets', category: 'tech', pixel: 2,
+  options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#3dff8a' },
   generate(c, o) {
     const fg = col(c, o, 'color'), dim = mix(BLACK, fg, 0.3), cx = c.w / 2, cy = c.h / 2, R = safeRadius(c.w, c.h, c.round) * 0.95;
@@ -595,14 +595,14 @@ function ctx2d(w: number, h: number) {
 }
 
 const marquee: AnimTemplate = {
-  id: 'marquee', name: 'ตัวอักษรวิ่ง', emoji: '💬', hint: 'ป้ายข้อความเลื่อน', category: 'text', pixel: 2, canvas: true,
+  id: 'marquee', name: 'Scrolling text', emoji: '💬', hint: 'A scrolling message sign', category: 'text', pixel: 2, canvas: true,
   options: [
-    { id: 'text', label: 'ข้อความ', type: 'text' },
-    { id: 'color', label: 'สีตัวอักษร', type: 'color' },
-    { id: 'bg', label: 'พื้นหลัง', type: 'color' },
-    { id: 'size', label: 'ขนาด', type: 'choice', choices: [['0.5', 'ใหญ่'], ['0.35', 'กลาง'], ['0.22', 'เล็ก']] },
+    { id: 'text', label: 'Text', type: 'text' },
+    { id: 'color', label: 'Text color', type: 'color' },
+    { id: 'bg', label: 'Background', type: 'color' },
+    { id: 'size', label: 'Size', type: 'choice', choices: [['0.5', 'Large'], ['0.35', 'Medium'], ['0.22', 'Small']] },
   ],
-  defaults: { text: 'สวัสดีครับ 👋 Hello!', color: '#ffd23f', bg: '#000000', size: '0.5' },
+  defaults: { text: 'Hello there! 👋', color: '#ffd23f', bg: '#000000', size: '0.5' },
   generate(c, o) {
     const fg = c.mono ? '#ffffff' : o.color, bg = bgCol(c, o);
     const size = Math.max(7, Math.round(Math.min(c.h, c.w * 0.6) * Number(o.size)));
@@ -634,11 +634,11 @@ const marquee: AnimTemplate = {
 };
 
 const emojiBounce: AnimTemplate = {
-  id: 'emoji', name: 'อีโมจิดุ๊กดิ๊ก', emoji: '😺', hint: 'เด้ง หมุน หรือเต้นตุบ', category: 'fun', pixel: 1, canvas: true,
+  id: 'emoji', name: 'Wiggly emoji', emoji: '😺', hint: 'Bounce, wobble, spin or pulse', category: 'fun', pixel: 1, canvas: true,
   options: [
-    { id: 'char', label: 'อีโมจิ', type: 'text' },
-    { id: 'motion', label: 'ท่าทาง', type: 'choice', choices: [['bounce', 'เด้ง'], ['wobble', 'โยกเยก'], ['spin', 'หมุน'], ['pulse', 'เต้นตุบ']] },
-    { id: 'bg', label: 'พื้นหลัง', type: 'color' },
+    { id: 'char', label: 'Emoji', type: 'text' },
+    { id: 'motion', label: 'Motion', type: 'choice', choices: [['bounce', 'Bounce'], ['wobble', 'Wobble'], ['spin', 'Spin'], ['pulse', 'Pulse']] },
+    { id: 'bg', label: 'Background', type: 'color' },
   ],
   defaults: { char: '😺', motion: 'bounce', bg: '#1b1f3a' },
   generate(c, o) {
@@ -677,14 +677,15 @@ function clockLayer(format: string, size: number, y: number, color: string): Clo
 }
 
 const clock: AnimTemplate = {
-  id: 'clock', name: 'นาฬิกาดิจิทัล', emoji: '🕒', hint: 'เวลาเดินจริงบนบอร์ด + พื้นหลังเคลื่อนไหว', category: 'text', pixel: 2,
+  id: 'clock', name: 'Digital clock', emoji: '🕒', hint: 'Live time on the board over an animated background', category: 'text', pixel: 2,
   options: [
-    { id: 'bgStyle', label: 'พื้นหลัง', type: 'choice', choices: [['stars', 'ดาวระยิบ'], ['plasma', 'สีไหลวน'], ['rain', 'ฝนตก'], ['plain', 'สีพื้น']] },
-    { id: 'show', label: 'แสดง', type: 'choice', choices: [['time-date', 'เวลา + วันที่'], ['time', 'เวลาอย่างเดียว'], ['seconds', 'เวลา + วินาที']] },
-    { id: 'color', label: 'สีตัวเลข', type: 'color' },
-    { id: 'bg', label: 'สีพื้น', type: 'color' },
+    { id: 'bgStyle', label: 'Background', type: 'choice', choices: [['stars', 'Twinkling stars'], ['plasma', 'Flowing colors'], ['rain', 'Rain'], ['plain', 'Plain color']] },
+    { id: 'show', label: 'Show', type: 'choice', choices: [['time-date', 'Time + date'], ['time', 'Time only'], ['seconds', 'Time + seconds']] },
+    { id: 'names', label: 'Day and month names', type: 'choice', choices: [['en', 'English'], ['th', 'Thai']] },
+    { id: 'color', label: 'Digit color', type: 'color' },
+    { id: 'bg', label: 'Plain color', type: 'color' },
   ],
-  defaults: { bgStyle: 'stars', show: 'time-date', color: '#ffffff', bg: '#060a1c' },
+  defaults: { bgStyle: 'stars', show: 'time-date', names: 'en', color: '#ffffff', bg: '#060a1c' },
   generate(c, o) {
     let base: Generated;
     if (o.bgStyle === 'plasma') {
@@ -703,7 +704,7 @@ const clock: AnimTemplate = {
     const layers: Layer[] = [];
     const timeY = o.show === 'time-date' ? H * 0.5 - big * 0.85 : H / 2 - big * 0.6;
     layers.push(clockLayer(seconds ? 'HH:mm:ss' : 'HH:mm', big, timeY, color));
-    if (o.show === 'time-date') layers.push(clockLayer(H < 48 ? 'd MMM' : 'ddd d MMM', big * 0.42, H * 0.5 + big * 0.35, color));
+    if (o.show === 'time-date') layers.push(clockLayer(`${o.names === 'th' ? '' : 'L'}${H < 48 ? 'd MMM' : 'ddd d MMM'}`, big * 0.42, H * 0.5 + big * 0.35, color));
     return { ...base, layers };
   },
 };

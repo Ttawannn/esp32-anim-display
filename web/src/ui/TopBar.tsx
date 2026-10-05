@@ -6,8 +6,10 @@ import { store, toast, type EditorState } from '../model/store';
 import { download, loadProjectFile, saveProjectFile } from '../storage/projectFile';
 import { Icon, IconButton, pickFile } from './common';
 import { ConnectionChip } from './ConnectionChip';
+import { LangSwitch } from './LangSwitch';
 import { Menu, MenuItem, MenuSeparator } from './Menu';
 import { openTemplates } from './TemplatesDialog';
+import { t } from '../i18n';
 
 export async function openProjectFile() {
   const file = await pickFile('.dpe');
@@ -15,9 +17,9 @@ export async function openProjectFile() {
   try {
     store.load(await loadProjectFile(file));
     store.set({ zoom: 0, startDismissed: true });
-    toast(`เปิด ${file.name} แล้ว`);
+    toast(t('Opened {name}', { name: file.name }));
   } catch (e) {
-    toast((e as Error).message || 'เปิดไฟล์ไม่ได้', true);
+    toast((e as Error).message || t("Couldn't open the file"), true);
   }
 }
 
@@ -43,41 +45,42 @@ export function TopBar({ s }: { s: EditorState }) {
         <span class="logo"><i /><i /></span>
         <span class="lbl">Display <b>Editor</b></span>
       </div>
-      <input type="text" class="name" value={p.name} title="ชื่อแอนิเมชัน (ใช้เป็นชื่อไฟล์บนบอร์ด)" aria-label="ชื่อแอนิเมชัน"
+      <input type="text" class="name" value={p.name} title={t('Animation name (used as the file name on the board)')} aria-label={t('Animation name')}
         onChange={(e) => store.commit({ ...p, name: (e.target as HTMLInputElement).value })} />
 
-      <Menu label="ไฟล์" icon="file" open={menu === 'file'} onToggle={toggle('file')}>
-        <MenuItem icon="plus" label="โปรเจกต์ใหม่" hint="เลือกจอและขนาดภาพ" onClick={() => open('new')} />
-        <MenuItem icon="folder" label="เปิดโปรเจกต์…" hint="ไฟล์ .dpe" onClick={openProjectFile} />
-        <MenuItem icon="save" label="บันทึกโปรเจกต์" hint="เก็บไว้แก้ต่อ (.dpe)" onClick={saveProject} />
+      <Menu label={t('File')} icon="file" open={menu === 'file'} onToggle={toggle('file')}>
+        <MenuItem icon="plus" label={t('New project')} hint={t('Choose the display and image size')} onClick={() => open('new')} />
+        <MenuItem icon="folder" label={t('Open project…')} hint={t('.dpe file')} onClick={openProjectFile} />
+        <MenuItem icon="save" label={t('Save project')} hint={t('Keep it to edit later (.dpe)')} onClick={saveProject} />
         <MenuSeparator />
-        <MenuItem icon="download" label="ดาวน์โหลด .dpa" hint="ไฟล์สำหรับเล่นบนบอร์ด" onClick={downloadDpa} />
+        <MenuItem icon="download" label={t('Download .dpa')} hint={t('The file the board plays')} onClick={downloadDpa} />
         <MenuSeparator />
-        <MenuItem icon="board" label="ติดตั้งเฟิร์มแวร์ลงบอร์ด" hint="แฟลชผ่าน USB จากเบราว์เซอร์"
+        <MenuItem icon="board" label={t('Install firmware on a board')} hint={t('Flash over USB from the browser')}
           onClick={() => window.open(firmwareInstallerUrl(), '_blank', 'noopener')} />
       </Menu>
-      <Menu label="สร้าง" icon="sparkle" open={menu === 'create'} onToggle={toggle('create')}>
-        <MenuItem icon="wand" label="แม่แบบแอนิเมชัน" hint="ไฟ ฝน ดาว พลุ นาฬิกา และอีก 20+ แบบ" onClick={() => openTemplates()} />
-        <MenuItem icon="sparkle" label="แม่แบบดวงตา" hint="12 อารมณ์ พร้อมใช้" onClick={() => open('eyes')} />
-        <MenuItem icon="clock" label="นาฬิกาดิจิทัล" hint="เวลาเดินจริงบนบอร์ด" onClick={() => openTemplates('clock')} />
-        <MenuItem icon="image" label="นำเข้า GIF" hint="ภาพเคลื่อนไหวสำเร็จรูป" onClick={() => open('gif')} />
-        <MenuItem icon="film" label="นำเข้าวิดีโอ" hint="MP4, WebM, MOV" onClick={() => open('video')} />
+      <Menu label={t('Create')} icon="sparkle" open={menu === 'create'} onToggle={toggle('create')}>
+        <MenuItem icon="wand" label={t('Animation templates')} hint={t('Fire, rain, stars, fireworks, a clock and 20+ more')} onClick={() => openTemplates()} />
+        <MenuItem icon="sparkle" label={t('Eye templates')} hint={t('12 ready-made moods')} onClick={() => open('eyes')} />
+        <MenuItem icon="clock" label={t('Digital clock')} hint={t('Live time on the board')} onClick={() => openTemplates('clock')} />
+        <MenuItem icon="image" label={t('Import GIF')} hint={t('Use a ready-made animation')} onClick={() => open('gif')} />
+        <MenuItem icon="film" label={t('Import video')} hint="MP4, WebM, MOV" onClick={() => open('video')} />
       </Menu>
       <span class="tb-sep" />
-      <IconButton icon="undo" title="ย้อนกลับ (Ctrl+Z)" disabled={!store.canUndo} onClick={() => store.undo()} />
-      <IconButton icon="redo" title="ทำซ้ำ (Ctrl+Y)" disabled={!store.canRedo} onClick={() => store.redo()} />
+      <IconButton icon="undo" title={t('Undo (Ctrl+Z)')} disabled={!store.canUndo} onClick={() => store.undo()} />
+      <IconButton icon="redo" title={t('Redo (Ctrl+Y)')} disabled={!store.canRedo} onClick={() => store.redo()} />
 
       <div class="spacer" />
 
-      <a class="btn ghost" href="#/remote" title="หน้ารีโมท: แตะเลือกหน้าที่จะแสดงบนจอ (เหมาะกับมือถือ)">
-        <Icon name="phone" /><span class="lbl">รีโมท</span>
+      <LangSwitch />
+      <a class="btn ghost" href="#/remote" title={t('Remote: tap what to show on the screen (made for phones)')}>
+        <Icon name="phone" /><span class="lbl">{t('Remote')}</span>
       </a>
       <ConnectionChip />
       <button class={`btn primary send${s.sending ? ' busy' : ''}`} onClick={sendToBoard} disabled={!!s.sending}
-        title="บันทึกแอนิเมชันนี้ลงบอร์ดและเล่นทันที">
+        title={t('Save this animation on the board and play it now')}>
         {s.sending && <span class="send-progress" style={{ width: `${Math.round(s.sending.pct * 100)}%` }} />}
         <Icon name="send" />
-        <span class="lbl">{s.sending ? `${s.sending.label} ${Math.round(s.sending.pct * 100)}%` : 'ส่งไปบอร์ด'}</span>
+        <span class="lbl">{s.sending ? `${s.sending.label} ${Math.round(s.sending.pct * 100)}%` : t('Send to board')}</span>
       </button>
     </header>
   );

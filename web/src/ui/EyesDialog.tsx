@@ -8,11 +8,12 @@ import { composeScreen } from '../render/screen';
 import { EYE_ANIMS, generateEyes, type EyeOptions, type EyeStyle, type GeneratedEyes } from '../templates/eyes';
 import { defaultEyeOptions, eyeProject } from '../templates/eyeProject';
 import { Modal, Slider } from './common';
+import { t } from '../i18n';
 
 const STYLES: { id: EyeStyle; name: string; hint: string }[] = [
-  { id: 'robot', name: 'หุ่นยนต์', hint: 'สี่เหลี่ยมมน เรียบง่าย' },
-  { id: 'cartoon', name: 'การ์ตูน', hint: 'ตาขาว ม่านตา แววตา' },
-  { id: 'single', name: 'ตาเดียว', hint: 'ลูกตาใหญ่ เหมาะจอกลม' },
+  { id: 'robot', name: 'Robot', hint: 'Simple rounded squares' },
+  { id: 'cartoon', name: 'Cartoon', hint: 'Whites, iris and a sparkle' },
+  { id: 'single', name: 'Single eye', hint: 'One big eye, great on round screens' },
 ];
 
 export function EyesDialog() {
@@ -29,7 +30,7 @@ export function EyesDialog() {
 
   const toProject = (g: GeneratedEyes, name: string): Project => eyeProject(preset.id, g, o, name);
 
-  const preview = useMemo(() => toProject(gen, anim.name), [gen]);
+  const preview = useMemo(() => toProject(gen, t(anim.name)), [gen]);
 
   // Loop the generated animation in the preview using each frame's delay.
   useEffect(() => {
@@ -53,30 +54,30 @@ export function EyesDialog() {
     toast(msg);
   };
 
-  const createNew = () => finish(preview, `สร้าง "${anim.name}" ${preview.frames.length} เฟรมแล้ว`);
+  const createNew = () => finish(preview, t('Created "{name}" with {n} frames', { name: t(anim.name), n: preview.frames.length }));
 
   const canAppend = current.width === gen.width && current.height === gen.height && current.scale === gen.scale;
   const append = () => {
     const frames = gen.frames.map((f) => newFrame(gen.width, gen.height, f.delay, f.data));
     store.commit({ ...current, frames: [...current.frames, ...frames] }, current.frames.length);
     store.set({ dialog: null });
-    toast(`ต่อท้าย "${anim.name}" ${frames.length} เฟรมแล้ว`);
+    toast(t('Appended "{name}": {n} frames', { name: t(anim.name), n: frames.length }));
   };
 
   const createAll = () => {
     const all = EYE_ANIMS.filter((a) => a.id !== 'look-around').flatMap((a) => generateEyes(preset.width, preset.height, a, o).frames);
-    finish(toProject({ ...gen, frames: all }, 'อารมณ์รวม'), `สร้างรวมทุกอารมณ์ ${all.length} เฟรมแล้ว`);
+    finish(toProject({ ...gen, frames: all }, t('All moods')), t('Created all moods: {n} frames', { n: all.length }));
   };
 
   const zoom = Math.max(1, Math.min(Math.floor(280 / preset.width), Math.floor(280 / preset.height)));
 
   return (
-    <Modal title="แม่แบบดวงตา" onClose={close}
+    <Modal title={t('Eye templates')} onClose={close}
       footer={<>
-        <button class="btn" onClick={createAll} title="ต่อทุกท่าเป็นแอนิเมชันเดียว (ยกเว้นมองรอบ ๆ)">รวมทุกอารมณ์</button>
+        <button class="btn" onClick={createAll} title={t('Join every mood into one animation (except Look around)')}>{t('All moods in one')}</button>
         <button class="btn" onClick={append} disabled={!canAppend}
-          title={canAppend ? 'เพิ่มต่อท้ายเฟรมของโปรเจกต์ปัจจุบัน' : 'ขนาดภาพไม่ตรงกับโปรเจกต์ปัจจุบัน'}>ต่อท้ายโปรเจกต์นี้</button>
-        <button class="btn primary" onClick={createNew}>สร้างโปรเจกต์ใหม่</button>
+          title={canAppend ? t('Add after the frames of the current project') : t("The image size doesn't match the current project")}>{t('Append to this project')}</button>
+        <button class="btn primary" onClick={createNew}>{t('Create new project')}</button>
       </>}>
       <div class="cols">
         <div>
@@ -87,64 +88,64 @@ export function EyesDialog() {
             </div>
           </div>
           <p class="preview-info">
-            {anim.name} · {gen.frames.length} เฟรม · {(totalDuration(preview) / 1000).toFixed(1)} วินาที · {preset.name}
+            {t(anim.name)} · {t('{n} frames', { n: gen.frames.length })} · {t('{s} s', { s: (totalDuration(preview) / 1000).toFixed(1) })} · {preset.name}
           </p>
         </div>
         <div>
           <div class="cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))' }}>
             {EYE_ANIMS.map((a) => (
               <button key={a.id} class={`card${a.id === animId ? ' sel' : ''}`} onClick={() => setAnimId(a.id)}>
-                <span style={{ fontSize: 18 }}>{a.emoji}</span> {a.name}
+                <span style={{ fontSize: 18 }}>{a.emoji}</span> {t(a.name)}
               </button>
             ))}
           </div>
-          <h4 style={{ margin: '14px 0 8px' }}>รูปแบบ</h4>
+          <h4 style={{ margin: '14px 0 8px' }}>{t('Style')}</h4>
           <div class="cards" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {STYLES.map((s) => (
               <button key={s.id} class={`card${s.id === o.style ? ' sel' : ''}`} onClick={() => set({ style: s.id })}>
-                {s.name}<small>{s.hint}</small>
+                {t(s.name)}<small>{t(s.hint)}</small>
               </button>
             ))}
           </div>
           {!mono && (
             <div class="row" style={{ marginTop: 10 }}>
               {o.style === 'robot' ? (
-                <><span class="hint">สีตา</span>
+                <><span class="hint">{t('Eye color')}</span>
                   <input type="color" value={o.eyeColor} onInput={(e) => set({ eyeColor: (e.target as HTMLInputElement).value })} /></>
               ) : (
-                <><span class="hint">สีม่านตา</span>
+                <><span class="hint">{t('Iris color')}</span>
                   <input type="color" value={o.irisColor} onInput={(e) => set({ irisColor: (e.target as HTMLInputElement).value })} /></>
               )}
-              <span class="hint">พื้นหลัง</span>
+              <span class="hint">{t('Background')}</span>
               <input type="color" value={o.bgColor} onInput={(e) => set({ bgColor: (e.target as HTMLInputElement).value })} />
             </div>
           )}
-          <Slider label="ขนาดตา" min={0.6} max={1.3} step={0.05} value={o.size} format={(v) => `${Math.round(v * 100)}%`}
+          <Slider label={t('Eye size')} min={0.6} max={1.3} step={0.05} value={o.size} format={(v) => `${Math.round(v * 100)}%`}
             onInput={(v) => set({ size: v })} />
           {o.style !== 'single' && (
-            <Slider label="ระยะห่าง" min={0.4} max={1.6} step={0.05} value={o.spacing} format={(v) => `${Math.round(v * 100)}%`}
+            <Slider label={t('Spacing')} min={0.4} max={1.6} step={0.05} value={o.spacing} format={(v) => `${Math.round(v * 100)}%`}
               onInput={(v) => set({ spacing: v })} />
           )}
           <div class="row">
-            <span class="hint">ความลื่น</span>
+            <span class="hint">{t('Smoothness')}</span>
             <select value={o.fps} onChange={(e) => set({ fps: Number((e.target as HTMLSelectElement).value) })}>
               {[10, 15, 20, 25, 30].map((f) => <option key={f} value={f}>{f} fps</option>)}
             </select>
             {!mono && (
               <select value={o.pixel} onChange={(e) => set({ pixel: Number((e.target as HTMLSelectElement).value) })}>
-                <option value={1}>ละเอียด ขอบเรียบ</option>
-                <option value={2}>พิกเซล ×2</option>
-                <option value={4}>พิกเซล ×4 (ไฟล์เล็กสุด)</option>
+                <option value={1}>{t('Fine, smooth edges')}</option>
+                <option value={2}>{t('Pixels ×2')}</option>
+                <option value={4}>{t('Pixels ×4 (smallest file)')}</option>
               </select>
             )}
           </div>
           {preset.height !== preset.width && (
             <div class="row">
-              <span class="hint">ติดจอ</span>
+              <span class="hint">{t('Mounting')}</span>
               <select value={o.rotate} onChange={(e) => set({ rotate: Number((e.target as HTMLSelectElement).value) as EyeOptions['rotate'] })}>
-                <option value={0}>ตามปกติ</option>
-                <option value={90}>แนวนอน (หมุน 90°)</option>
-                <option value={270}>แนวนอน (หมุน 270°)</option>
+                <option value={0}>{t('Normal')}</option>
+                <option value={90}>{t('Landscape (rotate 90°)')}</option>
+                <option value={270}>{t('Landscape (rotate 270°)')}</option>
               </select>
             </div>
           )}

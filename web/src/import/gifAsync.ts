@@ -1,5 +1,6 @@
 import { decodeGif, type DecodedGif } from './gif';
 import { cancelled } from './limits';
+import { t } from '../i18n';
 
 export function decodeGifAsync(buffer: ArrayBuffer, signal: AbortSignal, progress?: (done: number, total: number) => void): Promise<DecodedGif> {
   if (signal.aborted) return Promise.reject(cancelled());
@@ -14,7 +15,7 @@ export function decodeGifAsync(buffer: ArrayBuffer, signal: AbortSignal, progres
       finish();
       if (data.error) reject(new Error(data.error)); else resolve(data.result);
     };
-    worker.onerror = () => { finish(); reject(new Error('อ่านไฟล์ GIF ไม่ได้')); };
+    worker.onerror = () => { finish(); reject(new Error(t("Couldn't read the GIF file"))); };
     try { worker.postMessage(buffer, [buffer]); }
     catch (error) { finish(); reject(error); }
   });

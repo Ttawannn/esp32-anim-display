@@ -10,7 +10,7 @@ export interface DecodedGif {
 
 // Decodes and composites a GIF into full frames (handles frame patches and disposal modes).
 export function decodeGif(buffer: ArrayBuffer, progress?: (done: number, total: number) => void): DecodedGif {
-  if (buffer.byteLength > MAX_GIF_BYTES) throw new Error('GIF ใหญ่เกิน 16 MB — ลดขนาดไฟล์ก่อนนำเข้า');
+  if (buffer.byteLength > MAX_GIF_BYTES) throw new Error('The GIF is larger than 16 MB. Make the file smaller first.');
   const gif = parseGIF(buffer);
   const parts = gif.frames.filter((frame): frame is Extract<typeof frame, { image: unknown }> => 'image' in frame);
   const width = gif.lsd.width, height = gif.lsd.height;

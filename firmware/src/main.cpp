@@ -7,6 +7,7 @@
 // Serial console (115200): type "help".
 
 #include <Arduino.h>
+#include <Wire.h>
 
 #include "app/app.h"
 #include "app/clock.h"
@@ -26,10 +27,27 @@
 static DisplayConfig cfg;
 static Panel* panel = nullptr;
 static bool panelOk = false;
+static bool displayStored = false;
+static const char* displayDetected = nullptr;
 
 DisplayConfig& appConfig() { return cfg; }
 Panel* appPanel() { return panel; }
 bool appPanelOk() { return panelOk; }
+bool appDisplayConfigured() { return displayStored; }
+const char* appDisplayDetected() { return displayDetected; }
+
+// An SSD1306/SH1106 answers on I2C at 0x3C/0x3D. TFT modules are write-only, so they cannot be
+// identified; no answer means "probably a TFT". Runs before any display driver starts.
+static bool probeOled(const BoardPins& pins) {
+  if (pins.clk < 0 || pins.data < 0 || !Wire.begin(pins.data, pins.clk, 100000)) return false;
+  bool found = false;
+  for (uint8_t addr : {0x3C, 0x3D}) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) { found = true; break; }
+  }
+  Wire.end();
+  return found;
+}
 
 static void ledSet(uint8_t r, uint8_t g, uint8_t b) {
   if (LED_IS_RGB) {
@@ -88,6 +106,14 @@ void setup() {
   while (!Serial && millis() - serialWait < 1000) delay(10);  // USB CDC: give the monitor a chance
 
   const bool stored = configLoad(cfg);
+  displayStored = stored;
+  if (!stored) {
+    // Never configured: an OLED on the default pins is detectable, so start with it rather than a TFT.
+    const bool oled = probeOled(cfg.pins);
+    displayDetected = oled ? "oled" : "tft";
+    if (oled) configApplyPreset(cfg, (uint8_t)findPreset("ssd1306_128x64"));
+    Serial.printf("display not configured yet, I2C probe: %s\n", oled ? "OLED found" : "no OLED (assuming TFT)");
+  }
   Serial.printf("\n\nDisplay Editor %s - %s, display config %s\n", FIRMWARE_VERSION, BOARD_NAME,
                 stored ? "from NVS" : "defaults");
 
@@ -126,6 +152,10 @@ void loop() {
       if (c.type == Cmd::CommitUpload) commandCommitUpload(c);
       if (isSettingsCommand(c.type)) settingsApply(c);
       if (c.type == Cmd::Delete) storage::remove(c.name);
+      if (c.type == Cmd::Rename && c.data) {
+        const String from = (const char*)c.data;
+        uploadComplete(c.uploadId, controllerRenameFile(from, (const char*)c.data + from.length() + 1), "cannot rename");
+      }
       free(c.data);
     }
   }

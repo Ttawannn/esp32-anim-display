@@ -1,6 +1,7 @@
 import { useEffect, useReducer } from 'preact/hooks';
 import type { DeviceInfo } from '../device/api';
 import type { Tool } from '../editor/tools';
+import { translateKnown } from '../i18n';
 import { idbGet, idbSet } from '../storage/idb';
 import { cloneFrame, createProject, newFrame } from './project';
 import type { Frame, OledTint, Project } from './types';
@@ -185,7 +186,9 @@ export function useEditor(): EditorState {
   return store.state;
 }
 
-export function toast(text: string, error = false) {
+// Messages are usually translated already; English ones from workers are translated here.
+export function toast(message: string, error = false) {
+  const text = translateKnown(message);
   store.set({ toast: { text, error } });
   setTimeout(() => {
     if (store.state.toast?.text === text) store.set({ toast: null });

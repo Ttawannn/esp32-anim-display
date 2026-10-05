@@ -5,6 +5,7 @@ import { composite, stickerBitmap, widgetsFor } from '../layers/raster';
 import { getPreset } from './presets';
 import { store, toast } from './store';
 import type { ClockLayer, Layer, Project, StickerLayer } from './types';
+import { t } from '../i18n';
 
 export type InsertItem =
   | { type: 'emoji'; char: string }
@@ -64,7 +65,7 @@ function makeLayer(p: Project, item: InsertItem): Layer {
     outline: false, crisp: p.scale >= 3 || mono,
     source: item.type === 'emoji' ? { type: 'emoji', char: item.char }
       : item.type === 'icon' ? { type: 'icon', name: item.name }
-      : { type: 'text', text: 'สวัสดี', font: 'sans', bold: true },
+      : { type: 'text', text: t('Hello'), font: 'sans', bold: true },
   };
 }
 
@@ -82,7 +83,7 @@ function centreAt(p: Project, l: Layer, cx: number, cy: number): Layer {
 export function addLayer(item: InsertItem, at?: { x: number; y: number }) {
   const p = store.state.project;
   if (item.type === 'clock' && layersOf(p).filter((l) => l.kind === 'clock').length >= 8) {
-    toast('ใส่นาฬิกา/วันที่ได้สูงสุด 8 อัน', true);
+    toast(t('Up to {n} clocks/dates per animation', { n: 8 }), true);
     return;
   }
   const layer = centreAt(p, makeLayer(p, item), at?.x ?? p.width / 2, at?.y ?? p.height / 2);
@@ -137,7 +138,7 @@ export function bakeLayer(id: string, allFrames: boolean) {
   });
   store.commit({ ...p, frames, layers: layersOf(p).filter((x) => x.id !== id) });
   store.set({ selectedLayer: null });
-  toast(allFrames ? 'ปักลงทุกเฟรมแล้ว' : 'ปักลงเฟรมนี้แล้ว');
+  toast(allFrames ? t('Stamped onto every frame') : t('Stamped onto this frame'));
 }
 
 export function nudgeLayer(id: string, dx: number, dy: number) {

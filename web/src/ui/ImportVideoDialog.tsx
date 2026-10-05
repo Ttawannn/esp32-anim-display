@@ -8,6 +8,7 @@ import { outputFrame } from '../render/output';
 import { composeScreen } from '../render/screen';
 import { formatBytes, Modal, Slider } from './common';
 import { DEVICE_STORAGE } from './OutputPanel';
+import { t } from '../i18n';
 
 const FPS_OPTIONS = [8, 10, 12, 15, 20, 24, 30];
 
@@ -86,7 +87,7 @@ export function ImportVideoDialog() {
       URL.revokeObjectURL(info.video.src);
       store.load(p);
       store.set({ dialog: null, zoom: 0 });
-      toast(`นำเข้า ${frames.length} เฟรมแล้ว`);
+      toast(t('Imported {n} frames', { n: frames.length }));
     } catch (e) {
       if ((e as Error).name !== 'AbortError') setError((e as Error).message);
       setProgress(null);
@@ -97,19 +98,19 @@ export function ImportVideoDialog() {
   const fmt = (t: number) => `${t.toFixed(1)}s`;
 
   return (
-    <Modal title="นำเข้าวิดีโอ" onClose={close}
+    <Modal title={t('Import video')} onClose={close}
       footer={<>
-        <button class="btn" onClick={close}>{progress !== null ? 'ยกเลิก' : 'ปิด'}</button>
+        <button class="btn" onClick={close}>{progress !== null ? t('Cancel') : t('Close')}</button>
         <button class="btn primary" disabled={!info || progress !== null || end <= start} onClick={doImport}>
-          นำเข้า {info ? `${frameCount} เฟรม` : ''}
+          {t('Import')} {info ? t('{n} frames', { n: frameCount }) : ''}
         </button>
       </>}>
       {!info ? (
         <label class="drop" onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer?.files[0]); }}>
           <input type="file" accept="video/*" hidden onChange={(e) => onFile((e.target as HTMLInputElement).files?.[0])} />
-          เลือกไฟล์วิดีโอ (MP4, WebM, MOV) หรือลากมาวางที่นี่
-          <p class="hint">ไฟล์ถูกแปลงในเบราว์เซอร์นี้ ไม่ได้อัปโหลดไปที่ไหน</p>
+          {t('Choose a video file (MP4, WebM, MOV) or drop it here')}
+          <p class="hint">{t('The file is converted in this browser and never uploaded anywhere')}</p>
           {error && <p class="err">{error}</p>}
         </label>
       ) : (
@@ -121,20 +122,20 @@ export function ImportVideoDialog() {
                   style={{ width: preset.width * zoom, height: preset.height * zoom }} />
               </div>
             </div>
-            <Slider label="ดูตำแหน่ง" min={0} max={info.duration} step={0.05} value={previewTime} format={fmt}
+            <Slider label={t('Preview at')} min={0} max={info.duration} step={0.05} value={previewTime} format={fmt}
               onInput={setPreviewTime} />
-            <p class="hint">{fileName} · {info.width}×{info.height} · {info.duration.toFixed(1)} วินาที</p>
+            <p class="hint">{fileName} · {info.width}×{info.height} · {t('{s} s', { s: info.duration.toFixed(1) })}</p>
             {progress !== null && (
               <>
-                <p class="hint">กำลังดึงเฟรม {Math.round(progress * frameCount)}/{frameCount}</p>
+                <p class="hint">{t('Extracting frames {n}/{total}', { n: Math.round(progress * frameCount), total: frameCount })}</p>
                 <div class="progress"><div style={{ width: `${progress * 100}%` }} /></div>
               </>
             )}
           </div>
           <div>
-            <Slider label="เริ่ม" min={0} max={info.duration} step={0.1} value={start} format={fmt}
+            <Slider label={t('Start')} min={0} max={info.duration} step={0.1} value={start} format={fmt}
               onInput={(v) => { setStart(Math.min(v, end - 0.1)); setPreviewTime(v); }} />
-            <Slider label="จบ" min={0} max={info.duration} step={0.1} value={end} format={fmt}
+            <Slider label={t('End')} min={0} max={info.duration} step={0.1} value={end} format={fmt}
               onInput={(v) => { setEnd(Math.max(v, start + 0.1)); setPreviewTime(v); }} />
             <div class="row">
               <span class="hint">fps</span>
@@ -142,27 +143,27 @@ export function ImportVideoDialog() {
                 {FPS_OPTIONS.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
               <select value={divisor} onChange={(e) => setDivisor(Number((e.target as HTMLSelectElement).value))}>
-                <option value={1}>ละเอียดเต็ม {preset.width}×{preset.height}</option>
-                <option value={2}>ครึ่งหนึ่ง {Math.floor(preset.width / 2)}×{Math.floor(preset.height / 2)}</option>
+                <option value={1}>{t('Full resolution')} {preset.width}×{preset.height}</option>
+                <option value={2}>{t('Half')} {Math.floor(preset.width / 2)}×{Math.floor(preset.height / 2)}</option>
               </select>
             </div>
             <div class="row">
               <select value={pl.fit} onChange={(e) => setPl({ ...pl, fit: (e.target as HTMLSelectElement).value as FitMode })}>
-                <option value="cover">เต็มจอ (ครอปขอบ)</option>
-                <option value="contain">พอดี (เห็นทั้งภาพ)</option>
-                <option value="stretch">ยืดให้เต็ม</option>
+                <option value="cover">{t('Fill (crop edges)')}</option>
+                <option value="contain">{t('Fit (whole picture)')}</option>
+                <option value="stretch">{t('Stretch')}</option>
               </select>
             </div>
-            <Slider label="ซูม" min={1} max={4} step={0.05} value={pl.zoom} format={(v) => `${v.toFixed(2)}×`}
+            <Slider label={t('Zoom')} min={1} max={4} step={0.05} value={pl.zoom} format={(v) => `${v.toFixed(2)}×`}
               onInput={(v) => setPl({ ...pl, zoom: v })} />
-            <Slider label="เลื่อน X" min={-1} max={1} step={0.05} value={pl.panX} format={(v) => v.toFixed(2)}
+            <Slider label={t('Pan X')} min={-1} max={1} step={0.05} value={pl.panX} format={(v) => v.toFixed(2)}
               onInput={(v) => setPl({ ...pl, panX: v })} />
-            <Slider label="เลื่อน Y" min={-1} max={1} step={0.05} value={pl.panY} format={(v) => v.toFixed(2)}
+            <Slider label={t('Pan Y')} min={-1} max={1} step={0.05} value={pl.panY} format={(v) => v.toFixed(2)}
               onInput={(v) => setPl({ ...pl, panY: v })} />
-            <div class="stat"><span>ประมาณ</span><b>{frameCount} เฟรม · ~{formatBytes(Math.round(estimate))}</b></div>
-            {estimate > DEVICE_STORAGE && <p class="warn">น่าจะใหญ่เกินพื้นที่บอร์ด ลองตัดให้สั้นลง ลด fps หรือลดความละเอียด</p>}
+            <div class="stat"><span>{t('Estimate')}</span><b>{t('{n} frames', { n: frameCount })} · ~{formatBytes(Math.round(estimate))}</b></div>
+            {estimate > DEVICE_STORAGE && <p class="warn">{t('Probably too big for the board. Make it shorter, lower the fps or the resolution.')}</p>}
             {error && <p class="err">{error}</p>}
-            <p class="hint">ปรับสีได้หลังนำเข้าในแผง "ปรับสี"</p>
+            <p class="hint">{t('You can adjust colors after importing, in the "Adjust" tab')}</p>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ import { widgetsFor } from '../layers/raster';
 import type { Project } from '../model/types';
 import { cancelled, checkFrameBudget } from '../import/limits';
 import { TaskQueue } from './taskQueue';
+import { t, translateKnown } from '../i18n';
 
 export type EncodeProgress = (done: number, total: number) => void;
 type Runner = (project: Project, progress: EncodeProgress, signal: AbortSignal) => Promise<EncodeResult>;
@@ -127,11 +128,11 @@ function inWorker(p: Project, progress: EncodeProgress, signal: AbortSignal): Pr
       const { result, error, done, total } = event.data;
       if (done !== undefined) { progress(done, total); return; }
       finish();
-      if (error) reject(new Error(error)); else resolve(result);
+      if (error) reject(new Error(translateKnown(error))); else resolve(result);
     };
     target.onerror = () => {
       finish(); target.terminate(); worker = null;
-      reject(new Error('เข้ารหัสภาพไม่ได้ — ลองอีกครั้ง'));
+      reject(new Error(t("Couldn't encode the images. Try again.")));
     };
     try { target.postMessage({ id, project: p, widgets }); }
     catch (error) { finish(); reject(error); }

@@ -15,7 +15,7 @@ describe('HTTP transport', () => {
     vi.stubGlobal('fetch', fetch);
     await device.saveDisplay('', { rotation: 1 });
     expect(fetch.mock.calls[1][0]).toBe('/api/commands/status?id=2');
-    await expect(device.saveWifi('', 'home', 'password')).rejects.toThrow('บันทึกค่าตั้งไม่ได้');
+    await expect(device.saveWifi('', 'home', 'password')).rejects.toThrow("couldn't save the settings");
   });
 
   it('invalidates thumbnails after an acknowledged overwrite of equal-sized data', async () => {
@@ -39,14 +39,14 @@ describe('HTTP transport', () => {
   it('rejects upload if the loop task could not save the file', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ upload_id: 7 }, 202))
       .mockResolvedValueOnce(json({ state: 'failed', error: 'cannot save file' })));
-    await expect(device.upload('', 'a', Uint8Array.of(1))).rejects.toThrow('บันทึกไฟล์ไม่ได้');
+    await expect(device.upload('', 'a', Uint8Array.of(1))).rejects.toThrow("couldn't save the file");
   });
 
   it('reports queue-full and invalid-host responses clearly', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ error: 'command queue full' }, 503))
       .mockResolvedValueOnce(new Response('<html>editor</html>')));
-    await expect(device.next('')).rejects.toThrow('เต็มคิว');
-    await expect(device.info('')).rejects.toThrow('ไม่ใช่ API ของบอร์ด');
+    await expect(device.next('')).rejects.toThrow('busy');
+    await expect(device.info('')).rejects.toThrow("isn't a board");
   });
 
   it('remains compatible with uploads from older firmware', async () => {

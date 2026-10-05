@@ -68,7 +68,7 @@ const repeat = (n: number, keys: Key[]): Key[] => Array.from({ length: n }, () =
 
 export const EYE_ANIMS: EyeAnim[] = [
   {
-    id: 'look-lr', name: 'มองซ้าย-ขวา', emoji: '👀',
+    id: 'look-lr', name: 'Look left-right', emoji: '👀',
     keys: [
       { hold: 600 },
       { both: { lookX: -1 }, ms: 220, hold: 800 },
@@ -78,7 +78,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'look-around', name: 'มองรอบ ๆ', emoji: '🔄',
+    id: 'look-around', name: 'Look around', emoji: '🔄',
     keys: [
       { hold: 400 },
       { both: { lookX: -1 }, ms: 200, hold: 500 },
@@ -92,7 +92,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'idle', name: 'ปกติ (กะพริบตา)', emoji: '🙂',
+    id: 'idle', name: 'Idle (blinking)', emoji: '🙂',
     keys: [
       { hold: 1600 },
       ...blink(1400),
@@ -103,7 +103,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'happy', name: 'ดีใจ', emoji: '😄',
+    id: 'happy', name: 'Happy', emoji: '😄',
     keys: [
       { hold: 300 },
       { both: { happy: 1, scale: 1.05 }, ms: 180, hold: 200 },
@@ -116,7 +116,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'sad', name: 'เศร้า', emoji: '😢',
+    id: 'sad', name: 'Sad', emoji: '😢',
     keys: [
       { hold: 300 },
       { both: { sad: 1, lookY: 0.6, scale: 0.95 }, ms: 500, hold: 300 },
@@ -128,7 +128,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'angry', name: 'โกรธ', emoji: '😠',
+    id: 'angry', name: 'Angry', emoji: '😠',
     keys: [
       { hold: 300 },
       { both: { angry: 1, tired: 0.12 }, ms: 160, hold: 250 },
@@ -144,7 +144,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'surprised', name: 'ตกใจ', emoji: '😲',
+    id: 'surprised', name: 'Surprised', emoji: '😲',
     keys: [
       { hold: 500 },
       { both: { scale: 1.3, pupil: 0.45 }, ms: 90, hold: 1000 },
@@ -154,7 +154,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'sleepy', name: 'ง่วงนอน', emoji: '😴',
+    id: 'sleepy', name: 'Sleepy', emoji: '😴',
     keys: [
       { hold: 400 },
       { both: { tired: 0.45 }, ms: 700, hold: 300 },
@@ -168,7 +168,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'love', name: 'หลงรัก', emoji: '😍',
+    id: 'love', name: 'In love', emoji: '😍',
     keys: [
       { both: { heart: 1 }, ms: 0, hold: 200 },
       ...repeat(4, [
@@ -179,7 +179,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'wink', name: 'ขยิบตา', emoji: '😉',
+    id: 'wink', name: 'Wink', emoji: '😉',
     keys: [
       { hold: 600 },
       { both: { happy: 0.25 }, ms: 150 },
@@ -189,7 +189,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'suspicious', name: 'สงสัย', emoji: '🤨',
+    id: 'suspicious', name: 'Suspicious', emoji: '🤨',
     keys: [
       { hold: 300 },
       { L: { tired: 0.55 }, R: { scale: 1.12 }, ms: 300, hold: 300 },
@@ -200,7 +200,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'dizzy', name: 'มึนงง', emoji: '😵',
+    id: 'dizzy', name: 'Dizzy', emoji: '😵',
     keys: [
       { both: { spiral: 1, spin: 0 }, ms: 0 },
       { both: { spin: Math.PI * 6 }, ms: 2400, linear: true },

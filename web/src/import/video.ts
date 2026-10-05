@@ -1,6 +1,7 @@
 import { placeImage, type Placement } from './resample';
 import type { Pixels } from '../model/types';
 import { cancelled, checkFrameBudget } from './limits';
+import { t } from '../i18n';
 
 export interface VideoInfo {
   video: HTMLVideoElement;
@@ -20,15 +21,15 @@ export function loadVideo(file: File): Promise<VideoInfo> {
       resolve({ video, duration: video.duration, width: video.videoWidth, height: video.videoHeight });
     video.onerror = () => {
       URL.revokeObjectURL(video.src);
-      reject(new Error('เบราว์เซอร์เปิดไฟล์วิดีโอนี้ไม่ได้ (ลอง MP4 H.264 หรือ WebM)'));
+      reject(new Error(t("The browser can't open this video (try MP4 H.264 or WebM)")));
     };
   });
 }
 
-export function seek(video: HTMLVideoElement, t: number, signal?: AbortSignal): Promise<void> {
+export function seek(video: HTMLVideoElement, time: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(cancelled());
-    if (Math.abs(video.currentTime - t) < 0.001 && video.readyState >= 2) return resolve();
+    if (Math.abs(video.currentTime - time) < 0.001 && video.readyState >= 2) return resolve();
     const finish = (error?: Error) => {
       clearTimeout(timer);
       video.removeEventListener('seeked', ready);
@@ -37,13 +38,13 @@ export function seek(video: HTMLVideoElement, t: number, signal?: AbortSignal): 
       if (error) reject(error); else resolve();
     };
     const ready = () => finish();
-    const failed = () => finish(new Error('อ่านเฟรมวิดีโอไม่ได้'));
+    const failed = () => finish(new Error(t("Couldn't read a video frame")));
     const abort = () => finish(cancelled());
-    const timer = setTimeout(() => finish(new Error('อ่านเฟรมวิดีโอใช้เวลานานเกินไป — ลองไฟล์อื่น')), 10000);
+    const timer = setTimeout(() => finish(new Error(t('Reading a video frame took too long. Try another file.'))), 10000);
     video.addEventListener('seeked', ready, { once: true });
     video.addEventListener('error', failed, { once: true });
     signal?.addEventListener('abort', abort, { once: true });
-    try { video.currentTime = t; } catch (error) { finish(error as Error); }
+    try { video.currentTime = time; } catch (error) { finish(error as Error); }
   });
 }
 

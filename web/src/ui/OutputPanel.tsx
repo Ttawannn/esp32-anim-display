@@ -9,11 +9,12 @@ import { store, type EditorState } from '../model/store';
 import type { Encoding } from '../model/types';
 import { download } from '../storage/projectFile';
 import { formatBytes, Icon, Slider } from './common';
+import { t } from '../i18n';
 
 // Free space on a fresh board (4 MB layout); replaced by the real value once a board is connected.
 export const DEVICE_STORAGE = 2_000_000;
 
-const MODE_LABEL = { indexed: 'Indexed (คมชัด ไม่เสียคุณภาพ)', jpeg: 'JPEG (เหมาะกับวิดีโอ)', mono: 'ขาวดำ 1 บิต' };
+const MODE_LABEL = { indexed: 'Indexed (sharp, lossless)', jpeg: 'JPEG (best for video)', mono: '1-bit mono' };
 
 export function OutputPanel({ s }: { s: EditorState }) {
   const { project: p, deviceInfo: info } = s;
@@ -48,9 +49,9 @@ export function OutputPanel({ s }: { s: EditorState }) {
   }, [p, mode]);
 
   const encode = async () => {
-    setWorking('กำลังเข้ารหัส...');
+    setWorking(t('Encoding…'));
     try {
-      return await encodeProject(p, (d, t) => setWorking(`กำลังเข้ารหัส ${d}/${t}`));
+      return await encodeProject(p, (d, n) => setWorking(t('Encoding {n}/{total}', { n: d, total: n })));
     } finally {
       setWorking(null);
     }
@@ -71,48 +72,48 @@ export function OutputPanel({ s }: { s: EditorState }) {
     <div class="section">
       {mode !== 'mono' && (
         <div class="row">
-          <span class="hint">รูปแบบ</span>
+          <span class="hint">{t('Format')}</span>
           <select class="grow" value={p.encoding}
             onChange={(e) => store.commit({ ...p, encoding: (e.target as HTMLSelectElement).value as Encoding })}>
-            <option value="auto">อัตโนมัติ ({MODE_LABEL[resolveMode({ ...p, encoding: 'auto' })].split(' (')[0]})</option>
-            <option value="indexed">{MODE_LABEL.indexed}</option>
-            <option value="jpeg">{MODE_LABEL.jpeg}</option>
+            <option value="auto">{t('Auto')} ({t(MODE_LABEL[resolveMode({ ...p, encoding: 'auto' })]).split(' (')[0]})</option>
+            <option value="indexed">{t(MODE_LABEL.indexed)}</option>
+            <option value="jpeg">{t(MODE_LABEL.jpeg)}</option>
           </select>
         </div>
       )}
       {mode === 'jpeg' && (
-        <Slider label="คุณภาพ JPEG" min={30} max={95} step={5} value={Math.round(p.jpegQuality * 100)}
+        <Slider label={t('JPEG quality')} min={30} max={95} step={5} value={Math.round(p.jpegQuality * 100)}
           onInput={(v) => store.setLive({ ...p, jpegQuality: v / 100 })} onCommit={() => store.endLive()} />
       )}
       <div class="row">
-        <span class="hint">เล่น</span>
+        <span class="hint">{t('Play')}</span>
         <select value={p.loop} onChange={(e) => store.commit({ ...p, loop: Number((e.target as HTMLSelectElement).value) })}>
-          <option value={0}>วนซ้ำตลอด</option>
-          {[1, 2, 3, 5, 10].map((n) => <option key={n} value={n}>{n} รอบ</option>)}
+          <option value={0}>{t('Loop forever')}</option>
+          {[1, 2, 3, 5, 10].map((n) => <option key={n} value={n}>{t('{n} times', { n })}</option>)}
         </select>
       </div>
 
-      <div class="stat"><span>ขนาดไฟล์</span><b>{estimating && !estimate ? '...' : formatBytes(size)}{estimating && estimate ? ' …' : ''}</b></div>
+      <div class="stat"><span>{t('File size')}</span><b>{estimating && !estimate ? '...' : formatBytes(size)}{estimating && estimate ? ' …' : ''}</b></div>
       <div class={`bar${size > capacity ? ' over' : ''}`}><div style={{ width: `${pct}%` }} /></div>
       <div class="stat">
-        <span class="hint">{pct.toFixed(1)}% ของพื้นที่{info ? 'ว่างบนบอร์ด' : 'บอร์ด'} ({formatBytes(capacity)})</span>
-        <span class="hint">~{formatBytes(Math.round(avgFrame))}/เฟรม</span>
+        <span class="hint">{info ? t("{pct}% of the board's free space ({size})", { pct: pct.toFixed(1), size: formatBytes(capacity) }) : t("{pct}% of the board's storage ({size})", { pct: pct.toFixed(1), size: formatBytes(capacity) })}</span>
+        <span class="hint">{t('~{size}/frame', { size: formatBytes(Math.round(avgFrame)) })}</span>
       </div>
       {estimate && mode === 'indexed' && (
         <p class="hint">
-          {estimate.paletteSize} สี{!estimate.exactColors && ' (ลดจำนวนสีอัตโนมัติจากภาพที่มีมากกว่า 256 สี)'}
+          {t('{n} colors', { n: estimate.paletteSize })}{!estimate.exactColors && ` ${t('(reduced automatically from more than 256 colors)')}`}
         </p>
       )}
-      {size > capacity && <p class="warn">ไฟล์ใหญ่เกินพื้นที่ ลองลดจำนวนเฟรม ลดคุณภาพ JPEG หรือลดความละเอียด</p>}
+      {size > capacity && <p class="warn">{t('The file is too big. Try fewer frames, lower JPEG quality or a lower resolution.')}</p>}
 
       <div class="row" style={{ marginTop: 12 }}>
-        <button class="btn grow" onClick={onDownload} disabled={!!working}><Icon name="download" /> ดาวน์โหลด .dpa</button>
-        <button class="btn primary grow" onClick={sendToBoard} disabled={!!s.sending}><Icon name="send" /> ส่งไปบอร์ด</button>
+        <button class="btn grow" onClick={onDownload} disabled={!!working}><Icon name="download" /> {t('Download .dpa')}</button>
+        <button class="btn primary grow" onClick={sendToBoard} disabled={!!s.sending}><Icon name="send" /> {t('Send to board')}</button>
       </div>
       {mismatch && (
         <div class="callout warn">
-          โปรเจกต์ทำสำหรับจอ {getPreset(p.presetId).name} แต่บอร์ดใช้ {info!.display.name}
-          <button class="btn small" onClick={() => store.commit(retarget(p, presetForDevice(info!)!))}>ใช้จอของบอร์ด</button>
+          {t('This project is for the {a}, but the board has the {b}', { a: getPreset(p.presetId).name, b: info!.display.name })}
+          <button class="btn small" onClick={() => store.commit(retarget(p, presetForDevice(info!)!))}>{t("Use the board's display")}</button>
         </div>
       )}
       {working && <p class="hint">{working}</p>}

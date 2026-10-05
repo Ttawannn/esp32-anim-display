@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>ติดตั้งเฟิร์มแวร์ · Display Editor</title>
+  <title>Install firmware · Display Editor</title>
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   <style>
     :root {
@@ -18,6 +18,11 @@
     body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 50% -10%, rgba(79, 140, 255, .18), transparent 55%), var(--bg); }
     main { max-width: 720px; margin: 0 auto; padding: 32px 18px 56px; }
     a { color: #8fb3ff; }
+    .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .top .brand { margin-bottom: 0; }
+    .lang-switch { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); }
+    .lang-switch button { height: 28px; min-width: 38px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .lang-switch button.active { background: var(--panel-2); color: var(--text); }
     .brand { display: flex; align-items: center; gap: 10px; font-size: 16px; margin-bottom: 28px; text-decoration: none; color: var(--text); }
     .brand b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .logo { display: inline-flex; gap: 4px; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 10px; background: var(--grad); }
@@ -53,44 +58,68 @@
 </head>
 <body>
   <main>
-    <a class="brand" href="../"><span class="logo"><i></i><i></i></span><span>Display <b>Editor</b></span></a>
-    <h1>ติดตั้งเฟิร์มแวร์ลงบอร์ด</h1>
-    <p class="lead">แฟลชเฟิร์มแวร์ล่าสุดลง ESP32-C3 / ESP32-C6 SuperMini ได้จากเบราว์เซอร์ ไม่ต้องลงโปรแกรม ระบบจะตรวจชนิดชิปให้อัตโนมัติ</p>
+    <div class="top">
+      <a class="brand" href="../"><span class="logo"><i></i><i></i></span><span>Display <b>Editor</b></span></a>
+      <div class="lang-switch" role="radiogroup" aria-label="Language / ภาษา">
+        <button data-lang="en">EN</button><button data-lang="th">ไทย</button>
+      </div>
+    </div>
+    <h1 data-th="ติดตั้งเฟิร์มแวร์ลงบอร์ด">Install the firmware on your board</h1>
+    <p class="lead" data-th="แฟลชเฟิร์มแวร์ล่าสุดลง ESP32-C3 / ESP32-C6 SuperMini ได้จากเบราว์เซอร์ ไม่ต้องลงโปรแกรม ระบบจะตรวจชนิดชิปให้อัตโนมัติ">Flash the latest firmware onto an ESP32-C3 / ESP32-C6 SuperMini straight from the browser, nothing to install. The chip is detected automatically.</p>
 
     <section class="card install">
       <esp-web-install-button manifest="manifest.json">
-        <button slot="activate">⚡ ติดตั้งเฟิร์มแวร์</button>
-        <span slot="unsupported" class="unsupported">
-          เบราว์เซอร์นี้ติดตั้งผ่าน USB ไม่ได้ — ใช้ Chrome หรือ Edge บนคอมพิวเตอร์
-        </span>
-        <span slot="not-allowed" class="unsupported">ต้องเปิดหน้านี้ผ่าน HTTPS</span>
+        <button slot="activate" data-th="⚡ ติดตั้งเฟิร์มแวร์">⚡ Install firmware</button>
+        <span slot="unsupported" class="unsupported" data-th="เบราว์เซอร์นี้ติดตั้งผ่าน USB ไม่ได้ — ใช้ Chrome หรือ Edge บนคอมพิวเตอร์">This browser can't flash over USB. Use Chrome or Edge on a computer.</span>
+        <span slot="not-allowed" class="unsupported" data-th="ต้องเปิดหน้านี้ผ่าน HTTPS">This page must be opened over HTTPS.</span>
       </esp-web-install-button>
-      <p>เวอร์ชัน __VERSION__</p>
+      <p><span data-th="เวอร์ชัน">Version</span> __VERSION__</p>
     </section>
 
     <section class="card">
-      <h2>ขั้นตอน</h2>
+      <h2 data-th="ขั้นตอน">Steps</h2>
       <ol>
-        <li><b>เสียบบอร์ดเข้าคอมด้วยสาย USB</b><span>ใช้สายที่ส่งข้อมูลได้ (สายชาร์จอย่างเดียวจะมองไม่เห็นบอร์ด)</span></li>
-        <li><b>กด "ติดตั้งเฟิร์มแวร์" แล้วเลือกพอร์ตของบอร์ด</b><span>ถ้าไม่เจอบอร์ด: กดปุ่ม BOOT ค้าง แล้วเสียบสายใหม่ ปล่อย BOOT แล้วลองอีกครั้ง</span></li>
-        <li><b>เลือก "ติดตั้ง"</b><span>ครั้งแรกเลือกล้างข้อมูล (Erase) ได้ ถ้าอัปเดตเวอร์ชันและอยากเก็บแอนิเมชันเดิมไว้ ไม่ต้องล้าง</span></li>
-        <li><b>เชื่อม Wi-Fi ของบอร์ด</b><span>ชื่อ <code>DisplayEditor-XXXX</code> รหัส <code>displayedit</code> แล้วหน้าเว็บของบอร์ดจะเปิดขึ้นเอง (หรือเข้า http://192.168.4.1)</span></li>
+        <li><b data-th="เสียบบอร์ดเข้าคอมด้วยสาย USB">Plug the board into your computer over USB</b><span data-th="ใช้สายที่ส่งข้อมูลได้ (สายชาร์จอย่างเดียวจะมองไม่เห็นบอร์ด)">Use a data cable (a charge-only cable won't show the board).</span></li>
+        <li><b data-th="กด &quot;ติดตั้งเฟิร์มแวร์&quot; แล้วเลือกพอร์ตของบอร์ด">Press "Install firmware" and pick the board's port</b><span data-th="ถ้าไม่เจอบอร์ด: กดปุ่ม BOOT ค้าง แล้วเสียบสายใหม่ ปล่อย BOOT แล้วลองอีกครั้ง">Board not listed? Hold BOOT, plug the cable in again, release BOOT and retry.</span></li>
+        <li><b data-th="เลือก &quot;ติดตั้ง&quot;">Choose "Install"</b><span data-th="ครั้งแรกเลือกล้างข้อมูล (Erase) ได้ ถ้าอัปเดตเวอร์ชันและอยากเก็บแอนิเมชันเดิมไว้ ไม่ต้องล้าง">You can erase the first time. When updating, skip erasing to keep your animations.</span></li>
+        <li><b data-th="เชื่อม Wi-Fi ของบอร์ด">Join the board's Wi-Fi</b><span data-th="ชื่อ &lt;code&gt;DisplayEditor-XXXX&lt;/code&gt; รหัส &lt;code&gt;displayedit&lt;/code&gt; แล้วหน้าเว็บของบอร์ดจะเปิดขึ้นเอง (หรือเข้า http://192.168.4.1)">Network <code>DisplayEditor-XXXX</code>, password <code>displayedit</code>. The board's page opens by itself (or go to http://192.168.4.1), and a setup wizard walks you through the rest.</span></li>
       </ol>
     </section>
 
     <section class="card">
-      <h2>ใช้งานต่อ</h2>
+      <h2 data-th="ใช้งานต่อ">Next</h2>
       <div class="grid">
-        <a class="dl" href="../">✏️ เปิด Editor ออนไลน์<small>สร้างแอนิเมชัน แล้วส่งลงบอร์ดผ่าน USB</small></a>
-        <a class="dl" href="https://github.com/Ttawannn/esp32-anim-display">📖 คู่มือและการต่อสาย<small>GitHub</small></a>
+        <a class="dl" href="../"><span data-th="✏️ เปิด Editor ออนไลน์">✏️ Open the online editor</span><small data-th="สร้างแอนิเมชัน แล้วส่งลงบอร์ดผ่าน USB">Make animations and send them over USB</small></a>
+        <a class="dl" href="https://github.com/Ttawannn/esp32-anim-display"><span data-th="📖 คู่มือและการต่อสาย">📖 Guide and wiring</span><small>GitHub</small></a>
       </div>
-      <h2 style="margin-top: 22px">ดาวน์โหลดไฟล์เฟิร์มแวร์</h2>
+      <h2 style="margin-top: 22px" data-th="ดาวน์โหลดไฟล์เฟิร์มแวร์">Download the firmware files</h2>
       <div class="grid">
-        <a class="dl" href="firmware/c3_supermini/firmware.factory.bin" download>ESP32-C3 SuperMini<small>firmware.factory.bin · แฟลชที่ 0x0</small></a>
-        <a class="dl" href="firmware/c6_supermini/firmware.factory.bin" download>ESP32-C6 SuperMini<small>firmware.factory.bin · แฟลชที่ 0x0</small></a>
+        <a class="dl" href="firmware/c3_supermini/firmware.factory.bin" download>ESP32-C3 SuperMini<small><span>firmware.factory.bin · </span><span data-th="แฟลชที่ 0x0">flash at 0x0</span></small></a>
+        <a class="dl" href="firmware/c6_supermini/firmware.factory.bin" download>ESP32-C6 SuperMini<small><span>firmware.factory.bin · </span><span data-th="แฟลชที่ 0x0">flash at 0x0</span></small></a>
       </div>
-      <p class="muted">สำหรับแฟลชเองด้วย esptool: <code>esptool.py write_flash 0x0 firmware.factory.bin</code></p>
+      <p class="muted"><span data-th="สำหรับแฟลชเองด้วย esptool:">To flash it yourself with esptool:</span> <code>esptool.py write_flash 0x0 firmware.factory.bin</code></p>
     </section>
   </main>
+  <script>
+    // Same preference as the editor (same site): localStorage "lang" = en | th.
+    function applyLang(lang) {
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-th]').forEach(function (el) {
+        if (el.dataset.en === undefined) el.dataset.en = el.innerHTML;
+        el.innerHTML = lang === 'th' ? el.dataset.th : el.dataset.en;
+      });
+      document.querySelectorAll('.lang-switch button').forEach(function (b) { b.classList.toggle('active', b.dataset.lang === lang); });
+      document.title = lang === 'th' ? 'ติดตั้งเฟิร์มแวร์ · Display Editor' : 'Install firmware · Display Editor';
+    }
+    var saved = 'en';
+    try { saved = localStorage.getItem('lang') === 'th' ? 'th' : 'en'; } catch (e) {}
+    applyLang(saved);
+    document.querySelectorAll('.lang-switch button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        try { localStorage.setItem('lang', b.dataset.lang); } catch (e) {}
+        applyLang(b.dataset.lang);
+      });
+    });
+  </script>
 </body>
 </html>

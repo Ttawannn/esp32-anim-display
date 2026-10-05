@@ -30,6 +30,7 @@ String animPath(const String& name);
 bool exists(const String& name);
 size_t fileSize(const String& name);
 bool remove(const String& name);
+bool rename(const String& from, const String& to);  // false if `to` exists
 String newUploadTmpPath();  // unique temp file for one upload; leftovers are removed at boot
 bool commitUpload(const String& tmpPath, const String& name);  // rename over /anims/<name>.dpa
 std::vector<AnimInfo> list();

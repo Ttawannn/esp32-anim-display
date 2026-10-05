@@ -6,6 +6,7 @@
 // the reference renderer that firmware/src/player/widgets.h must match pixel for pixel.
 
 import { NAME_FIELDS, NUMBER_FIELDS, nameIndex, numberValue, parseFormat, type ClockTime } from './clock';
+import { t } from '../i18n';
 
 export const WIDGET_MAGIC = 'WDG1';
 export const MAX_WIDGET_BLOCK = 48 * 1024;
@@ -57,7 +58,7 @@ interface PartRecord { kind: number; field: number; glyph: number }
 
 export function buildWidgetBlock(inputs: WidgetInput[], r: TextRasterizer): WidgetBlock | null {
   if (!inputs.length) return null;
-  if (inputs.length > MAX_WIDGETS) throw new Error(`ใส่นาฬิกา/วันที่ได้สูงสุด ${MAX_WIDGETS} อัน`);
+  if (inputs.length > MAX_WIDGETS) throw new Error(t('Up to {n} clocks/dates per animation', { n: MAX_WIDGETS }));
   const glyphs: GlyphBitmap[] = [];
   const glyphIds = new Map<string, number>();
   const glyph = (text: string, style: GlyphStyle, width: number) => {
@@ -106,19 +107,19 @@ export function buildWidgetBlock(inputs: WidgetInput[], r: TextRasterizer): Widg
       width += Math.max(...p.names.map((_, k) => glyphs[first + k].w));
       return { kind: PART_NAME, field: NAME_FIELDS.indexOf(p.field), glyph: first };
     });
-    if (records.length > 32) throw new Error('รูปแบบวันที่/เวลายาวเกินไป');
+    if (records.length > 32) throw new Error(t('The date/time format is too long'));
     const height = glyphs[digits].h;
     widgets.push({ box: { x: Math.round(w.x), y: Math.round(w.y), w: Math.max(1, width), h: height }, color: w.color565, align: w.align, digits, parts: records });
   }
   if (!widgets.length) return null;
-  if (glyphs.length > 1024) throw new Error('นาฬิกา/วันที่มีตัวอักษรมากเกินไป');
+  if (glyphs.length > 1024) throw new Error(t('The clocks/dates use too many characters'));
 
   const glyphBytes = glyphs.map((g) => Math.ceil(g.w / 2) * g.h);
   const widgetsSize = widgets.reduce((s, w) => s + WIDGET_HEAD + w.parts.length * PART_SIZE, 0);
   const dataStart = BLOCK_HEAD + glyphs.length * GLYPH_ENTRY + widgetsSize;
   const total = dataStart + glyphBytes.reduce((a, b) => a + b, 0);
   if (total > MAX_WIDGET_BLOCK) {
-    throw new Error(`นาฬิกา/วันที่ใช้พื้นที่ ${Math.ceil(total / 1024)} KB เกิน ${MAX_WIDGET_BLOCK / 1024} KB — ลดขนาดตัวอักษรหรือใช้ชื่อเดือนแบบย่อ`);
+    throw new Error(t('The clocks/dates need {kb} KB, more than {max} KB. Use a smaller text size or short month names.', { kb: Math.ceil(total / 1024), max: MAX_WIDGET_BLOCK / 1024 }));
   }
 
   const out = new Uint8Array(total);

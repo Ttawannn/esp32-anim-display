@@ -31,7 +31,7 @@ export const PALETTES: PalettePreset[] = [
   },
   { name: 'Game Boy', colors: ['#0f380f', '#306230', '#8bac0f', '#9bbc0f'] },
   {
-    name: 'พื้นฐาน',
+    name: 'Basic',
     colors: [
       '#000000', '#ffffff', '#808080', '#c0c0c0', '#ff0000', '#00ff00', '#0000ff', '#ffff00',
       '#00ffff', '#ff00ff', '#ff8000', '#8000ff', '#804000', '#008040', '#ff80c0', '#80c0ff',
@@ -39,4 +39,4 @@ export const PALETTES: PalettePreset[] = [
   },
 ];
 
-export const MONO_PALETTE: PalettePreset = { name: 'ขาวดำ', colors: ['#000000', '#ffffff'] };
+export const MONO_PALETTE: PalettePreset = { name: 'Black & white', colors: ['#000000', '#ffffff'] };

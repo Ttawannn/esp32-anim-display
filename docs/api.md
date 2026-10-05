@@ -24,6 +24,7 @@ Display, Wi-Fi, board name, time, playlist and brightness updates return HTTP `2
 | GET | `/api/uploads/status?id=<id>` | `{state: "pending" | "saved" | "failed"}`; failed saves include `error` |
 | GET | `/api/anims/file?name=<n>&max=<bytes>` | download the file; with `max`, only its first bytes (used for thumbnails) |
 | DELETE | `/api/anims?name=<n>` | delete |
+| POST | `/api/anims/rename?name=<n>&to=<new>` | rename (confirmed: `202` + `command_id`); `409 name exists` if `<new>` is taken. The playlist and "last played" follow the new name |
 | POST | `/api/play?name=<n>` | play this file (pauses the playlist) |
 | POST | `/api/stop` | stop and clear the screen |
 | POST | `/api/next` | next playlist item, or the next file |
@@ -61,6 +62,8 @@ Playlist writes use `/playlist.tmp`, verify the complete JSON write, and replace
 |--------|------|-------------|
 | GET | `/api/display` | `{preset, rotation, offset_x, offset_y, invert, bgr, mirror_x, spi_hz, spi_mode, i2c_hz, i2c_addr, brightness, pins}` |
 | PUT | `/api/display` | send only the fields to change; saves and then **reboots**. Changing `preset` resets the other tuning values to that preset's defaults |
+
+`/api/info` → `display.configured` is `false` until the display settings have been saved once; the editor and the remote then open the setup wizard. While unconfigured, `display.detected` reports the first-boot I2C probe: `"oled"` (an SSD1306/SH1106 answered at 0x3C/0x3D; the board starts with the 128×64 OLED preset) or `"tft"` (no answer: TFT modules cannot be identified, the default 240×240 TFT is used).
 | GET | `/api/display/presets` | `{presets: [{id, name, width, height, color, round}]}` |
 | POST | `/api/display/test` | show the test pattern for 10 seconds |
 | POST | `/api/brightness?value=0-255` | change brightness immediately and save it (no reboot) |

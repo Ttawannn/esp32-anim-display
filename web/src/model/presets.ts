@@ -14,7 +14,7 @@ export interface DisplayPreset {
 export const PRESETS: DisplayPreset[] = [
   { id: 'st7735s_80x160', name: 'TFT 0.96" 80×160', width: 80, height: 160, color: 'rgb565', round: false },
   { id: 'st7789_240x240', name: 'TFT 1.3" 240×240', width: 240, height: 240, color: 'rgb565', round: false },
-  { id: 'gc9a01_240_round', name: 'TFT กลม 1.28" 240×240', width: 240, height: 240, color: 'rgb565', round: true },
+  { id: 'gc9a01_240_round', name: 'Round TFT 1.28" 240×240', width: 240, height: 240, color: 'rgb565', round: true },
   { id: 'ssd1306_128x64', name: 'OLED 0.96" 128×64', width: 128, height: 64, color: 'mono', round: false },
   { id: 'ssd1306_128x32', name: 'OLED 0.91" 128×32', width: 128, height: 32, color: 'mono', round: false },
 ];

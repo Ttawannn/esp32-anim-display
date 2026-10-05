@@ -4,6 +4,7 @@ import { MONO_PALETTE, PALETTES } from '../model/palettes';
 import { mapAllFrames, store, toast, type EditorState } from '../model/store';
 import { isMono } from '../render/output';
 import { Icon } from './common';
+import { t } from '../i18n';
 
 export function PalettePanel({ s }: { s: EditorState }) {
   const { project: p } = s;
@@ -23,20 +24,20 @@ export function PalettePanel({ s }: { s: EditorState }) {
     if (!selected) return;
     const from = hexToRgba(selected), to = hexToRgba(replaceWith);
     if (mapAllFrames((f) => replaceColor(f.data, from, to))) {
-      toast(`แทนที่สี ${selected} ด้วย ${replaceWith} ทุกเฟรมแล้ว`);
+      toast(t('Replaced {a} with {b} in every frame', { a: selected, b: replaceWith }));
       setSelected(replaceWith);
     }
   };
 
   return (
     <div class="section">
-      <h3>สี</h3>
+      <h3>{t('Colors')}</h3>
       <div class="colors-main">
-        <div class="pair" title="สีหลัก (คลิกซ้าย) / สีรอง (คลิกขวา)">
+        <div class="pair" title={t('Primary (left click) / secondary (right click)')}>
           <input type="color" value={s.primary} onInput={(e) => pick((e.target as HTMLInputElement).value, false)} />
           <input type="color" value={s.secondary} onInput={(e) => pick((e.target as HTMLInputElement).value, true)} />
         </div>
-        <button class="btn icon" title="สลับสีหลัก/สีรอง (X)"
+        <button class="btn icon" title={t('Swap primary/secondary (X)')}
           onClick={() => store.set({ primary: s.secondary, secondary: s.primary })}>
           <Icon name="swap" />
         </button>
@@ -45,7 +46,7 @@ export function PalettePanel({ s }: { s: EditorState }) {
             store.set({ paletteName: (e.target as HTMLSelectElement).value });
             store.savePrefs();
           }}>
-            {PALETTES.map((x) => <option key={x.name}>{x.name}</option>)}
+            {PALETTES.map((x) => <option key={x.name} value={x.name}>{t(x.name)}</option>)}
           </select>
         )}
       </div>
@@ -59,7 +60,7 @@ export function PalettePanel({ s }: { s: EditorState }) {
       {!used.overflow && used.colors.length > 0 && (
         <>
           <div class="row" style={{ marginTop: 12 }}>
-            <span class="hint">สีในภาพ ({used.colors.length}) — คลิกเพื่อเลือกสีที่จะแทนที่</span>
+            <span class="hint">{t('Colors in the picture ({n}) — click one to replace it', { n: used.colors.length })}</span>
           </div>
           <div class="swatches">
             {used.colors.map((c) => (
@@ -72,20 +73,20 @@ export function PalettePanel({ s }: { s: EditorState }) {
               <span class="swatch" style={{ background: selected, width: 24, display: 'inline-block' }} />
               <span>→</span>
               <input type="color" value={replaceWith} onInput={(e) => setReplaceWith((e.target as HTMLInputElement).value)} />
-              <button class="btn grow" onClick={doReplace}>แทนที่ทุกเฟรม</button>
+              <button class="btn grow" onClick={doReplace}>{t('Replace in every frame')}</button>
             </div>
           )}
         </>
       )}
       {used.overflow && (
-        <p class="hint">ภาพมีสีมากกว่า 64 สี (เช่น GIF หรือวิดีโอ) ใช้ "ปรับสี" ด้านล่างเพื่อเปลี่ยนโทนสีทั้งภาพ</p>
+        <p class="hint">{t('The picture has more than 64 colors (e.g. a GIF or video). Use the "Adjust" tab to change its colors.')}</p>
       )}
       <div class="row" style={{ marginTop: 10 }}>
-        <span class="hint">พื้นหลัง</span>
-        <input type="color" value={p.background} title="สีพื้นหลัง (ส่วนโปร่งใสและรอบภาพ)"
+        <span class="hint">{t('Background')}</span>
+        <input type="color" value={p.background} title={t('Background color (transparent parts and around the picture)')}
           onInput={(e) => store.setLive({ ...p, background: (e.target as HTMLInputElement).value })}
           onChange={() => store.endLive()} />
-        <span class="hint">ใช้แทนส่วนโปร่งใสและพื้นที่รอบภาพ</span>
+        <span class="hint">{t('Fills transparent parts and the area around the picture')}</span>
       </div>
     </div>
   );

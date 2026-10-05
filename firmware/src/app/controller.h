@@ -12,6 +12,8 @@ void controllerLoop();  // executes queued commands and drives the player
 void controllerPlay(const String& name);
 void controllerStop();
 void controllerNext();
+// Renames an animation file and follows it in the playlist and "last played". Loop task only.
+bool controllerRenameFile(const String& from, const String& to);
 void controllerShowInfo(uint32_t ms);
 void controllerResume();  // after something else (e.g. a benchmark) drew on the panel
 Player& controllerPlayer();

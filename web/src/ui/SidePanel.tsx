@@ -5,12 +5,13 @@ import { Icon } from './common';
 import { OutputPanel } from './OutputPanel';
 import { PalettePanel } from './PalettePanel';
 import { PreviewPanel } from './PreviewPanel';
+import { t } from '../i18n';
 
 const TABS: { id: EditorState['sideTab']; label: string; icon: string }[] = [
-  { id: 'insert', label: 'ใส่ของ', icon: 'smile' },
-  { id: 'color', label: 'สี', icon: 'palette' },
-  { id: 'adjust', label: 'ปรับภาพ', icon: 'sliders' },
-  { id: 'export', label: 'ส่งออก', icon: 'download' },
+  { id: 'insert', label: 'Insert', icon: 'smile' },
+  { id: 'color', label: 'Colors', icon: 'palette' },
+  { id: 'adjust', label: 'Adjust', icon: 'sliders' },
+  { id: 'export', label: 'Export', icon: 'download' },
 ];
 
 // The display preview stays on top; the rest is split into tabs so nothing needs long scrolling.
@@ -19,10 +20,10 @@ export function SidePanel({ s }: { s: EditorState }) {
     <aside class="side">
       <PreviewPanel s={s} />
       <div class="tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={s.sideTab === t.id} class={`tab${s.sideTab === t.id ? ' active' : ''}`}
-            onClick={() => store.set({ sideTab: t.id })}>
-            <Icon name={t.icon} /> {t.label}
+        {TABS.map((tab) => (
+          <button key={tab.id} role="tab" aria-selected={s.sideTab === tab.id} class={`tab${s.sideTab === tab.id ? ' active' : ''}`}
+            onClick={() => store.set({ sideTab: tab.id })}>
+            <Icon name={tab.icon} /> {t(tab.label)}
           </button>
         ))}
       </div>

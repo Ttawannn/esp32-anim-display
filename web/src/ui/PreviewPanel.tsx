@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { clockTimeOf, usesSeconds } from '../layers/clock';
 import { widgetsFor } from '../layers/raster';
+import { presetForDevice } from '../device/api';
 import { getPreset, PRESETS } from '../model/presets';
 import { retarget } from '../model/project';
 import { store, type EditorState } from '../model/store';
 import type { OledTint } from '../model/types';
 import { isMono, outputFrame } from '../render/output';
 import { composeScreen } from '../render/screen';
+import { t } from '../i18n';
 
 // Shows the current frame exactly as the panel will: RGB565 / 1-bit, scaling, offset, round mask.
 export function PreviewPanel({ s }: { s: EditorState }) {
@@ -16,6 +18,9 @@ export function PreviewPanel({ s }: { s: EditorState }) {
   // Fit a 180px box (fractional zoom is fine with pixelated scaling) so the tabs below stay in view.
   const zoom = Math.min(180 / preset.width, 180 / preset.height);
   const mono = isMono(p);
+  const boardPreset = s.deviceInfo ? presetForDevice(s.deviceInfo) : null;
+  const [unlocked, setUnlocked] = useState(false);
+  const following = !!boardPreset && boardPreset === p.presetId && !unlocked;
 
   // Clock layers tick in the preview like they will on the board.
   const [, setTick] = useState(0);
@@ -40,13 +45,30 @@ export function PreviewPanel({ s }: { s: EditorState }) {
 
   return (
     <div class="section">
-      <h3>จำลองจอ</h3>
-      <div class="row">
-        <select class="grow" value={p.presetId} title="ชนิดจอ"
-          onChange={(e) => store.commit(retarget(p, (e.target as HTMLSelectElement).value))}>
-          {PRESETS.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
-        </select>
-      </div>
+      <h3>{t('Display preview')}</h3>
+      {following ? (
+        // Connected to a board: the target display is the board's, no need to choose.
+        <div class="row board-display">
+          <span class="dot on" />
+          <span class="grow">{t("Board's display:")} <b>{preset.name}</b></span>
+          <button class="link" onClick={() => setUnlocked(true)} title={t('Make something for another display, not the one on this board')}>{t('Another display')}</button>
+        </div>
+      ) : (
+        <>
+          <div class="row">
+            <select class="grow" value={p.presetId} title={t('Display type')}
+              onChange={(e) => store.commit(retarget(p, (e.target as HTMLSelectElement).value))}>
+              {PRESETS.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
+            </select>
+          </div>
+          {boardPreset && boardPreset !== p.presetId && (
+            <div class="callout warn">
+              <span class="grow">{t('The connected board has the {display}', { display: getPreset(boardPreset).name })}</span>
+              <button class="btn small" onClick={() => { store.commit(retarget(p, boardPreset)); setUnlocked(false); }}>{t("Use the board's display")}</button>
+            </div>
+          )}
+        </>
+      )}
       <div class="device">
         <div class={`bezel${preset.round ? ' round' : ''}`}>
           <canvas ref={ref} width={preset.width} height={preset.height}
@@ -54,18 +76,18 @@ export function PreviewPanel({ s }: { s: EditorState }) {
         </div>
       </div>
       <div class="preview-info">
-        {preset.width}×{preset.height} · {mono ? 'ขาวดำ 1 บิต' : 'สี RGB565'}
+        {preset.width}×{preset.height} · {mono ? t('1-bit mono') : t('RGB565 color')}
       </div>
       {mono && (
         <div class="row" style={{ justifyContent: 'center' }}>
-          <span class="hint">สีจอ OLED</span>
+          <span class="hint">{t('OLED color')}</span>
           <select value={s.oledTint} onChange={(e) => {
             store.set({ oledTint: (e.target as HTMLSelectElement).value as OledTint });
             store.savePrefs();
           }}>
-            <option value="white">ขาว</option>
-            <option value="blue">ฟ้า</option>
-            <option value="yellow-blue">เหลือง-ฟ้า (2 สี)</option>
+            <option value="white">{t('White')}</option>
+            <option value="blue">{t('Blue')}</option>
+            <option value="yellow-blue">{t('Yellow-blue (two-color)')}</option>
           </select>
         </div>
       )}

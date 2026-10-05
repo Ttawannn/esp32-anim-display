@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect } from 'preact/hooks';
+import { t } from '../i18n';
 
 const PATHS: Record<string, string> = {
   pencil: 'M4 20l4.5-1L19 8.5 15.5 5 5 15.5 4 20zM13.5 7l3.5 3.5',
@@ -99,7 +100,7 @@ export function Modal(props: { title: string; onClose: () => void; children: Com
       <div class="modal" role="dialog" aria-label={props.title}>
         <header>
           <h2>{props.title}</h2>
-          <IconButton icon="close" title="ปิด" onClick={props.onClose} />
+          <IconButton icon="close" title={t('Close')} onClick={props.onClose} />
         </header>
         <div class="body">{props.children}</div>
         {props.footer && <footer>{props.footer}</footer>}

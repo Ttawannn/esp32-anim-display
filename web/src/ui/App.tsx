@@ -11,6 +11,7 @@ import { ImportVideoDialog } from './ImportVideoDialog';
 import { NewProjectDialog } from './NewProjectDialog';
 import { SidePanel } from './SidePanel';
 import { isBlankProject, StartScreen } from './StartScreen';
+import { SetupWizardAuto } from './SetupWizard';
 import { TemplatesDialog } from './TemplatesDialog';
 import { Timeline } from './Timeline';
 import { ToolBar, TOOLS } from './ToolBar';
@@ -96,6 +97,7 @@ export function App() {
       {s.dialog === 'eyes' && <EyesDialog />}
       {s.dialog === 'templates' && <TemplatesDialog />}
       {s.dialog === 'device' && <DeviceDialog />}
+      <SetupWizardAuto />
       {s.toast && <div class={`toast${s.toast.error ? ' error' : ''}`} role="status">{s.toast.text}</div>}
     </div>
   );

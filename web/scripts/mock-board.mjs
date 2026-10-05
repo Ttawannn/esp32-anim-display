@@ -3,6 +3,7 @@
 //   node scripts/mock-board.mjs            (listens on :8787)
 //   DEVICE=localhost:8787 npm run dev      (editor proxies /api to it)
 //   MOCK_VERSION=0.1.0 ...                 (pretend to run old firmware)
+//   MOCK_FRESH=1 ...                       (display never configured: the setup wizard opens)
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
@@ -30,6 +31,7 @@ const state = {
     pins: { clk: 6, data: 7, cs: 10, dc: 4, rst: 3, bl: 5 },
   },
   name: 'display-a1b2',
+  configured: !process.env.MOCK_FRESH,
   clock: { epoch: 0, setAt: 0, tz: 420 }, // unknown until the editor sets it, like a fresh board
   wifi: { mode: 'ap', ssid: 'DisplayEditor-MOCK', ip: '192.168.4.1', rssi: 0, saved_ssid: '' },
   player: { name: '', playing: false, live: false, playlist: false, frame: 0, frames: 0, fps: 0 },
@@ -104,7 +106,8 @@ createServer(async (req, res) => {
       const p = preset();
       return send(res, 200, {
         version: VERSION, name: state.name, time: clockNow(), board: 'c3', board_name: 'Mock board', chip: 'mock', heap_free: 180000, heap_min: 150000, uptime_s: Math.round(process.uptime()),
-        display: { ok: true, preset: p.id, name: p.name, width: p.width, height: p.height, color: p.color, shape: p.round ? 'round' : 'rect', brightness: state.display.brightness },
+        display: { ok: true, preset: p.id, name: p.name, width: p.width, height: p.height, color: p.color, shape: p.round ? 'round' : 'rect', brightness: state.display.brightness,
+          configured: state.configured, ...(state.configured ? {} : { detected: 'tft' }) },
         fs: { total: FS_TOTAL, used: used(), free: FS_TOTAL - used() },
         wifi: { ...state.wifi, hostname: `${hostFor(state.name)}.local` },
         player: state.player,
@@ -145,6 +148,19 @@ createServer(async (req, res) => {
       if (!state.anims.delete(q('name'))) return send(res, 404, { error: 'not found' });
       if (state.player.name === q('name')) state.player = { ...state.player, name: '', playing: false };
       return send(res, 200, { ok: true });
+    case 'POST /api/anims/rename': {
+      const from = q('name'), to = (q('to') ?? '').trim();
+      if (!state.anims.has(from)) return send(res, 404, { error: 'not found' });
+      if (!to) return send(res, 400, { error: 'invalid file name' });
+      if (to === from) return send(res, 200, { ok: true });
+      if (state.anims.has(to)) return send(res, 409, { error: 'name exists' });
+      return confirmed(res, () => {
+        state.anims.set(to, state.anims.get(from));
+        state.anims.delete(from);
+        if (state.player.name === from) state.player = { ...state.player, name: to };
+        state.playlist.items = state.playlist.items.map((it) => (it.name === from ? { ...it, name: to } : it));
+      });
+    }
     case 'POST /api/play':
       if (!state.anims.has(q('name'))) return send(res, 404, { error: 'not found' });
       play(q('name'));
@@ -177,7 +193,7 @@ createServer(async (req, res) => {
       return send(res, 200, state.display);
     case 'PUT /api/display': {
       const display = JSON.parse((await readBody(req)).toString());
-      return confirmed(res, () => { state.display = { ...state.display, ...display }; });
+      return confirmed(res, () => { state.display = { ...state.display, ...display }; state.configured = true; });
     }
     case 'GET /api/display/presets':
       return send(res, 200, { presets: PRESETS });

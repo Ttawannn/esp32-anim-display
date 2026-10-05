@@ -12,6 +12,7 @@ import { rgbToHex } from '../model/project';
 import { setFrameData, store, type EditorState } from '../model/store';
 import type { Layer, Pixels } from '../model/types';
 import { IconButton } from './common';
+import { t } from '../i18n';
 
 interface Stroke {
   base: Pixels; // frame before the stroke
@@ -333,11 +334,11 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     <div class={`stage${dropping ? ' dropping' : ''}`} ref={stageRef} onWheel={onWheel}
       onDragOver={onDragOver} onDragLeave={(e) => e.target === stageRef.current && setDropping(false)} onDrop={onDrop}>
       <div class="stage-bar">
-        <IconButton icon="zoomOut" title="ซูมออก" onClick={() => store.set({ zoom: Math.max(1, z - 1) })} />
-        <button class={`btn${zoom === 0 ? ' active' : ''}`} onClick={() => store.set({ zoom: 0 })} title="พอดีหน้าจอ">
+        <IconButton icon="zoomOut" title={t('Zoom out')} onClick={() => store.set({ zoom: Math.max(1, z - 1) })} />
+        <button class={`btn${zoom === 0 ? ' active' : ''}`} onClick={() => store.set({ zoom: 0 })} title={t('Fit to view')}>
           {z}×
         </button>
-        <IconButton icon="zoomIn" title="ซูมเข้า" onClick={() => store.set({ zoom: Math.min(40, z + 1) })} />
+        <IconButton icon="zoomIn" title={t('Zoom in')} onClick={() => store.set({ zoom: Math.min(40, z + 1) })} />
       </div>
       <canvas
         class="edit"
@@ -352,13 +353,13 @@ export function EditorCanvas({ s }: { s: EditorState }) {
         onPointerLeave={() => setHover(null)}
         onContextMenu={(e) => e.preventDefault()}
       />
-      {dropping && <div class="drop-hint">ปล่อยเพื่อวางตรงนี้</div>}
+      {dropping && <div class="drop-hint">{t('Drop to place it here')}</div>}
       <div class="meta">
-        ภาพ {p.width}×{p.height}
-        {p.scale > 1 && <> · ขยาย ×{p.scale}</>} → จอ {preset.width}×{preset.height}
-        {!fitsExactly && <> · ระยะขอบ {p.offsetX},{p.offsetY}</>}
+        {t('Image')} {p.width}×{p.height}
+        {p.scale > 1 && <> · {t('enlarged ×{k}', { k: p.scale })}</>} → {t('screen')} {preset.width}×{preset.height}
+        {!fitsExactly && <> · {t('margin')} {p.offsetX},{p.offsetY}</>}
         {hover && tool !== 'select' && <> · ({hover.x}, {hover.y})</>}
-        {tool === 'select' && <> · ลากเพื่อย้าย · ลากมุมขวาล่างเพื่อปรับขนาด</>}
+        {tool === 'select' && <> · {t('drag to move · drag the bottom-right corner to resize')}</>}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { newFrame } from '../model/project';
 import { DEFAULT_ADJUST, type Project } from '../model/types';
+import { t } from '../i18n';
 
 const MAGIC = 'DPE1';
 
@@ -17,7 +18,7 @@ export async function saveProjectFile(p: Project): Promise<Blob> {
 
 export async function loadProjectFile(file: Blob): Promise<Project> {
   const bytes = new Uint8Array(await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
-  if (String.fromCharCode(...bytes.subarray(0, 4)) !== MAGIC) throw new Error('ไม่ใช่ไฟล์โปรเจกต์ .dpe');
+  if (String.fromCharCode(...bytes.subarray(0, 4)) !== MAGIC) throw new Error(t('Not a .dpe project file'));
   const len = new DataView(bytes.buffer).getUint32(4, true);
   const meta = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + len)));
   const size = meta.width * meta.height * 4;

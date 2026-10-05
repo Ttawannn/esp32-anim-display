@@ -3,6 +3,7 @@ import { canvasOptions, getPreset, PRESETS } from '../model/presets';
 import { createProject } from '../model/project';
 import { store } from '../model/store';
 import { Modal } from './common';
+import { t } from '../i18n';
 
 export function NewProjectDialog() {
   const [presetId, setPresetId] = useState(store.state.project.presetId);
@@ -22,32 +23,32 @@ export function NewProjectDialog() {
   };
 
   return (
-    <Modal title="โปรเจกต์ใหม่ (Pixel Art)" onClose={close}
-      footer={<><button class="btn" onClick={close}>ยกเลิก</button><button class="btn primary" onClick={create}>สร้าง</button></>}>
-      <h4 style={{ margin: '0 0 8px' }}>จอ</h4>
+    <Modal title={t('New project (pixel art)')} onClose={close}
+      footer={<><button class="btn" onClick={close}>{t('Cancel')}</button><button class="btn primary" onClick={create}>{t('Create')}</button></>}>
+      <h4 style={{ margin: '0 0 8px' }}>{t('Display')}</h4>
       <div class="cards">
         {PRESETS.map((pr) => (
           <button key={pr.id} class={`card${pr.id === presetId ? ' sel' : ''}`}
             onClick={() => { setPresetId(pr.id); setOptIdx(Math.max(0, canvasOptions(pr).findIndex((o) => o.scale === (pr.width >= 200 ? 4 : 2)))); }}>
             {pr.name}
-            <small>{pr.color === 'mono' ? 'ขาวดำ' : 'สี'}{pr.round ? ' · กลม' : ''}</small>
+            <small>{pr.color === 'mono' ? t('mono') : t('color')}{pr.round ? ` · ${t('round')}` : ''}</small>
           </button>
         ))}
       </div>
-      <h4 style={{ margin: '16px 0 8px' }}>ขนาดภาพ</h4>
+      <h4 style={{ margin: '16px 0 8px' }}>{t('Image size')}</h4>
       <div class="cards">
         {options.map((o, i) => (
           <button key={o.scale} class={`card${i === optIdx ? ' sel' : ''}`} onClick={() => setOptIdx(i)}>
             {o.width}×{o.height}
-            <small>ขยาย ×{o.scale}{o.scale >= 4 ? ' · พิกเซลใหญ่' : o.scale === 1 ? ' · ละเอียดเต็มจอ' : ''}</small>
+            <small>{t('enlarged ×{k}', { k: o.scale })}{o.scale >= 4 ? ` · ${t('big pixels')}` : o.scale === 1 ? ` · ${t('full screen resolution')}` : ''}</small>
           </button>
         ))}
       </div>
-      <p class="hint">ภาพเล็ก = วาดง่าย ไฟล์เล็ก เห็นพิกเซลชัด · บอร์ดจะขยายให้เต็มจอเอง</p>
+      <p class="hint">{t('Small images are easy to draw, small to store and show crisp pixels · the board scales them up to fill the screen')}</p>
       <div class="row" style={{ marginTop: 12 }}>
-        <span>ชื่อ</span>
+        <span>{t('Name')}</span>
         <input type="text" class="grow" value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} />
-        <span>พื้นหลัง</span>
+        <span>{t('Background')}</span>
         <input type="color" value={bg} onInput={(e) => setBg((e.target as HTMLInputElement).value)} />
       </div>
     </Modal>

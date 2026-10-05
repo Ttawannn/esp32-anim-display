@@ -10,6 +10,7 @@ import { store, toast, useEditor } from '../model/store';
 import { Icon } from './common';
 import { FirmwareNotice } from './FirmwareNotice';
 import { useDismiss } from './Menu';
+import { t } from '../i18n';
 
 // Board connection in one place: status chip in the top bar, popover with USB / Wi-Fi,
 // live preview, display mismatch and a link to the board manager.
@@ -38,14 +39,14 @@ export function ConnectionChip() {
   const devicePreset = info ? presetForDevice(info) : null;
   const mismatch = !!devicePreset && devicePreset !== s.project.presetId;
 
-  const label = info ? info.name || (usb ? 'USB' : 'Wi-Fi') : 'ยังไม่เชื่อมบอร์ด';
+  const label = info ? info.name || (usb ? 'USB' : 'Wi-Fi') : t('No board connected');
   const outdated = !!info && firmwareOutdated(info.version);
 
   return (
     <div class="menu" ref={ref}>
       <button class={`chip${info ? ' on' : ''}${open ? ' active' : ''}`} onClick={() => setOpen(!open)}
-        title="การเชื่อมต่อบอร์ด">
-        <span class={`dot${outdated ? ' warn' : ''}`} title={outdated ? 'เฟิร์มแวร์บนบอร์ดเก่า' : undefined} />
+        title={t('Board connection')}>
+        <span class={`dot${outdated ? ' warn' : ''}`} title={outdated ? t('The board runs old firmware') : undefined} />
         <Icon name={info ? (usb ? 'usb' : 'wifi') : 'board'} />
         <span class="lbl">{label}</span>
         {s.live && <span class="badge">LIVE</span>}
@@ -54,61 +55,61 @@ export function ConnectionChip() {
         <div class="menu-panel right popover">
           {info ? (
             <div class="conn-status">
-              <div class="conn-title"><span class="dot on" /> เชื่อมต่อแล้วผ่าน {usb ? 'USB' : 'Wi-Fi'}</div>
+              <div class="conn-title"><span class="dot on" /> {t('Connected over {via}', { via: usb ? 'USB' : 'Wi-Fi' })}</div>
               <div class="hint">{info.name && <b>{info.name} · </b>}{info.board_name} · {info.display.name}{!usb && ` · ${info.wifi.ip}`}</div>
               <FirmwareNotice info={info} />
               {mismatch && (
                 <div class="callout warn">
-                  โปรเจกต์นี้ทำสำหรับ {getPreset(s.project.presetId).name} แต่บอร์ดใช้ {info.display.name}
-                  <button class="btn small" onClick={() => store.commit(retarget(s.project, devicePreset!))}>ใช้จอของบอร์ด</button>
+                  {t('This project is for the {a}, but the board has the {b}', { a: getPreset(s.project.presetId).name, b: info.display.name })}
+                  <button class="btn small" onClick={() => store.commit(retarget(s.project, devicePreset!))}>{t("Use the board's display")}</button>
                 </div>
               )}
               <label class="toggle">
                 <input type="checkbox" checked={s.live} onChange={() => setLive(!s.live)} />
                 <span class="track" />
-                <span><b>ดูสดบนบอร์ด</b><small>แสดงเฟรมที่กำลังแก้บนจอจริงทันที</small></span>
+                <span><b>{t('Live preview on the board')}</b><small>{t('Shows the frame you are editing on the real screen right away')}</small></span>
               </label>
               <div class="row">
                 <button class="btn grow" onClick={() => { setOpen(false); store.set({ dialog: 'device' }); }}>
-                  <Icon name="board" /> จัดการบอร์ด
+                  <Icon name="board" /> {t('Board manager')}
                 </button>
                 {usb ? (
-                  <button class="btn" disabled={!!working} onClick={() => run('ตัดการเชื่อมต่อ', disconnectUsb)}>ตัดการเชื่อมต่อ</button>
+                  <button class="btn" disabled={!!working} onClick={() => run(t('Disconnecting'), disconnectUsb)}>{t('Disconnect')}</button>
                 ) : (
-                  <button class="btn" disabled={!!working} onClick={() => run('รีเฟรช', refreshDevice)}>รีเฟรช</button>
+                  <button class="btn" disabled={!!working} onClick={() => run(t('Refreshing'), refreshDevice)}>{t('Refresh')}</button>
                 )}
               </div>
             </div>
           ) : (
             <div class="conn-status">
-              <div class="conn-title">เชื่อมต่อบอร์ด</div>
+              <div class="conn-title">{t('Connect to a board')}</div>
               <button class="conn-option" disabled={!usbSupported || !!working}
-                onClick={() => run('USB', async () => { await connectUsb(); toast('เชื่อมต่อผ่าน USB แล้ว'); })}>
+                onClick={() => run(t('Connecting over USB'), async () => { await connectUsb(); toast(t('Connected over USB')); })}>
                 <Icon name="usb" />
-                <span><b>ผ่านสาย USB</b>
-                  <small>{usbSupported ? 'เสียบสาย แล้วเลือกบอร์ดจากรายการ' : 'ใช้ได้กับ Chrome/Edge บนคอมพิวเตอร์ (หน้า HTTPS หรือ localhost)'}</small>
+                <span><b>{t('Over a USB cable')}</b>
+                  <small>{usbSupported ? t('Plug in the cable, then pick the board from the list') : t('Works in Chrome/Edge on a computer (HTTPS or localhost page)')}</small>
                 </span>
               </button>
               <div class={`conn-option static${https ? ' disabled' : ''}`}>
                 <Icon name="wifi" />
-                <span><b>ผ่าน Wi-Fi</b>
-                  <small>{https ? 'เว็บออนไลน์ใช้ Wi-Fi ไม่ได้ — เปิดหน้าเว็บจากบอร์ด (http://192.168.4.1)'
-                    : 'อยู่ใน Wi-Fi เดียวกับบอร์ด แล้วใส่ IP (ว่าง = บอร์ดที่เปิดหน้านี้)'}</small>
+                <span><b>{t('Over Wi-Fi')}</b>
+                  <small>{https ? t("The online editor can't use Wi-Fi. Open the page from the board (http://192.168.4.1).")
+                    : t('Be on the same Wi-Fi as the board, then enter its IP (empty = the board serving this page)')}</small>
                   {!https && (
                     <span class="row">
                       <input type="text" class="grow" placeholder="192.168.4.1" value={s.deviceHost}
                         onChange={(e) => { store.set({ deviceHost: (e.target as HTMLInputElement).value }); store.savePrefs(); }} />
-                      <button class="btn primary" disabled={!!working} onClick={() => run('Wi-Fi', refreshDevice)}>เชื่อมต่อ</button>
+                      <button class="btn primary" disabled={!!working} onClick={() => run(t('Connecting over Wi-Fi'), refreshDevice)}>{t('Connect')}</button>
                     </span>
                   )}
                 </span>
               </div>
               <p class="hint" style={{ margin: '12px 0 0' }}>
-                บอร์ดยังไม่มีเฟิร์มแวร์? <a href={firmwareInstallerUrl()} target="_blank" rel="noopener">ติดตั้งจากเบราว์เซอร์</a>
+                {t('No firmware on the board yet?')} <a href={firmwareInstallerUrl()} target="_blank" rel="noopener">{t('Install it from the browser')}</a>
               </p>
             </div>
           )}
-          {working && <div class="hint">กำลัง{working}...</div>}
+          {working && <div class="hint">{working}…</div>}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { store, toast } from '../model/store';
 import { device, deviceFileName } from './api';
 import { refreshDevice } from './session';
 import { pickFile } from '../ui/common';
+import { t } from '../i18n';
 
 // Encode the current project and upload it to the board, reporting progress in store.sending
 // (encoding is the first 30% of the bar). If no board is connected, opens the connection popover.
@@ -13,20 +14,20 @@ export async function sendToBoard(): Promise<boolean> {
       await refreshDevice();
     } catch {
       store.set({ connectOpen: true });
-      toast('เชื่อมต่อบอร์ดก่อน (USB หรือ Wi-Fi) แล้วกดส่งอีกครั้ง', true);
+      toast(t('Connect a board first (USB or Wi-Fi), then send again'), true);
       return false;
     }
   }
   const { project, deviceHost } = store.state;
   const name = deviceFileName(project.name);
   try {
-    store.set({ sending: { label: 'กำลังเตรียมไฟล์', pct: 0 } });
+    store.set({ sending: { label: t('Preparing'), pct: 0 } });
     const r = await encodeProject(project, (done, total) =>
-      store.set({ sending: { label: 'กำลังเตรียมไฟล์', pct: (done / total) * 0.3 } }));
-    store.set({ sending: { label: 'กำลังส่ง', pct: 0.3 } });
+      store.set({ sending: { label: t('Preparing'), pct: (done / total) * 0.3 } }));
+    store.set({ sending: { label: t('Sending'), pct: 0.3 } });
     await device.upload(deviceHost, name, r.bytes, true, (sent, total) =>
-      store.set({ sending: { label: 'กำลังส่ง', pct: 0.3 + (sent / total) * 0.7 } }));
-    toast(`ส่ง "${name}" แล้ว บอร์ดกำลังเล่น`);
+      store.set({ sending: { label: t('Sending'), pct: 0.3 + (sent / total) * 0.7 } }));
+    toast(t('Sent "{name}", now playing on the board', { name }));
     refreshDevice().catch(() => {});
     return true;
   } catch (e) {
@@ -43,15 +44,15 @@ export async function uploadDpaFile(): Promise<string | null> {
   if (!file) return null;
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (bytes.length < 32 || String.fromCharCode(...bytes.subarray(0, 4)) !== 'DPA1') {
-    toast('ไฟล์นี้ไม่ใช่ .dpa ที่ถูกต้อง', true);
+    toast(t('This file is not a valid .dpa'), true);
     return null;
   }
   const name = deviceFileName(file.name.replace(/\.dpa$/i, ''));
   try {
-    store.set({ sending: { label: 'กำลังส่ง', pct: 0 } });
+    store.set({ sending: { label: t('Sending'), pct: 0 } });
     await device.upload(store.state.deviceHost, name, bytes, true, (sent, total) =>
-      store.set({ sending: { label: 'กำลังส่ง', pct: sent / total } }));
-    toast(`ส่ง "${name}" แล้ว บอร์ดกำลังเล่น`);
+      store.set({ sending: { label: t('Sending'), pct: sent / total } }));
+    toast(t('Sent "{name}", now playing on the board', { name }));
     refreshDevice().catch(() => {});
     return name;
   } catch (e) {

@@ -3,6 +3,7 @@ import { usbConnected } from '../device/api';
 import { SerialLink } from '../device/serial';
 import { connectUsb, disconnectUsb } from '../device/session';
 import { toast, useEditor } from '../model/store';
+import { t } from '../i18n';
 
 export function UsbControls() {
   const s = useEditor();
@@ -13,7 +14,7 @@ export function UsbControls() {
     setWorking(true);
     try {
       if (connected) await disconnectUsb();
-      else { await connectUsb(); toast('เชื่อมต่อผ่าน USB แล้ว'); }
+      else { await connectUsb(); toast(t('Connected over USB')); }
     } catch (error) {
       if ((error as DOMException).name !== 'NotFoundError') toast((error as Error).message, true);
     } finally { setWorking(false); }
@@ -21,12 +22,12 @@ export function UsbControls() {
   return (
     <div class="row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
       <button class={`btn${connected ? ' active' : ''}`} disabled={working || !supported} onClick={act}>
-        {working ? connected ? 'กำลังตัดการเชื่อมต่อ...' : 'กำลังเชื่อมต่อ...'
-          : connected ? 'ตัดการเชื่อมต่อ USB' : 'เชื่อมผ่าน USB'}
+        {working ? connected ? t('Disconnecting…') : t('Connecting…')
+          : connected ? t('Disconnect USB') : t('Connect over USB')}
       </button>
       <span class="hint">
-        {connected ? '● USB เชื่อมต่อแล้ว' : !supported ? 'USB: ใช้ Chrome/Edge บนคอมพิวเตอร์ และเว็บ HTTPS หรือ localhost'
-          : s.deviceTransport === 'wifi' ? '● เชื่อมต่อผ่าน Wi-Fi' : 'ต่อสาย USB แล้วเลือกบอร์ด'}
+        {connected ? `● ${t('Connected over USB')}` : !supported ? t('USB needs Chrome/Edge on a computer, over HTTPS or localhost')
+          : s.deviceTransport === 'wifi' ? `● ${t('Connected over Wi-Fi')}` : t('Plug in the USB cable, then pick the board')}
       </span>
     </div>
   );

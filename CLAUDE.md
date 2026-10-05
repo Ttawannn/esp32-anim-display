@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A web editor (`web/`) that creates animations and a firmware (`firmware/`) for ESP32-C3 / ESP32-C6 SuperMini boards that plays them on small TFT/OLED panels, connected over Wi-Fi. The two halves communicate through a custom binary format, `.dpa`, plus a REST API. The user works in Thai. UI strings (editor and on-device screens' user text) are in Thai; all documentation is in English, with Thai UI labels quoted alongside an English gloss.
+A web editor (`web/`) that creates animations and a firmware (`firmware/`) for ESP32-C3 / ESP32-C6 SuperMini boards that plays them on small TFT/OLED panels, connected over Wi-Fi. The two halves communicate through a custom binary format, `.dpa`, plus a REST API. The user works in Thai. The UI is English by default with a Thai switch (EN / ไทย, remembered per browser); all documentation is in English.
 
 Docs worth reading before larger changes: `docs/architecture.md` (system overview), `docs/dpa-format.md` (file format), `docs/api.md` (REST API), `PLAN.md` (roadmap and status: the code compiles but has not yet been verified on real hardware).
 
@@ -43,6 +43,8 @@ python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/deco
 build/decode_test.exe shared/test-vectors
 python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/src firmware/test/native/widgets_test.cpp -o build/widgets_test.exe
 build/widgets_test.exe shared/test-vectors   # clock widgets vs the JS reference renderer
+# controller/robustness tests use assert(): zig defines NDEBUG at -O1, so pass -UNDEBUG (CI uses g++)
+python -m ziglang c++ -std=c++17 -O1 -w -UNDEBUG -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/controller_test.cpp firmware/src/app/controller.cpp firmware/src/app/commands.cpp -o build/controller_test.exe
 ```
 
 ## Hosting
@@ -106,6 +108,13 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. Boards are matched
 - **C3 Wi-Fi:** the C3 SuperMini needs reduced TX power (`WiFi.setTxPower(WIFI_POWER_8_5dBm)`) for reliable Wi-Fi.
 - **Flash layout:** the 4 MB flash defaults to `partitions/4mb_storage.csv` (1.75 MB app, about 2.1 MB LittleFS for `/anims/*.dpa`). `board_upload.maximum_size` must match the app partition.
 
+### UI language (`web/src/i18n/`)
+
+- Source strings are English: wrap every UI string in `t('English text')`, with `{name}` placeholders (`t('Installing {pct}%', { pct })`). Never hard-code Thai in UI code.
+- `i18n/th.ts` maps English → Thai. `i18n.test.ts` fails when a literal `t('…')` string or a data label has no Thai entry, or when Thai appears outside the allowed content files (clock names in `layers/clock.ts`). In dev, Thai mode logs `[i18n] no Thai for:` for dynamic strings it can't find.
+- Data modules (templates, catalogue, eye moods, palettes, clock presets) keep English labels and the UI translates them when rendering (`t(tpl.name)`), so workers never need translations. English errors thrown in workers are translated when shown (`translateKnown`, used by `toast`).
+- Names that end up on the board (installed templates, eye moods, the message file) are translated at install time.
+
 ### Web editor state
 
 - **Store:** `web/src/model/store.ts` is a single store.
@@ -126,6 +135,10 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. Boards are matched
   - `TopBar` holds the File/Create menus, `ConnectionChip` (the single place for USB / Wi-Fi connection, live preview and the board manager), and the primary "send to board" button.
   - Every send goes through `device/send.ts` (`sendToBoard`, with progress in `store.sending`).
   - A blank project shows `StartScreen`.
+  - `SetupWizard` opens by itself (editor and remote) while the board reports `display.configured === false`.
+  - Board settings forms (`BoardSettings.tsx`: display, Wi-Fi, name) are shared by the board manager, the remote and the wizard.
+  - Anything generated for the board's display and installed directly (wizard, remote templates, text messages) goes through `device/install.ts`.
+  - While a board is connected, the preview panel follows the board's display (`presetForDevice`) instead of offering a dropdown.
   - The side panel keeps the display preview on top, with color / adjust / export tabs below (`store.sideTab`).
 - **Two pages:** `main.tsx` routes by hash.
   - `#/editor` is the full editor (`ui/App.tsx`).

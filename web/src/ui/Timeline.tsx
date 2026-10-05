@@ -4,6 +4,7 @@ import { totalDuration } from '../model/project';
 import { addFrame, deleteFrame, moveFrame, selectFrame, setDelay, store, type EditorState } from '../model/store';
 import type { Frame } from '../model/types';
 import { IconButton } from './common';
+import { t } from '../i18n';
 
 const THUMB_H = 52;
 
@@ -38,30 +39,30 @@ export function Timeline({ s }: { s: EditorState }) {
   return (
     <div class="timeline">
       <div class="controls">
-        <IconButton icon={s.playing ? 'pause' : 'play'} fill title={s.playing ? 'หยุด (Space)' : 'เล่น (Space)'}
+        <IconButton icon={s.playing ? 'pause' : 'play'} fill title={s.playing ? t('Pause (Space)') : t('Play (Space)')}
           active={s.playing} onClick={() => store.set({ playing: !s.playing })} />
-        <IconButton icon="plus" title="เพิ่มเฟรมว่าง" onClick={() => addFrame(false)} />
-        <IconButton icon="copy" title="ทำซ้ำเฟรม (D)" onClick={() => addFrame(true)} />
-        <IconButton icon="left" title="ย้ายเฟรมไปซ้าย" onClick={() => moveFrame(-1)} disabled={frameIndex === 0} />
-        <IconButton icon="right" title="ย้ายเฟรมไปขวา" onClick={() => moveFrame(1)}
+        <IconButton icon="plus" title={t('Add an empty frame')} onClick={() => addFrame(false)} />
+        <IconButton icon="copy" title={t('Duplicate frame (D)')} onClick={() => addFrame(true)} />
+        <IconButton icon="left" title={t('Move frame left')} onClick={() => moveFrame(-1)} disabled={frameIndex === 0} />
+        <IconButton icon="right" title={t('Move frame right')} onClick={() => moveFrame(1)}
           disabled={frameIndex === p.frames.length - 1} />
-        <IconButton icon="trash" title="ลบเฟรม (Delete)" onClick={deleteFrame} />
+        <IconButton icon="trash" title={t('Delete frame (Del)')} onClick={deleteFrame} />
         <span class="tl-group">
-          <span class="tl-count">เฟรม <b>{frameIndex + 1}</b> / {p.frames.length}</span>
+          <span class="tl-count">{t('Frame')} <b>{frameIndex + 1}</b> / {p.frames.length}</span>
         </span>
-        <label class="tl-group" title="เวลาที่เฟรมนี้ค้างอยู่บนจอ">
-          <span class="label">เฟรมนี้แสดง</span>
+        <label class="tl-group" title={t('How long this frame stays on screen')}>
+          <span class="label">{t('This frame')}</span>
           <input type="number" min={10} max={10000} step={10} value={frame.delay}
             onChange={(e) => setDelay(Number((e.target as HTMLInputElement).value), false)} />
           <span class="label">ms</span>
         </label>
-        <label class="tl-group" title="ตั้งความเร็วเท่ากันทุกเฟรม">
-          <span class="label">ความเร็วทุกเฟรม</span>
+        <label class="tl-group" title={t('Set the same speed for every frame')}>
+          <span class="label">{t('All frames')}</span>
           <input type="number" min={1} max={60} step={1} value={fps}
             onChange={(e) => setDelay(1000 / Number((e.target as HTMLInputElement).value), true)} />
           <span class="label">fps</span>
         </label>
-        <span class="label">ยาว {(totalDuration(p) / 1000).toFixed(1)} วินาที</span>
+        <span class="label">{t('Length {s} s', { s: (totalDuration(p) / 1000).toFixed(1) })}</span>
       </div>
       <div class="frames" ref={stripRef}>
         {p.frames.map((f, i) => (

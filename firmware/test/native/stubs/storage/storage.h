@@ -8,6 +8,8 @@ struct AnimInfo { String name; };
 inline std::vector<AnimInfo> list() { return {{"idle"}}; }
 inline bool exists(const String&) { return true; }
 inline bool remove(const String&) { return true; }
+inline bool nativeRenameSucceeds = true;
+inline bool rename(const String&, const String&) { return nativeRenameSucceeds; }
 }
 struct NativeLittleFS { bool remove(const char*) { return true; } };
 inline NativeLittleFS LittleFS;

@@ -4,6 +4,7 @@
 import { PRESETS } from '../model/presets';
 import { CHUNK_BYTES, fromBase64, toBase64, type SerialLink } from './serial';
 import { invalidateThumbnails } from './thumbnailCache';
+import { t } from '../i18n';
 
 export interface DeviceInfo {
   version: string;
@@ -12,7 +13,12 @@ export interface DeviceInfo {
   board: string;
   board_name: string;
   heap_free: number;
-  display: { ok: boolean; error?: string; preset: string; name: string; width: number; height: number; color: 'rgb565' | 'mono'; shape: 'round' | 'rect'; brightness: number };
+  display: {
+    ok: boolean; error?: string; preset: string; name: string; width: number; height: number; color: 'rgb565' | 'mono';
+    shape: 'round' | 'rect'; brightness: number;
+    configured?: boolean; // false until the display settings were saved once (firmware 0.5.0+)
+    detected?: 'oled' | 'tft'; // first boot: result of the I2C probe for an OLED
+  };
   fs: { total: number; used: number; free: number };
   wifi: { mode: 'ap' | 'sta'; ssid: string; ip: string; rssi: number; hostname: string };
   player: { name: string; playing: boolean; live: boolean; playlist: boolean; frame: number; frames: number; fps: number };
@@ -79,25 +85,27 @@ interface Transport {
 }
 
 const ERRORS: Record<string, string> = {
-  'not enough storage': 'พื้นที่บนบอร์ดไม่พอ',
-  'not a valid .dpa file': 'ไฟล์ไม่ใช่ .dpa ที่ถูกต้อง',
-  'invalid file name': 'ชื่อไฟล์ใช้ไม่ได้',
-  'not found': 'ไม่พบไฟล์',
-  'frame too large or out of memory': 'เฟรมใหญ่เกินไปสำหรับดูสด',
-  'unknown op': 'เฟิร์มแวร์บนบอร์ดเก่าเกินไป — แฟลชเฟิร์มแวร์เวอร์ชันใหม่',
-  'command queue full': 'บอร์ดกำลังทำงานเต็มคิว — ลองอีกครั้ง',
-  'cannot save file': 'บอร์ดบันทึกไฟล์ไม่ได้ — ไฟล์เดิมยังเก็บไว้',
-  'write failed (storage full?)': 'พื้นที่บนบอร์ดไม่พอสำหรับบันทึกไฟล์',
-  'display unavailable': 'จอบนบอร์ดยังไม่พร้อม — ตรวจสายและตั้งค่าจอ',
-  'cannot save settings': 'บอร์ดบันทึกค่าตั้งไม่ได้ — ลองอีกครั้ง',
-  'invalid time': 'ตั้งเวลาบอร์ดไม่ได้',
-  'invalid name': 'ชื่อบอร์ดใช้ไม่ได้ (ยาวเกินหรือมีอักขระพิเศษ)',
-  'cannot save playlist': 'บอร์ดบันทึก playlist ไม่ได้ — รายการเดิมยังเก็บไว้',
+  'not enough storage': 'Not enough space on the board',
+  'not a valid .dpa file': 'Not a valid .dpa file',
+  'invalid file name': "That file name can't be used",
+  'not found': 'File not found',
+  'frame too large or out of memory': 'The frame is too large for live preview',
+  'unknown op': "The board's firmware is too old. Flash the latest firmware.",
+  'command queue full': 'The board is busy. Try again.',
+  'cannot save file': "The board couldn't save the file. The old file is kept.",
+  'write failed (storage full?)': 'Not enough space on the board to save the file',
+  'display unavailable': "The board's display isn't ready. Check the wiring and display settings.",
+  'cannot save settings': "The board couldn't save the settings. Try again.",
+  'name exists': 'A file with that name already exists',
+  'cannot rename': "Couldn't rename the file",
+  'invalid time': "Couldn't set the board's clock",
+  'invalid name': "That board name can't be used (too long or special characters)",
+  'cannot save playlist': "The board couldn't save the playlist. The old one is kept.",
 };
 
 function errorFrom(status: number, body: any): Error {
   const e = body?.error;
-  return new Error(e ? ERRORS[e] ?? e : `บอร์ดตอบ ${status}`);
+  return new Error(e ? (ERRORS[e] ? t(ERRORS[e]) : e) : t('The board answered {status}', { status }));
 }
 
 function queryString(query?: Record<string, string | number>) {
@@ -114,10 +122,10 @@ async function waitUpload(id: number | undefined, read: () => Promise<{ state: s
     const result = await read();
     if (result.state === 'saved') return;
     if (result.state === 'failed') throw errorFrom(500, result);
-    if (result.state !== 'pending') throw new Error('สถานะการบันทึกไฟล์ไม่ถูกต้อง');
+    if (result.state !== 'pending') throw new Error(t('Unexpected save status'));
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error('ยังยืนยันการบันทึกไฟล์ไม่ได้ — ตรวจรายการไฟล์บนบอร์ด');
+  throw new Error(t("Couldn't confirm the file was saved. Check the file list on the board."));
 }
 
 class HttpTransport implements Transport {
@@ -131,17 +139,17 @@ class HttpTransport implements Transport {
   private async fetch(path: string, init?: RequestInit, timeoutMs = 6000): Promise<Response> {
     // A page served over HTTPS (the online editor) may not call a plain-HTTP board on the LAN.
     if (location.protocol === 'https:') {
-      throw new Error('เว็บออนไลน์ติดต่อบอร์ดผ่าน Wi-Fi ไม่ได้ — กด "เชื่อมผ่าน USB" หรือเปิดหน้าเว็บจากบอร์ด (http://192.168.4.1)');
+      throw new Error(t('The online editor can\'t reach a board over Wi-Fi. Press "Connect over USB", or open the page from the board (http://192.168.4.1).'));
     }
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), timeoutMs);
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
     let r: Response;
     try {
       r = await fetch(this.base() + path, { ...init, signal: ctl.signal });
     } catch {
-      throw new Error(`ติดต่อบอร์ดไม่ได้ (${this.base() || location.host}) — ตรวจว่าอยู่ใน Wi-Fi เดียวกับบอร์ด`);
+      throw new Error(t("Can't reach the board ({host}). Check you are on the same Wi-Fi.", { host: this.base() || location.host }));
     } finally {
-      clearTimeout(t);
+      clearTimeout(timer);
     }
     if (!r.ok) {
       let body: any = null;
@@ -164,7 +172,7 @@ class HttpTransport implements Transport {
     const response = await this.fetch(path + queryString(query), init);
     let result;
     try { result = await response.json(); }
-    catch { throw new Error('ที่อยู่นี้ไม่ใช่ API ของบอร์ด — ตรวจ IP หรือเชื่อมผ่าน USB'); }
+    catch { throw new Error(t("That address isn't a board. Check the IP, or connect over USB.")); }
     await waitUpload(result.command_id, () => this.api('GET', '/api/commands/status', { id: result.command_id }));
     return result;
   }
@@ -287,6 +295,11 @@ export const device = {
   remove: async (host: string, name: string) => {
     const connection = deviceConnectionKey(host);
     await transport(host).api('DELETE', '/api/anims', { name });
+    invalidateThumbnails(connection, name);
+  },
+  rename: async (host: string, name: string, to: string) => {
+    const connection = deviceConnectionKey(host);
+    await transport(host).api('POST', '/api/anims/rename', { name, to });
     invalidateThumbnails(connection, name);
   },
   play: async (host: string, name: string) => { await transport(host).api('POST', '/api/play', { name }); },

@@ -13,9 +13,11 @@ Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then 
 ## Features
 
 - **Built-in web editor:** the board serves the editor itself. Nothing to install, and it works on desktop and mobile.
-- **Phone remote:** phones open a remote page with a thumbnail for every animation on the board; tap one to show it. It also has next/stop, brightness, auto-cycle, and a one-tap install of all 12 eye moods.
+- **Setup wizard:** a new board walks you through picking the display (it detects OLEDs by itself and shows what the test pattern should look like, with one-tap fixes for inverted colours, swapped red/blue or rotation), naming the board, installing a first animation, and joining your Wi-Fi.
+- **Phone remote:** phones open a remote page with a thumbnail for every animation on the board; tap one to show it. It also has next/stop, brightness, auto-cycle, renaming and deleting files, a one-tap install of the eye moods and every template, **sending a text message to the screen**, and the board settings (display, Wi-Fi, name).
 - **Pixel art editor:** drawing tools, frames, onion skin, palette presets, undo/redo.
 - **Animation templates:** 21 ready-made animations generated for your display: fire, rain, snow, stars, ocean waves, plasma, fireworks, a bouncing ball, Pac-Man, scrolling text, emoji, spinners, an equalizer, radar, and more. Colours and speed are adjustable.
+- **English or Thai:** the interface is in English with a one-click switch to Thai (EN / ไทย).
 - **Drag-and-drop objects:** drop emoji, icons, text, and the **live date and time** onto the animation, then move and resize them. The clock keeps running on the board (Thai or English names, Buddhist-era years). The board takes the time from the internet, or from the editor or remote whenever they connect.
 - **Eye templates:** 12 moods in 3 styles (robot, cartoon, single eye for round displays). Color, size and smoothness are adjustable.
 - **GIF and video import:** trim, crop and choose the frame rate. All conversion happens in the browser.
@@ -45,7 +47,7 @@ The display model is selected from the web UI at runtime, so changing it needs n
 ## Getting started
 
 1. **Flash the firmware.** Either:
-   - **From the browser (easiest):** plug the board in over USB, open the [firmware installer](https://ttawannn.github.io/esp32-anim-display/flash/) in Chrome or Edge, and press **ติดตั้งเฟิร์มแวร์** (Install firmware). The C3 or C6 is detected automatically.
+   - **From the browser (easiest):** plug the board in over USB, open the [firmware installer](https://ttawannn.github.io/esp32-anim-display/flash/) in Chrome or Edge, and press **Install firmware**. The C3 or C6 is detected automatically.
    - **With [PlatformIO](https://platformio.org/):** run this from PowerShell or VS Code (the build does not work under Git Bash):
 
      ```bash
@@ -55,14 +57,14 @@ The display model is selected from the web UI at runtime, so changing it needs n
      For a C6 board, use `-e c6_supermini`.
 
 2. **Join the board's Wi-Fi.** The network is `DisplayEditor-XXXX` and the password is `displayedit`. The page opens automatically, or go to http://192.168.4.1.
-   - **On a phone:** the remote opens. Tap **ติดตั้งชุดอารมณ์** (Install mood set) to load all 12 eye moods, then tap any face to show it.
-   - **On a computer:** the editor opens. On a phone, use **เปิด Editor** (Open editor); on a computer, use the **รีโมท** (Remote) button to switch.
-3. **Pick your display.** The editor's interface is in Thai: click the connection chip in the top bar → **จัดการบอร์ด** (Board manager) → **ตั้งค่าจอ** (Display settings), choose the model, then press **ภาพทดสอบ** (Test pattern) to check orientation and colors.
-4. **Make an animation**, for example **แม่แบบดวงตา** (Eye templates) → create, then press **ส่งไปบอร์ด** (Send to board).
+   - **On a phone:** the remote opens. Tap **Install the eye moods** to load all 12 of them, then tap any face to show it.
+   - **On a computer:** the editor opens. On a phone, use the pencil button to open the editor; on a computer, use the **Remote** button to switch.
+3. **Pick your display.** A new board opens the setup wizard by itself. Later you can change it under the connection chip → **Board manager** → **Display settings**, then press **Test pattern** to check orientation and colors.
+4. **Make an animation**, for example **Create → Animation templates**, then press **Send to board**.
 
-To use your home network instead, go to **จัดการบอร์ด** → **Wi-Fi**. After that, the board is reachable at `http://display-xxxx.local` (shown on the board's info screen). Give it a name in **จัดการบอร์ด** to get a friendlier address, e.g. naming it *Desk Eyes* gives http://desk-eyes.local.
+To use your home network instead, go to **Board manager** → **Wi-Fi**. After that, the board is reachable at `http://display-xxxx.local` (shown on the board's info screen). Give it a name in the **Board manager** to get a friendlier address, e.g. naming it *Desk Eyes* gives http://desk-eyes.local.
 
-**Using the online editor:** browsers block an HTTPS site from talking to a plain-HTTP board over Wi-Fi, so the [online editor](https://ttawannn.github.io/esp32-anim-display/) connects over USB instead: connection chip → **ผ่านสาย USB** (Over USB). Everything else (sending, live preview, the remote, board settings) works the same.
+**Using the online editor:** browsers block an HTTPS site from talking to a plain-HTTP board over Wi-Fi, so the [online editor](https://ttawannn.github.io/esp32-anim-display/) connects over USB instead: connection chip → **Over a USB cable**. Everything else (sending, live preview, the remote, board settings) works the same.
 
 **BOOT button on the board:**
 - Short press: next animation.

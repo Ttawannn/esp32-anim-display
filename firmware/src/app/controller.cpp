@@ -126,6 +126,24 @@ void controllerNext() {
   controllerPlay(files[i].name);
 }
 
+bool controllerRenameFile(const String& from, const String& to) {
+  if (!storage::rename(from, to)) return false;
+  if (lastPlayed() == from) rememberLast(to);
+  Playlist pl;
+  if (playlistLoad(pl)) {
+    bool changed = false;
+    for (auto& it : pl.items) {
+      if (it.name == from) { it.name = to; changed = true; }
+    }
+    if (changed) playlistSave(pl);
+  }
+  for (auto& it : playlist.items) {
+    if (it.name == from) it.name = to;
+  }
+  if (resumeName == from) resumeName = to;
+  return true;
+}
+
 static void beginOverlay() {
   if (player.active() && !player.isLive()) resumeName = player.name();
   player.stop();
@@ -155,6 +173,16 @@ static void handle(Command& c) {
       storage::remove(name);
       if (lastPlayed() == name) rememberLast("");
       if (wasPlaying) controllerNext();
+      break;
+    }
+    case Cmd::Rename: {
+      const String from = c.data ? (const char*)c.data : "";
+      const String to = c.data ? (const char*)c.data + from.length() + 1 : "";
+      const bool wasPlaying = player.name() == from && !player.isLive();
+      if (wasPlaying) player.stop();  // the open file is being renamed
+      const bool ok = controllerRenameFile(from, to);
+      if (wasPlaying) playName(ok ? to : from);
+      uploadComplete(c.uploadId, ok, "cannot rename");
       break;
     }
     case Cmd::CommitUpload: {

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 // USB link to the board over Web Serial (firmware: app/serial_rpc.cpp, docs/usb-protocol.md).
 // Requests and responses are single lines: '@' + JSON. Other lines are firmware logs and are
 // ignored. One request is in flight at a time, which keeps the firmware side trivial.
@@ -38,7 +39,7 @@ export class SerialLink {
 
   // Asks the user to pick the board (or reuses a port they granted before).
   static async connect(reuseGranted = false): Promise<SerialLink> {
-    if (!SerialLink.supported()) throw new Error('เบราว์เซอร์นี้ยังเชื่อมต่อ USB ไม่ได้ — เปิดด้วย Chrome หรือ Edge บนคอมพิวเตอร์');
+    if (!SerialLink.supported()) throw new Error(t("This browser can't connect over USB. Use Chrome or Edge on a computer."));
     const serial = navigator.serial!;
     let port: SerialPort | undefined;
     if (reuseGranted) {
@@ -111,7 +112,7 @@ export class SerialLink {
   private handleClose() {
     if (this.closed) return;
     this.closed = true;
-    this.rejectPending(new Error('สาย USB หลุด'));
+    this.rejectPending(new Error(t('The USB cable was disconnected')));
     this.onClose?.();
   }
 
@@ -135,7 +136,7 @@ export class SerialLink {
   // Sends one request and waits for its response (requests are queued).
   request(msg: Record<string, unknown>, timeoutMs = 8000): Promise<RpcResponse> {
     const run = async () => {
-      if (this.closed) throw new Error('ยังไม่ได้เชื่อมต่อผ่าน USB');
+      if (this.closed) throw new Error(t('Not connected over USB'));
       const id = this.nextId++;
       const line = '@' + JSON.stringify({ ...msg, id }) + '\n';
       const writer = this.port.writable!.getWriter();
@@ -143,7 +144,7 @@ export class SerialLink {
       const result = new Promise<RpcResponse>((resolve, reject) => {
         const timer = setTimeout(() => {
           if (this.pending?.id === id) {
-            this.rejectPending(new Error('บอร์ดไม่ตอบผ่าน USB'));
+            this.rejectPending(new Error(t('The board is not answering over USB')));
           }
         }, timeoutMs);
         this.pending = { id, resolve, reject, timer };
@@ -153,7 +154,7 @@ export class SerialLink {
       try {
         await writer.write(new TextEncoder().encode(line));
       } catch {
-        this.rejectPending(new Error('ส่งข้อมูลผ่าน USB ไม่ได้'));
+        this.rejectPending(new Error(t("Couldn't send data over USB")));
       } finally {
         writer.releaseLock();
         if (this.writer === writer) this.writer = null;
@@ -173,10 +174,10 @@ export class SerialLink {
         const r = await this.request({ op: 'hello' }, 1500);
         if (r.status === 200) return r.body;
       } catch {
-        if (this.closed) throw new Error('สาย USB หลุด');
+        if (this.closed) throw new Error(t('The USB cable was disconnected'));
       }
     }
-    throw new Error('บอร์ดไม่ตอบผ่าน USB — ตรวจว่าแฟลชเฟิร์มแวร์เวอร์ชันล่าสุดแล้ว');
+    throw new Error(t('The board is not answering over USB. Check that it runs the latest firmware.'));
   }
 
   async close() {

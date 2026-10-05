@@ -23,7 +23,7 @@ it('keeps USB board status when an earlier Wi-Fi response arrives late', async (
   vi.spyOn(device, 'info').mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }))
     .mockResolvedValue(usb);
   const old = refreshDevice();
-  const rejected = expect(old).rejects.toThrow('การเชื่อมต่อบอร์ดเปลี่ยนแล้ว');
+  const rejected = expect(old).rejects.toThrow('connection changed');
   const link = new SerialLink({ readable: null, writable: null });
   setUsbLink(link);
   await refreshDevice();

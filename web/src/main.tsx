@@ -1,6 +1,7 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { isServedByBoard } from './device/api';
+import { getLang, onLangChange } from './i18n';
 import { store } from './model/store';
 import { App } from './ui/App';
 import { RemoteApp } from './ui/RemoteApp';
@@ -20,6 +21,10 @@ function route(): Route {
 
 function Root() {
   const [r, setR] = useState<Route>(route);
+  // Changing the language re-renders everything below.
+  const [lang, setLangState] = useState(getLang());
+  useEffect(() => onLangChange(setLangState), []);
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   useEffect(() => {
     const onHash = () => setR(route());
     window.addEventListener('hashchange', onHash);

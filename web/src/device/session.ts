@@ -4,6 +4,7 @@ import { retarget } from '../model/project';
 import { getPreset } from '../model/presets';
 import { device, deviceConnectionKey, isServedByBoard, presetForDevice, setUsbLink, usbConnected, type DeviceInfo } from './api';
 import { SerialLink } from './serial';
+import { t } from '../i18n';
 
 let usb: SerialLink | null = null;
 let connecting: Promise<DeviceInfo> | null = null;
@@ -22,7 +23,7 @@ export function connectUsb(reuseGranted = false): Promise<DeviceInfo> {
       generation++;
       liveAbort?.abort();
       store.set({ deviceInfo: null, deviceTransport: null, live: false });
-      toast('สาย USB หลุด — เชื่อมต่อใหม่เพื่อใช้งานต่อ', true);
+      toast(t('The USB cable was disconnected. Connect again to continue.'), true);
     };
     try {
       const info = await refreshDevice();
@@ -53,7 +54,7 @@ export async function refreshDevice(): Promise<DeviceInfo> {
   const current = () => connection === deviceConnectionKey(store.state.deviceHost);
   try {
     const info = await device.info(host);
-    if (!current()) throw new Error('การเชื่อมต่อบอร์ดเปลี่ยนแล้ว');
+    if (!current()) throw new Error(t('The board connection changed'));
     store.set({ deviceInfo: info, deviceTransport: usbConnected() ? 'usb' : 'wifi' });
     syncClock(host, connection, info);
     return info;
@@ -95,7 +96,7 @@ function matchDisplay(info: DeviceInfo) {
   if (!presetId || presetId === p.presetId) return;
   const blank = p.frames.length === 1 && !p.frames[0].data.some((v, i) => i % 4 === 3 && v !== 0);
   if (blank) store.load(retarget(p, presetId));
-  else toast(`บอร์ดใช้จอ ${getPreset(presetId).name} — เปลี่ยนได้ที่ "จำลองจอ"`);
+  else toast(t('The board has the {display}. Switch to it in "Display preview".', { display: getPreset(presetId).name }));
 }
 
 // Live preview: sends the current frame as a single-frame .dpa. Only one request is in flight;

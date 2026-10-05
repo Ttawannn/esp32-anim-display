@@ -2,14 +2,15 @@ import { getPreset } from '../model/presets';
 import { store, type EditorState } from '../model/store';
 import { openTemplates } from './TemplatesDialog';
 import { openProjectFile } from './TopBar';
+import { t } from '../i18n';
 
 const CARDS: { emoji: string; title: string; text: string; badge?: string; run: () => void }[] = [
-  { emoji: '🎨', title: 'แม่แบบแอนิเมชัน', text: 'ไฟ ฝน ดาว พลุ ตัวอักษรวิ่ง และอีก 20+ แบบ', badge: 'ใหม่', run: () => openTemplates() },
-  { emoji: '👀', title: 'แม่แบบดวงตา', text: 'ตาแสดงอารมณ์ 12 แบบ เลือกแล้วส่งขึ้นจอได้เลย', run: () => store.set({ dialog: 'eyes' }) },
-  { emoji: '🕒', title: 'นาฬิกาดิจิทัล', text: 'เวลาและวันที่เดินจริงบนจอ', run: () => openTemplates('clock') },
-  { emoji: '✏️', title: 'วาดเอง', text: 'วาด pixel art ทีละเฟรม', run: () => store.set({ startDismissed: true }) },
-  { emoji: '🎞️', title: 'นำเข้า GIF', text: 'ใช้ภาพเคลื่อนไหวที่มีอยู่แล้ว', run: () => store.set({ dialog: 'gif' }) },
-  { emoji: '🎬', title: 'นำเข้าวิดีโอ', text: 'ตัดคลิปสั้นมาเล่นบนจอ', run: () => store.set({ dialog: 'video' }) },
+  { emoji: '🎨', title: 'Animation templates', text: 'Fire, rain, stars, fireworks, scrolling text and 20+ more', badge: 'New', run: () => openTemplates() },
+  { emoji: '👀', title: 'Eye templates', text: '12 eye moods, ready to send to the screen', run: () => store.set({ dialog: 'eyes' }) },
+  { emoji: '🕒', title: 'Digital clock', text: 'Live time and date on the screen', run: () => openTemplates('clock') },
+  { emoji: '✏️', title: 'Draw', text: 'Draw pixel art frame by frame', run: () => store.set({ startDismissed: true }) },
+  { emoji: '🎞️', title: 'Import GIF', text: 'Use an animation you already have', run: () => store.set({ dialog: 'gif' }) },
+  { emoji: '🎬', title: 'Import video', text: 'Play a short clip on the screen', run: () => store.set({ dialog: 'video' }) },
 ];
 
 // Shown over the canvas while the project is still empty.
@@ -18,21 +19,21 @@ export function StartScreen({ s }: { s: EditorState }) {
   return (
     <div class="start">
       <div class="start-card">
-        <h1>เริ่มสร้างแอนิเมชัน</h1>
+        <h1>{t('Start an animation')}</h1>
         <p class="hint">
-          สำหรับจอ <b>{preset.name}</b>{' '}
-          <button class="link" onClick={() => store.set({ dialog: 'new' })}>เปลี่ยนจอ</button>
+          {t('For the')} <b>{preset.name}</b>{' '}
+          <button class="link" onClick={() => store.set({ dialog: 'new' })}>{t('Change display')}</button>
         </p>
         <div class="start-grid">
           {CARDS.map((c) => (
             <button key={c.title} class="start-option" onClick={c.run}>
               <span class="emoji">{c.emoji}</span>
-              <span class="title">{c.title}{c.badge && <span class="pill">{c.badge}</span>}</span>
-              <span class="text">{c.text}</span>
+              <span class="title">{t(c.title)}{c.badge && <span class="pill">{t(c.badge)}</span>}</span>
+              <span class="text">{t(c.text)}</span>
             </button>
           ))}
         </div>
-        <button class="link" onClick={openProjectFile}>หรือเปิดโปรเจกต์ที่บันทึกไว้ (.dpe)</button>
+        <button class="link" onClick={openProjectFile}>{t('or open a saved project (.dpe)')}</button>
       </div>
     </div>
   );

@@ -67,6 +67,10 @@ size_t fileSize(const String& name) {
 
 bool remove(const String& name) { return LittleFS.remove(animPath(name)); }
 
+bool rename(const String& from, const String& to) {
+  return exists(from) && !exists(to) && LittleFS.rename(animPath(from), animPath(to));
+}
+
 String newUploadTmpPath() {
   static std::atomic<uint32_t> counter{0};
   return String(kAnimDir) + "/.up-" + String(millis()) + "-" + String(++counter) + ".tmp";

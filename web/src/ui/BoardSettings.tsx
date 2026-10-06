@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { device, usbConnected, type DevicePreset, type DisplaySettings, type WifiNetwork } from '../device/api';
 import { connectUsb, refreshDevice } from '../device/session';
 import { store, toast } from '../model/store';
+import { Icon } from './common';
 import { t } from '../i18n';
 
 export async function run(fn: () => Promise<unknown>, ok?: string) {
@@ -216,7 +217,7 @@ export function WifiTab({ host }: { host: string }) {
         <div class="swatches" style={{ gridTemplateColumns: '1fr', gap: 2, maxHeight: 180, overflowY: 'auto' }}>
           {networks.map((n) => (
             <button key={n.ssid} class={`card${n.ssid === ssid ? ' sel' : ''}`} style={{ padding: '6px 10px' }} onClick={() => setSsid(n.ssid)}>
-              {n.ssid} <small style={{ display: 'inline' }}>{n.rssi} dBm{n.secure ? ' · 🔒' : ''}</small>
+              {n.ssid} <small style={{ display: 'inline' }}>{n.rssi} dBm</small>{n.secure && <span class="net-lock"><Icon name="lock" /></span>}
             </button>
           ))}
           {networks.length === 0 && <p class="hint">{t('No networks found')}</p>}

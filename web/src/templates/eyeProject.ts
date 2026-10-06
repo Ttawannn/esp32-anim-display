@@ -40,7 +40,7 @@ export async function installMoodSet(
 ): Promise<string[]> {
   const names: string[] = [];
   for (const [i, anim] of EYE_ANIMS.entries()) {
-    const name = deviceFileName(`${anim.emoji} ${t(anim.name)}`);
+    const name = deviceFileName(t(anim.name));
     onProgress(i, EYE_ANIMS.length, t(anim.name));
     const g = generateEyes(screen.width, screen.height, anim, o);
     const { bytes } = await encodeProject(eyeProject(presetId, g, o, name));

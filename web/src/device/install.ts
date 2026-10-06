@@ -25,10 +25,10 @@ export async function installProject(host: string, p: Project, name: string, onP
 
 export async function installTemplate(host: string, info: DeviceInfo, id: string, o: Options = {}, onProgress?: (f: number) => void) {
   const tpl = TEMPLATES.find((x) => x.id === id)!;
-  return installProject(host, templateProject(tpl, boardPresetId(info), o), `${tpl.emoji} ${t(tpl.name)}`, onProgress);
+  return installProject(host, templateProject(tpl, boardPresetId(info), o), t(tpl.name), onProgress);
 }
 
-export const messageFile = () => `💬 ${t('Message')}`;
+export const messageFile = () => t('Message');
 
 export interface MessageOptions {
   text: string;

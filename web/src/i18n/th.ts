@@ -308,7 +308,6 @@ export const TH: Record<string, string> = {
   // ui/RemoteExtras.tsx
   "Message sent to the screen": "ส่งข้อความขึ้นจอแล้ว",
   "Send a message": "ส่งข้อความขึ้นจอ",
-  "Type a message, e.g. Happy birthday 🎂": "พิมพ์ข้อความ เช่น สุขสันต์วันเกิด 🎂",
   "Scrolling": "ตัวอักษรวิ่ง",
   "Still": "อยู่กับที่",
   "Sending {pct}%": "กำลังส่ง {pct}%",
@@ -772,4 +771,7 @@ export const TH: Record<string, string> = {
   "Sweetie 16": "Sweetie 16",
   "NES": "NES",
   "Game Boy": "Game Boy",
+
+  // ui/RemoteExtras.tsx
+  "Type a message, e.g. Happy birthday!": "พิมพ์ข้อความ เช่น สุขสันต์วันเกิด!",
 };

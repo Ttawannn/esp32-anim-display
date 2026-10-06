@@ -54,7 +54,7 @@ function PatternPreview({ preset }: { preset: DevicePreset }) {
 }
 
 function presetIcon(p: DevicePreset) {
-  return p.round ? '⚪' : p.color === 'mono' ? '▭' : p.width === p.height ? '⬛' : '▯';
+  return p.round ? 'displayRound' : p.color === 'mono' ? 'displayWide' : p.width === p.height ? 'displaySquare' : 'displayTall';
 }
 
 export function SetupWizard({ onClose }: { onClose: () => void }) {
@@ -150,7 +150,7 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
               {ordered.map((p) => (
                 <button key={p.id} class={`wiz-preset${choice === p.id ? ' sel' : ''}${detected && (detected === 'oled') !== (p.color === 'mono') ? ' dim' : ''}`}
                   onClick={() => setChoice(p.id)}>
-                  <span class="ico">{presetIcon(p)}</span>
+                  <span class="ico"><Icon name={presetIcon(p)} /></span>
                   <span><b>{p.name}</b><small>{p.width}×{p.height} · {p.color === 'mono' ? t('mono') : t('color')}{p.round ? ` · ${t('round')}` : ''}</small></span>
                 </button>
               ))}
@@ -217,10 +217,10 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
             <h3>{t('What should the screen play first?')}</h3>
             <div class="wiz-content">
               <button class="start-option" disabled={!!busy} onClick={() => install('eyes')}>
-                <span class="emoji">👀</span><span class="title">{t('12 eye moods')}</span><span class="text">{t('Looking around, happy, sad, angry and more')}</span>
+                <span class="start-ico"><Icon name="eye" /></span><span class="title">{t('12 eye moods')}</span><span class="text">{t('Looking around, happy, sad, angry and more')}</span>
               </button>
               <button class="start-option" disabled={!!busy} onClick={() => install('clock')}>
-                <span class="emoji">🕒</span><span class="title">{t('Digital clock')}</span><span class="text">{t('Live time and date on the screen')}</span>
+                <span class="start-ico"><Icon name="clock" /></span><span class="title">{t('Digital clock')}</span><span class="text">{t('Live time and date on the screen')}</span>
               </button>
             </div>
             <div class="wiz-actions">
@@ -246,7 +246,7 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
 
         {step === 'done' && (
           <div class="wiz-done">
-            <span class="emoji">🎉</span>
+            <span class="done-ico"><Icon name="checkCircle" /></span>
             <h3>{t('All set!')}</h3>
             <p class="hint">{t('From the main page you can tap an animation to show it, install more templates, or send a message to the screen.')}</p>
             <button class="btn primary big wide" onClick={onClose}>{t('Start')}</button>

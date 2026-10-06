@@ -38,7 +38,7 @@ export function MessageCard({ host, info, onSent }: { host: string; info: Device
   return (
     <section class="card message">
       <h3><Icon name="text" /> {t('Send a message')}</h3>
-      <textarea rows={2} maxLength={200} placeholder={t('Type a message, e.g. Happy birthday 🎂')} value={text}
+      <textarea rows={2} maxLength={200} placeholder={t('Type a message, e.g. Happy birthday!')} value={text}
         onInput={(e) => setText((e.target as HTMLTextAreaElement).value)} />
       <div class="seg two">
         <button class={scroll ? 'active' : ''} onClick={() => setScroll(true)}>{t('Scrolling')}</button>
@@ -69,7 +69,7 @@ export function TemplatesSection({ host, info, onInstalled }: { host: string; in
       <div class="tpl-chips">
         {TEMPLATES.map((tpl) => (
           <button key={tpl.id} class="tpl-chip" onClick={() => setOpen(tpl.id)}>
-            <span class="emoji">{tpl.emoji}</span>{t(tpl.name)}
+            <span class="ico"><Icon name={tpl.icon} /></span>{t(tpl.name)}
           </button>
         ))}
       </div>

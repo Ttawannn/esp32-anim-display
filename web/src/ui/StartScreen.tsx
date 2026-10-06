@@ -1,16 +1,17 @@
 import { getPreset } from '../model/presets';
 import { store, type EditorState } from '../model/store';
+import { Icon } from './common';
 import { openTemplates } from './TemplatesDialog';
 import { openProjectFile } from './TopBar';
 import { t } from '../i18n';
 
-const CARDS: { emoji: string; title: string; text: string; badge?: string; run: () => void }[] = [
-  { emoji: '🎨', title: 'Animation templates', text: 'Fire, rain, stars, fireworks, scrolling text and 20+ more', badge: 'New', run: () => openTemplates() },
-  { emoji: '👀', title: 'Eye templates', text: '12 eye moods, ready to send to the screen', run: () => store.set({ dialog: 'eyes' }) },
-  { emoji: '🕒', title: 'Digital clock', text: 'Live time and date on the screen', run: () => openTemplates('clock') },
-  { emoji: '✏️', title: 'Draw', text: 'Draw pixel art frame by frame', run: () => store.set({ startDismissed: true }) },
-  { emoji: '🎞️', title: 'Import GIF', text: 'Use an animation you already have', run: () => store.set({ dialog: 'gif' }) },
-  { emoji: '🎬', title: 'Import video', text: 'Play a short clip on the screen', run: () => store.set({ dialog: 'video' }) },
+const CARDS: { icon: string; title: string; text: string; badge?: string; run: () => void }[] = [
+  { icon: 'wand', title: 'Animation templates', text: 'Fire, rain, stars, fireworks, scrolling text and 20+ more', badge: 'New', run: () => openTemplates() },
+  { icon: 'eye', title: 'Eye templates', text: '12 eye moods, ready to send to the screen', run: () => store.set({ dialog: 'eyes' }) },
+  { icon: 'clock', title: 'Digital clock', text: 'Live time and date on the screen', run: () => openTemplates('clock') },
+  { icon: 'pencil', title: 'Draw', text: 'Draw pixel art frame by frame', run: () => store.set({ startDismissed: true }) },
+  { icon: 'image', title: 'Import GIF', text: 'Use an animation you already have', run: () => store.set({ dialog: 'gif' }) },
+  { icon: 'film', title: 'Import video', text: 'Play a short clip on the screen', run: () => store.set({ dialog: 'video' }) },
 ];
 
 // Shown over the canvas while the project is still empty.
@@ -27,7 +28,7 @@ export function StartScreen({ s }: { s: EditorState }) {
         <div class="start-grid">
           {CARDS.map((c) => (
             <button key={c.title} class="start-option" onClick={c.run}>
-              <span class="emoji">{c.emoji}</span>
+              <span class="start-ico"><Icon name={c.icon} /></span>
               <span class="title">{t(c.title)}{c.badge && <span class="pill">{t(c.badge)}</span>}</span>
               <span class="text">{t(c.text)}</span>
             </button>

@@ -10,7 +10,7 @@ import { thumbnail } from '../device/thumbs';
 import { thumbnailRevision } from '../device/thumbnailCache';
 import { store, toast, useEditor } from '../model/store';
 import { defaultEyeOptions, installMoodSet } from '../templates/eyeProject';
-import type { EyeStyle } from '../templates/eyes';
+import { EYE_ANIMS, type EyeStyle } from '../templates/eyes';
 import { formatBytes, Icon } from './common';
 import { FirmwareNotice } from './FirmwareNotice';
 import { LangSwitch } from './LangSwitch';
@@ -273,7 +273,7 @@ export function RemoteApp() {
               <p class="hint">{t('Loading…')}</p>
             ) : files.length === 0 ? (
               <div class="empty">
-                <span class="emoji">🖼️</span>
+                <span class="empty-ico"><Icon name="image" /></span>
                 <b>{t('No animations on the board yet')}</b>
                 <span class="hint">{t('Install the eye moods below with one tap, or make your own in the editor')}</span>
               </div>
@@ -291,7 +291,7 @@ export function RemoteApp() {
           <TemplatesSection host={host} info={info} onInstalled={() => { loadFiles(); refreshDevice().catch(() => {}); }} />
 
           <section class="card moods">
-            <div class="mood-row" aria-hidden="true">👀😄😢😠😲😴😍😉🤨😵</div>
+            <div class="mood-row" aria-hidden="true">{EYE_ANIMS.slice(0, 10).map((a) => <Icon key={a.id} name={a.icon} />)}</div>
             <h3>{t('12 eye moods')}</h3>
             <p class="hint">{t('Made to fit this screen and installed on the board (files with the same name are replaced)')}</p>
             <div class="seg" role="radiogroup">

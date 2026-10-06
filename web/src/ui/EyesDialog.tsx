@@ -7,7 +7,7 @@ import { outputFrame } from '../render/output';
 import { composeScreen } from '../render/screen';
 import { EYE_ANIMS, generateEyes, type EyeOptions, type EyeStyle, type GeneratedEyes } from '../templates/eyes';
 import { defaultEyeOptions, eyeProject } from '../templates/eyeProject';
-import { Modal, Slider } from './common';
+import { Icon, Modal, Slider } from './common';
 import { t } from '../i18n';
 
 const STYLES: { id: EyeStyle; name: string; hint: string }[] = [
@@ -94,8 +94,8 @@ export function EyesDialog() {
         <div>
           <div class="cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))' }}>
             {EYE_ANIMS.map((a) => (
-              <button key={a.id} class={`card${a.id === animId ? ' sel' : ''}`} onClick={() => setAnimId(a.id)}>
-                <span style={{ fontSize: 18 }}>{a.emoji}</span> {t(a.name)}
+              <button key={a.id} class={`card mood-card${a.id === animId ? ' sel' : ''}`} onClick={() => setAnimId(a.id)}>
+                <Icon name={a.icon} /><span>{t(a.name)}</span>
               </button>
             ))}
           </div>

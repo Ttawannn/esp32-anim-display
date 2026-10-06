@@ -55,7 +55,7 @@ interface Key {
 export interface EyeAnim {
   id: string;
   name: string;
-  emoji: string;
+  icon: string; // UI icon name (ui/common.tsx)
   keys: Key[];
 }
 
@@ -68,7 +68,7 @@ const repeat = (n: number, keys: Key[]): Key[] => Array.from({ length: n }, () =
 
 export const EYE_ANIMS: EyeAnim[] = [
   {
-    id: 'look-lr', name: 'Look left-right', emoji: '👀',
+    id: 'look-lr', name: 'Look left-right', icon: 'moodLook',
     keys: [
       { hold: 600 },
       { both: { lookX: -1 }, ms: 220, hold: 800 },
@@ -78,7 +78,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'look-around', name: 'Look around', emoji: '🔄',
+    id: 'look-around', name: 'Look around', icon: 'moodAround',
     keys: [
       { hold: 400 },
       { both: { lookX: -1 }, ms: 200, hold: 500 },
@@ -92,7 +92,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'idle', name: 'Idle (blinking)', emoji: '🙂',
+    id: 'idle', name: 'Idle (blinking)', icon: 'moodIdle',
     keys: [
       { hold: 1600 },
       ...blink(1400),
@@ -103,7 +103,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'happy', name: 'Happy', emoji: '😄',
+    id: 'happy', name: 'Happy', icon: 'moodHappy',
     keys: [
       { hold: 300 },
       { both: { happy: 1, scale: 1.05 }, ms: 180, hold: 200 },
@@ -116,7 +116,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'sad', name: 'Sad', emoji: '😢',
+    id: 'sad', name: 'Sad', icon: 'moodSad',
     keys: [
       { hold: 300 },
       { both: { sad: 1, lookY: 0.6, scale: 0.95 }, ms: 500, hold: 300 },
@@ -128,7 +128,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'angry', name: 'Angry', emoji: '😠',
+    id: 'angry', name: 'Angry', icon: 'moodAngry',
     keys: [
       { hold: 300 },
       { both: { angry: 1, tired: 0.12 }, ms: 160, hold: 250 },
@@ -144,7 +144,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'surprised', name: 'Surprised', emoji: '😲',
+    id: 'surprised', name: 'Surprised', icon: 'moodSurprised',
     keys: [
       { hold: 500 },
       { both: { scale: 1.3, pupil: 0.45 }, ms: 90, hold: 1000 },
@@ -154,7 +154,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'sleepy', name: 'Sleepy', emoji: '😴',
+    id: 'sleepy', name: 'Sleepy', icon: 'moodSleepy',
     keys: [
       { hold: 400 },
       { both: { tired: 0.45 }, ms: 700, hold: 300 },
@@ -168,7 +168,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'love', name: 'In love', emoji: '😍',
+    id: 'love', name: 'In love', icon: 'moodLove',
     keys: [
       { both: { heart: 1 }, ms: 0, hold: 200 },
       ...repeat(4, [
@@ -179,7 +179,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'wink', name: 'Wink', emoji: '😉',
+    id: 'wink', name: 'Wink', icon: 'moodWink',
     keys: [
       { hold: 600 },
       { both: { happy: 0.25 }, ms: 150 },
@@ -189,7 +189,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'suspicious', name: 'Suspicious', emoji: '🤨',
+    id: 'suspicious', name: 'Suspicious', icon: 'moodSuspicious',
     keys: [
       { hold: 300 },
       { L: { tired: 0.55 }, R: { scale: 1.12 }, ms: 300, hold: 300 },
@@ -200,7 +200,7 @@ export const EYE_ANIMS: EyeAnim[] = [
     ],
   },
   {
-    id: 'dizzy', name: 'Dizzy', emoji: '😵',
+    id: 'dizzy', name: 'Dizzy', icon: 'moodDizzy',
     keys: [
       { both: { spiral: 1, spin: 0 }, ms: 0 },
       { both: { spin: Math.PI * 6 }, ms: 2400, linear: true },

@@ -37,7 +37,7 @@ export type CategoryId = 'nature' | 'fun' | 'tech' | 'text';
 export interface AnimTemplate {
   id: string;
   name: string;
-  emoji: string;
+  icon: string; // UI icon name (ui/common.tsx)
   hint: string;
   category: CategoryId;
   pixel: number; // pixel size on a 240-px screen (1 = full resolution, 4 = chunky pixel art)
@@ -92,7 +92,7 @@ const PALETTE_CHOICES: [string, string][] = [['fire', 'Fire'], ['blue', 'Blue'],
 // ---------------------------------------------------------------------------------------------
 
 const heart: AnimTemplate = {
-  id: 'heart', name: 'Beating heart', emoji: '❤️', hint: 'A double heartbeat', category: 'fun', pixel: 4,
+  id: 'heart', name: 'Beating heart', icon: 'heart', hint: 'A double heartbeat', category: 'fun', pixel: 4,
   options: [{ id: 'color', label: 'Heart color', type: 'color' }, { id: 'bg', label: 'Background', type: 'color' }],
   defaults: { color: '#ff2d55', bg: '#000000' },
   generate(c, o) {
@@ -114,7 +114,7 @@ const heart: AnimTemplate = {
 };
 
 const spinner: AnimTemplate = {
-  id: 'spinner', name: 'Loading', emoji: '⏳', hint: 'Spinning dots', category: 'tech', pixel: 2,
+  id: 'spinner', name: 'Loading', icon: 'loader', hint: 'Spinning dots', category: 'tech', pixel: 2,
   options: [{ id: 'color', label: 'Color', type: 'color' }, { id: 'style', label: 'Style', type: 'choice', choices: [['dots', 'Dots'], ['ring', 'Ring']] }],
   defaults: { color: '#4f8cff', style: 'dots' },
   generate(c, o) {
@@ -145,7 +145,7 @@ const spinner: AnimTemplate = {
 };
 
 const fire: AnimTemplate = {
-  id: 'fire', name: 'Fire', emoji: '🔥', hint: 'Retro-game flames', category: 'nature', pixel: 3, smoothMono: true,
+  id: 'fire', name: 'Fire', icon: 'flame', hint: 'Retro-game flames', category: 'nature', pixel: 3, smoothMono: true,
   options: [{ id: 'palette', label: 'Flame color', type: 'choice', choices: PALETTE_CHOICES }],
   defaults: { palette: 'fire' },
   generate(c, o) {
@@ -177,7 +177,7 @@ const fire: AnimTemplate = {
 };
 
 const rain: AnimTemplate = {
-  id: 'rain', name: 'Rain', emoji: '🌧️', hint: 'Endless falling rain', category: 'nature', pixel: 2,
+  id: 'rain', name: 'Rain', icon: 'cloudRain', hint: 'Endless falling rain', category: 'nature', pixel: 2,
   options: [{ id: 'color', label: 'Rain color', type: 'color' }, { id: 'bg', label: 'Sky', type: 'color' }],
   defaults: { color: '#7cc4ff', bg: '#0a1022' },
   generate(c, o) {
@@ -198,7 +198,7 @@ const rain: AnimTemplate = {
 };
 
 const snow: AnimTemplate = {
-  id: 'snow', name: 'Snow', emoji: '❄️', hint: 'Drifting snowflakes', category: 'nature', pixel: 2,
+  id: 'snow', name: 'Snow', icon: 'snowflake', hint: 'Drifting snowflakes', category: 'nature', pixel: 2,
   options: [{ id: 'bg', label: 'Sky', type: 'color' }],
   defaults: { bg: '#0b1534' },
   generate(c, o) {
@@ -236,7 +236,7 @@ function drawStars(img: Img, c: TemplateCtx, stars: ReturnType<typeof starField>
 }
 
 const stars: AnimTemplate = {
-  id: 'stars', name: 'Twinkling stars', emoji: '✨', hint: 'Twinkling stars and a shooting star', category: 'nature', pixel: 2,
+  id: 'stars', name: 'Twinkling stars', icon: 'stars', hint: 'Twinkling stars and a shooting star', category: 'nature', pixel: 2,
   options: [{ id: 'bg', label: 'Sky', type: 'color' }],
   defaults: { bg: '#050818' },
   generate(c, o) {
@@ -255,7 +255,7 @@ const stars: AnimTemplate = {
 };
 
 const warp: AnimTemplate = {
-  id: 'warp', name: 'Warp speed', emoji: '🚀', hint: 'Flying through the stars', category: 'tech', pixel: 2,
+  id: 'warp', name: 'Warp speed', icon: 'rocket', hint: 'Flying through the stars', category: 'tech', pixel: 2,
   options: [{ id: 'color', label: 'Star color', type: 'color' }],
   defaults: { color: '#cfe3ff' },
   generate(c, o) {
@@ -281,7 +281,7 @@ const glyphBits = (seed: number) => {
 };
 
 const matrix: AnimTemplate = {
-  id: 'matrix', name: 'Matrix', emoji: '🟩', hint: 'Green falling code', category: 'tech', pixel: 2,
+  id: 'matrix', name: 'Matrix', icon: 'code', hint: 'Green falling code', category: 'tech', pixel: 2,
   options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#33ff77' },
   generate(c, o) {
@@ -307,7 +307,7 @@ const matrix: AnimTemplate = {
 };
 
 const equalizer: AnimTemplate = {
-  id: 'equalizer', name: 'Equalizer', emoji: '🎵', hint: 'Bouncing audio bars', category: 'tech', pixel: 2,
+  id: 'equalizer', name: 'Equalizer', icon: 'equalizer', hint: 'Bouncing audio bars', category: 'tech', pixel: 2,
   options: [
     { id: 'bars', label: 'Bars', type: 'choice', choices: [['8', '8'], ['12', '12'], ['16', '16']] },
     { id: 'colors', label: 'Color', type: 'choice', choices: [['classic', 'Green-yellow-red'], ['neon', 'Neon'], ['one', 'Single color']] },
@@ -338,7 +338,7 @@ const equalizer: AnimTemplate = {
 };
 
 const plasma: AnimTemplate = {
-  id: 'plasma', name: 'Rainbow plasma', emoji: '🌈', hint: 'Flowing color waves', category: 'fun', pixel: 4, smoothMono: true,
+  id: 'plasma', name: 'Rainbow plasma', icon: 'rainbow', hint: 'Flowing color waves', category: 'fun', pixel: 4, smoothMono: true,
   options: [{ id: 'palette', label: 'Palette', type: 'choice', choices: [['rainbow', 'Rainbow'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['purple', 'Purple']] }],
   defaults: { palette: 'rainbow' },
   generate(c, o) {
@@ -359,7 +359,7 @@ const plasma: AnimTemplate = {
 };
 
 const bounce: AnimTemplate = {
-  id: 'bounce', name: 'Bouncing ball', emoji: '⚽', hint: 'Bounces with a shadow', category: 'fun', pixel: 2,
+  id: 'bounce', name: 'Bouncing ball', icon: 'ball', hint: 'Bounces with a shadow', category: 'fun', pixel: 2,
   options: [{ id: 'color', label: 'Ball color', type: 'color' }, { id: 'bg', label: 'Background', type: 'color' }],
   defaults: { color: '#ff5a36', bg: '#101a30' },
   generate(c, o) {
@@ -382,7 +382,7 @@ const bounce: AnimTemplate = {
 };
 
 const pacman: AnimTemplate = {
-  id: 'pacman', name: 'Pac-Man', emoji: '🟡', hint: 'Eats dots, chased by a ghost', category: 'fun', pixel: 4,
+  id: 'pacman', name: 'Pac-Man', icon: 'pacman', hint: 'Eats dots, chased by a ghost', category: 'fun', pixel: 4,
   options: [{ id: 'ghost', label: 'Ghost', type: 'choice', choices: [['yes', 'Yes'], ['no', 'No']] }],
   defaults: { ghost: 'yes' },
   generate(c, o) {
@@ -420,7 +420,7 @@ const pacman: AnimTemplate = {
 };
 
 const battery: AnimTemplate = {
-  id: 'battery', name: 'Charging battery', emoji: '🔋', hint: 'Battery fills up', category: 'tech', pixel: 4,
+  id: 'battery', name: 'Charging battery', icon: 'battery', hint: 'Battery fills up', category: 'tech', pixel: 4,
   options: [],
   defaults: {},
   generate(c) {
@@ -443,7 +443,7 @@ const battery: AnimTemplate = {
 };
 
 const wifi: AnimTemplate = {
-  id: 'wifi', name: 'Wi-Fi signal', emoji: '📶', hint: 'Signal bars one by one', category: 'tech', pixel: 2,
+  id: 'wifi', name: 'Wi-Fi signal', icon: 'wifi', hint: 'Signal bars one by one', category: 'tech', pixel: 2,
   options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#4fd1ff' },
   generate(c, o) {
@@ -462,7 +462,7 @@ const wifi: AnimTemplate = {
 };
 
 const wave: AnimTemplate = {
-  id: 'wave', name: 'Ocean waves', emoji: '🌊', hint: 'Layered waves and a sun', category: 'nature', pixel: 3,
+  id: 'wave', name: 'Ocean waves', icon: 'waves', hint: 'Layered waves and a sun', category: 'nature', pixel: 3,
   options: [{ id: 'time', label: 'Time of day', type: 'choice', choices: [['day', 'Day'], ['sunset', 'Sunset'], ['night', 'Night']] }],
   defaults: { time: 'sunset' },
   generate(c, o) {
@@ -488,7 +488,7 @@ const wave: AnimTemplate = {
 };
 
 const fireworks: AnimTemplate = {
-  id: 'fireworks', name: 'Fireworks', emoji: '🎆', hint: 'Colorful bursts, one after another', category: 'fun', pixel: 2,
+  id: 'fireworks', name: 'Fireworks', icon: 'fireworks', hint: 'Colorful bursts, one after another', category: 'fun', pixel: 2,
   options: [],
   defaults: {},
   generate(c) {
@@ -524,7 +524,7 @@ const fireworks: AnimTemplate = {
 };
 
 const life: AnimTemplate = {
-  id: 'life', name: 'Game of Life', emoji: '🧬', hint: 'Cells live and die by the rules', category: 'tech', pixel: 4,
+  id: 'life', name: 'Game of Life', icon: 'cells', hint: 'Cells live and die by the rules', category: 'tech', pixel: 4,
   options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#7cff6b' },
   generate(c, o) {
@@ -555,7 +555,7 @@ const life: AnimTemplate = {
 };
 
 const radar: AnimTemplate = {
-  id: 'radar', name: 'Radar', emoji: '📡', hint: 'Sweeping for targets', category: 'tech', pixel: 2,
+  id: 'radar', name: 'Radar', icon: 'radar', hint: 'Sweeping for targets', category: 'tech', pixel: 2,
   options: [{ id: 'color', label: 'Color', type: 'color' }],
   defaults: { color: '#3dff8a' },
   generate(c, o) {
@@ -595,14 +595,14 @@ function ctx2d(w: number, h: number) {
 }
 
 const marquee: AnimTemplate = {
-  id: 'marquee', name: 'Scrolling text', emoji: '💬', hint: 'A scrolling message sign', category: 'text', pixel: 2, canvas: true,
+  id: 'marquee', name: 'Scrolling text', icon: 'marquee', hint: 'A scrolling message sign', category: 'text', pixel: 2, canvas: true,
   options: [
     { id: 'text', label: 'Text', type: 'text' },
     { id: 'color', label: 'Text color', type: 'color' },
     { id: 'bg', label: 'Background', type: 'color' },
     { id: 'size', label: 'Size', type: 'choice', choices: [['0.5', 'Large'], ['0.35', 'Medium'], ['0.22', 'Small']] },
   ],
-  defaults: { text: 'Hello there! 👋', color: '#ffd23f', bg: '#000000', size: '0.5' },
+  defaults: { text: 'Hello there!', color: '#ffd23f', bg: '#000000', size: '0.5' },
   generate(c, o) {
     const fg = c.mono ? '#ffffff' : o.color, bg = bgCol(c, o);
     const size = Math.max(7, Math.round(Math.min(c.h, c.w * 0.6) * Number(o.size)));
@@ -634,7 +634,7 @@ const marquee: AnimTemplate = {
 };
 
 const emojiBounce: AnimTemplate = {
-  id: 'emoji', name: 'Wiggly emoji', emoji: '😺', hint: 'Bounce, wobble, spin or pulse', category: 'fun', pixel: 1, canvas: true,
+  id: 'emoji', name: 'Wiggly emoji', icon: 'emojiFace', hint: 'Bounce, wobble, spin or pulse', category: 'fun', pixel: 1, canvas: true,
   options: [
     { id: 'char', label: 'Emoji', type: 'text' },
     { id: 'motion', label: 'Motion', type: 'choice', choices: [['bounce', 'Bounce'], ['wobble', 'Wobble'], ['spin', 'Spin'], ['pulse', 'Pulse']] },
@@ -677,7 +677,7 @@ function clockLayer(format: string, size: number, y: number, color: string): Clo
 }
 
 const clock: AnimTemplate = {
-  id: 'clock', name: 'Digital clock', emoji: '🕒', hint: 'Live time on the board over an animated background', category: 'text', pixel: 2,
+  id: 'clock', name: 'Digital clock', icon: 'clock', hint: 'Live time on the board over an animated background', category: 'text', pixel: 2,
   options: [
     { id: 'bgStyle', label: 'Background', type: 'choice', choices: [['stars', 'Twinkling stars'], ['plasma', 'Flowing colors'], ['rain', 'Rain'], ['plain', 'Plain color']] },
     { id: 'show', label: 'Show', type: 'choice', choices: [['time-date', 'Time + date'], ['time', 'Time only'], ['seconds', 'Time + seconds']] },

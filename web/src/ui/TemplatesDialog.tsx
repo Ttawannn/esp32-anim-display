@@ -16,7 +16,7 @@ import type { Project } from '../model/types';
 import { outputFrame } from '../render/output';
 import { composeScreen } from '../render/screen';
 import { CATEGORIES, TEMPLATES, templateProject, type AnimTemplate, type CategoryId, type Options } from '../templates/gallery';
-import { formatBytes, Modal } from './common';
+import { formatBytes, Icon, Modal } from './common';
 import { getLang, t } from '../i18n';
 
 let initialTemplate = 'clock';
@@ -89,7 +89,7 @@ function Thumb({ tpl, presetId, tick }: { tpl: AnimTemplate; presetId: string; t
   const fit = Math.min(120 / preset.width, 96 / preset.height);
   return p
     ? <canvas ref={ref} width={Math.round(preset.width * fit)} height={Math.round(preset.height * fit)} class={preset.round ? 'round' : ''} />
-    : <span class="thumb-wait">{tpl.emoji}</span>;
+    : <span class="thumb-wait"><Icon name={tpl.icon} /></span>;
 }
 
 // `board`: install straight onto the connected board (phone remote) instead of opening a project.
@@ -156,7 +156,7 @@ export function TemplatesDialog({ board, initialId }: { board?: BoardTarget; ini
     if (!project || !board) return;
     setInstalling(0);
     try {
-      const name = await installProject(board.host, project, `${tpl.emoji} ${t(tpl.name)}`, setInstalling);
+      const name = await installProject(board.host, project, t(tpl.name), setInstalling);
       toast(t('Installed "{name}", now playing', { name: t(tpl.name) }));
       board.onInstalled?.(name);
       board.onClose();
@@ -199,7 +199,7 @@ export function TemplatesDialog({ board, initialId }: { board?: BoardTarget; ini
                 style={{ width: preset.width * zoom, height: preset.height * zoom }} />
             </div>
           </div>
-          <h3 class="tpl-title">{tpl.emoji} {t(tpl.name)}</h3>
+          <h3 class="tpl-title"><Icon name={tpl.icon} /> {t(tpl.name)}</h3>
           <p class="preview-info">
             {project && <>{t('{n} frames', { n: project.frames.length })} · {t('{s} s', { s: (totalDuration(project) / 1000).toFixed(1) })} · </>}
             {size === null ? t('Estimating size…') : t('file ~{size}', { size: formatBytes(size) })}
@@ -237,7 +237,7 @@ export function TemplatesDialog({ board, initialId }: { board?: BoardTarget; ini
             {shown.map((x) => (
               <button key={x.id} class={`tpl-card${x.id === tpl.id ? ' sel' : ''}`} onClick={() => setId(x.id)} title={t(x.hint)}>
                 <div class="tpl-thumb"><Thumb tpl={x} presetId={presetId} tick={tick} /></div>
-                <span class="name">{x.emoji} {t(x.name)}</span>
+                <span class="name"><Icon name={x.icon} /> {t(x.name)}</span>
                 <small>{t(x.hint)}</small>
               </button>
             ))}

@@ -51,6 +51,11 @@
     .dl { display: block; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); text-decoration: none; color: var(--text); }
     .dl:hover { border-color: var(--accent); }
     .dl small { display: block; color: var(--muted); }
+    .ic { width: 18px; height: 18px; flex: none; }
+    .dl-title { display: flex; align-items: center; gap: 8px; }
+    .dl-title .ic { color: #8fb3ff; }
+    esp-web-install-button button[slot=activate] { display: inline-flex; align-items: center; gap: 10px; }
+    esp-web-install-button button[slot=activate] .ic { width: 20px; height: 20px; }
     .muted { color: var(--muted); font-size: 13px; }
     code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
     @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } h1 { font-size: 25px; } }
@@ -69,7 +74,7 @@
 
     <section class="card install">
       <esp-web-install-button manifest="manifest.json">
-        <button slot="activate" data-th="⚡ ติดตั้งเฟิร์มแวร์">⚡ Install firmware</button>
+        <button slot="activate"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2.5L4.5 13.5h6l-1 8 8.5-11h-6z"/></svg><span data-th="ติดตั้งเฟิร์มแวร์">Install firmware</span></button>
         <span slot="unsupported" class="unsupported" data-th="เบราว์เซอร์นี้ติดตั้งผ่าน USB ไม่ได้ — ใช้ Chrome หรือ Edge บนคอมพิวเตอร์">This browser can't flash over USB. Use Chrome or Edge on a computer.</span>
         <span slot="not-allowed" class="unsupported" data-th="ต้องเปิดหน้านี้ผ่าน HTTPS">This page must be opened over HTTPS.</span>
       </esp-web-install-button>
@@ -89,8 +94,8 @@
     <section class="card">
       <h2 data-th="ใช้งานต่อ">Next</h2>
       <div class="grid">
-        <a class="dl" href="../"><span data-th="✏️ เปิด Editor ออนไลน์">✏️ Open the online editor</span><small data-th="สร้างแอนิเมชัน แล้วส่งลงบอร์ดผ่าน USB">Make animations and send them over USB</small></a>
-        <a class="dl" href="https://github.com/Ttawannn/esp32-anim-display"><span data-th="📖 คู่มือและการต่อสาย">📖 Guide and wiring</span><small>GitHub</small></a>
+        <a class="dl" href="../"><span class="dl-title"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4.5-1L19 8.5 15.5 5 5 15.5 4 20zM13.5 7l3.5 3.5"/></svg><span data-th="เปิด Editor ออนไลน์">Open the online editor</span></span><small data-th="สร้างแอนิเมชัน แล้วส่งลงบอร์ดผ่าน USB">Make animations and send them over USB</small></a>
+        <a class="dl" href="https://github.com/Ttawannn/esp32-anim-display"><span class="dl-title"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5zM4 20.5A2.5 2.5 0 006.5 23H20v-5M8 7h8"/></svg><span data-th="คู่มือและการต่อสาย">Guide and wiring</span></span><small>GitHub</small></a>
       </div>
       <h2 style="margin-top: 22px" data-th="ดาวน์โหลดไฟล์เฟิร์มแวร์">Download the firmware files</h2>
       <div class="grid">

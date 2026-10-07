@@ -53,7 +53,7 @@ export interface DisplaySettings {
   i2c_hz: number;
   i2c_addr: number;
   brightness: number;
-  pins: { clk: number; data: number; cs: number; dc: number; rst: number; bl: number };
+  pins: { clk: number; data: number; cs: number; dc: number; rst: number; bl: number }; // fixed per board, read-only
 }
 
 export interface DevicePreset {
@@ -102,8 +102,6 @@ const ERRORS: Record<string, string> = {
   'invalid time': "Couldn't set the board's clock",
   'invalid name': "That board name can't be used (too long or special characters)",
   'cannot save playlist': "The board couldn't save the playlist. The old one is kept.",
-  'invalid pin': "That pin can't be used on this board",
-  'pin used twice': 'The same pin is used twice',
 };
 
 function errorFrom(status: number, body: any): Error {

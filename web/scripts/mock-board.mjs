@@ -9,11 +9,11 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.PORT ?? 8787);
-// Mirrors firmware/src/board.h: default pins and the header GPIOs a display may use.
+// Mirrors firmware/src/board.h: each board's fixed wiring.
 const BOARDS = {
-  c3: { name: 'ESP32-C3 SuperMini', pins: { clk: 6, data: 7, cs: 10, dc: 4, rst: 3, bl: 5 }, usable: [0, 1, 2, 3, 4, 5, 6, 7, 10, 20, 21] },
-  c6: { name: 'ESP32-C6 SuperMini', pins: { clk: 6, data: 7, cs: 14, dc: 20, rst: 21, bl: 22 }, usable: [0, 1, 2, 3, 4, 5, 6, 7, 14, 16, 17, 18, 19, 20, 21, 22, 23] },
-  esp32: { name: 'ESP32 DevKit 30-pin', pins: { clk: 18, data: 23, cs: 5, dc: 16, rst: 17, bl: 4 }, usable: [4, 5, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33] },
+  c3: { name: 'ESP32-C3 SuperMini', pins: { clk: 6, data: 7, cs: 10, dc: 4, rst: 3, bl: 5 } },
+  c6: { name: 'ESP32-C6 SuperMini', pins: { clk: 6, data: 7, cs: 14, dc: 20, rst: 21, bl: 22 } },
+  esp32: { name: 'ESP32 DevKit 30-pin', pins: { clk: 18, data: 23, cs: 5, dc: 16, rst: 17, bl: 4 } },
 };
 const BOARD_ID = BOARDS[process.env.MOCK_BOARD] ? process.env.MOCK_BOARD : 'c3';
 const BOARD = BOARDS[BOARD_ID];
@@ -62,15 +62,6 @@ function confirmed(res, apply) {
 }
 const preset = () => PRESETS.find((p) => p.id === state.display.preset);
 
-// Same rule as boardPinsError() in firmware/src/board.h.
-const USABLE_PINS = BOARD.usable;
-function pinsError(p) {
-  const all = [p.clk, p.data, p.cs, p.dc, p.rst, p.bl];
-  if (p.clk < 0 || p.data < 0) return 'invalid pin';
-  if (all.some((v) => v >= 0 && !USABLE_PINS.includes(v))) return 'invalid pin';
-  if (all.some((v, i) => v >= 0 && all.indexOf(v) !== i)) return 'pin used twice';
-  return null;
-}
 
 function header(buf) {
   if (buf.length < 32 || buf.toString('latin1', 0, 4) !== 'DPA1') return null;
@@ -213,11 +204,7 @@ createServer(async (req, res) => {
       return send(res, 200, state.display);
     case 'PUT /api/display': {
       const display = JSON.parse((await readBody(req)).toString());
-      if (display.pins) {
-        const err = pinsError({ ...state.display.pins, ...display.pins });
-        if (err) return send(res, 400, { error: err });
-        display.pins = { ...state.display.pins, ...display.pins };
-      }
+      delete display.pins; // fixed per board
       return confirmed(res, () => { state.display = { ...state.display, ...display }; state.configured = true; });
     }
     case 'GET /api/display/presets':

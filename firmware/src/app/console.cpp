@@ -57,7 +57,6 @@ static void printHelp() {
       "  presets  preset <n|id>  show  test  bench\n"
       "  rot <0-3>  offset <x> <y>  invert <0|1>  bgr <0|1>  mirror <0|1>\n"
       "  spi <MHz>  spimode <0-3>  i2c <kHz>  addr <hex>\n"
-      "  pins <clk> <data> <cs> <dc> <rst> <bl>   (-1 = not connected)\n"
       "  bright <0-255>\n"
       "  reset                   factory defaults for the display (reboots)");
 }
@@ -148,17 +147,6 @@ static void handleCommand(char* line) {
     char* a = arg();
     cfg.i2cAddr = a ? strtol(a, nullptr, 16) : 0x3C;
     saveAndReboot();
-  } else if (!strcmp(cmd, "pins")) {
-    BoardPins& p = cfg.pins;
-    const BoardPins before = p;
-    p.clk = argInt(p.clk); p.data = argInt(p.data); p.cs = argInt(p.cs);
-    p.dc = argInt(p.dc); p.rst = argInt(p.rst); p.bl = argInt(p.bl);
-    if (const char* err = boardPinsError(p)) {
-      Serial.printf("%s, not saved\n", err);
-      p = before;
-    } else {
-      saveAndReboot();
-    }
   } else if (!strcmp(cmd, "bright")) {
     cfg.brightness = constrain(argInt(255), 0, 255);
     if (appPanelOk()) panel->setBrightness(cfg.brightness);

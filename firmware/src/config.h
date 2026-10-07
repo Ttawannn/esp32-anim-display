@@ -16,10 +16,10 @@ struct DisplayConfig {
   uint32_t i2cHz;
   uint8_t i2cAddr;
   uint8_t brightness;  // backlight PWM (TFT) or contrast (OLED)
-  BoardPins pins;
+  BoardPins pins;  // always kPins (kept in the struct so stored settings stay readable)
 };
 
-void configApplyPreset(DisplayConfig& cfg, uint8_t presetIndex);  // keeps pins
+void configApplyPreset(DisplayConfig& cfg, uint8_t presetIndex);
 void configDefaults(DisplayConfig& cfg);
 bool configLoad(DisplayConfig& cfg);   // false = nothing stored, defaults used
 bool configSave(const DisplayConfig& cfg);

@@ -94,7 +94,7 @@ Live date/time ("clock widgets") travel in an optional widget block between the 
 
 Panels are configured at runtime, with no recompiling:
 
-- **Configuration:** `DisplayConfig` (stored in NVS) = a preset from `display/presets.cpp` plus overrides (rotation, offsets, invert, BGR, mirror, bus speed, pins).
+- **Configuration:** `DisplayConfig` (stored in NVS) = a preset from `display/presets.cpp` plus overrides (rotation, offsets, invert, BGR, mirror, bus speed). The pins are not configurable.
 - **Drivers:** only two. `PanelSpiRgb565` uses `esp_lcd` panel IO with two DMA band buffers. `PanelI2cMono` uses `Wire` with a 1-bit page framebuffer and flushes only dirty pages.
 - **Adding a panel:** usually just a preset entry with its init byte sequence. A preset's `turn` picks the controller rotation used as rotation 0, so rotation 0 is the side where the module's text reads upright (the 0.96" IPS is landscape 160×80, `turn` 3); preset width/height are that rotation-0 size.
 - **Applying changes:** display config changes take effect on reboot.
@@ -104,8 +104,8 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. A project's displa
 
 ### Board facts that shape the code
 
-- **Default pins:** CLK/DATA are GPIO6/7 on the C3/C6 (SPI2 IO_MUX pins) and GPIO18/23 on the ESP32 DevKit, whose panel uses SPI3/VSPI for that reason (`kHost` in `panel_spi_rgb565.cpp`). IO_MUX pins allow 80 MHz, and I2C shares them. Other pin defaults are in `board.h`.
-- **Pin changes:** `board.h` lists each board's usable header GPIOs (`kUsablePins`); `boardPinsError()` rejects other pins or a pin used twice (API and console). `web/src/device/boards.ts` mirrors the defaults and the list for `ui/WiringGuide.tsx` (wizard wiring step, Display settings → Wiring), and `mock-board.mjs` applies the same rule.
+- **Pins (fixed per board, `kPins` in `board.h`):** CLK/DATA are GPIO6/7 on the C3/C6 (SPI2 IO_MUX pins) and GPIO18/23 on the ESP32 DevKit, whose panel uses SPI3/VSPI for that reason (`kHost` in `panel_spi_rgb565.cpp`). IO_MUX pins allow 80 MHz, and I2C shares them.
+- **Wiring guide:** `web/src/device/boards.ts` mirrors `kPins` for `ui/WiringGuide.tsx` (read-only: wizard wiring step, Display settings → Wiring, the top bar's Wiring dialog). `DisplayConfig.pins` stays in the stored struct for compatibility, but `configLoad()` always resets it to `kPins` and the API ignores `pins`.
 - **BOOT button (GPIO9; GPIO0 on the ESP32):** it is a strapping pin, so safe mode is triggered by pressing BOOT while the boot screen is shown, not by holding it through reset.
 - **Serial:** the C3/C6 use their native USB (`custom_usb_cdc_flags` in `platformio.ini`, VID 0x303a); the ESP32 DevKit uses UART0 through a CP2102/CH340 at 115200, so `device/serial.ts` also accepts those USB vendor IDs.
 - **C3 Wi-Fi:** the C3 SuperMini needs reduced TX power (`WiFi.setTxPower(WIFI_POWER_8_5dBm)`) for reliable Wi-Fi.

@@ -64,10 +64,7 @@ The editor's interface is in Thai; English translations of button names are give
 - 1.3" ST7789 modules without a CS pin: leave CS unconnected.
 - BL can go straight to 3V3, but brightness then can't be adjusted.
 - Pins labeled "SCL/SDA" on TFT modules are SPI, not I2C. Connect them to CLK/DATA as in the table.
-- The setup wizard shows this wiring for the chosen display, with the module's pins colored to match. Pins can be changed there, in Display settings → Wiring, or with the `pins` command.
-- Usable GPIOs: C3: 0-7, 10, 20, 21. C6: 0-7, 14, 16-23. ESP32 DevKit: 4, 5, 13-19, 21-23, 25-27, 32, 33. LED, BOOT, flash, USB/serial and input-only pins are refused, as is using one pin twice.
-- CLK/DATA on the defaults (GPIO6/7, or GPIO18/23 on the ESP32) allow the fastest SPI; on other pins, lower the SPI speed if the picture is garbled.
-- Wrong pins and a blank screen: press BOOT while the boot screen shows (safe mode) to reset the display settings.
+- The wiring is fixed per board. The setup wizard and the editor's **Wiring** button show this table for the chosen display, with the module's pins colored to match.
 
 ## Display presets
 
@@ -103,7 +100,7 @@ Type `help` for the full list.
 |-------|----------|
 | Playback | `ls`, `play <name>`, `stop`, `next`, `info` |
 | Wi-Fi | `wifi <ssid> <password>`, `wifi forget` |
-| Display | `presets`, `preset`, `rot`, `offset`, `invert`, `bgr`, `mirror`, `spi`, `i2c`, `addr`, `pins`, `bright`, `test`, `reset` |
+| Display | `presets`, `preset`, `rot`, `offset`, `invert`, `bgr`, `mirror`, `spi`, `i2c`, `addr`, `bright`, `test`, `reset` |
 | Diagnostics | `show` (full status), `bench` (display and JPEG benchmarks) |
 
 ## Testing the decoder on a PC

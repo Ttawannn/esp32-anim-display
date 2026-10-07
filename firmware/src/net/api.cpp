@@ -150,17 +150,6 @@ static int saveDisplay(JsonVariantConst json, JsonDocument& out) {
   if (json["i2c_hz"].is<uint32_t>()) cfg.i2cHz = constrain(json["i2c_hz"].as<uint32_t>(), 100000u, 1000000u);
   if (json["i2c_addr"].is<int>()) cfg.i2cAddr = json["i2c_addr"];
   if (json["brightness"].is<int>()) cfg.brightness = constrain(json["brightness"].as<int>(), 0, 255);
-  if (json["pins"].is<JsonObjectConst>()) {
-    JsonObjectConst p = json["pins"];
-    auto pin = [&](const char* k, int8_t& v) { if (p[k].is<int>()) v = constrain(p[k].as<int>(), -1, 48); };
-    pin("clk", cfg.pins.clk);
-    pin("data", cfg.pins.data);
-    pin("cs", cfg.pins.cs);
-    pin("dc", cfg.pins.dc);
-    pin("rst", cfg.pins.rst);
-    pin("bl", cfg.pins.bl);
-    if (const char* err = boardPinsError(cfg.pins)) return fail(out, 400, err);
-  }
   return confirmed(out, Cmd::SaveDisplay, &cfg, sizeof(cfg));
 }
 

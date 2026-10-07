@@ -57,7 +57,7 @@ Design consequences:
 
 > The original request listed "oled 128x64 gc9a01", but the GC9A01 is the round TFT's controller, so this plan assumes the 128×64 OLED uses an SSD1306 or SH1106.
 
-### Pin assignment (defaults, changeable from the web UI)
+### Pin assignment (fixed per board)
 Idea: **one wiring harness for every display.** CLK and DATA are shared between SPI (TFT) and I2C (OLED), because a board drives one display at a time.
 GPIO6/7 are SPI2's IO_MUX pins on both the C3 and the C6 (bypassing the GPIO matrix), so SPI can run at up to 80 MHz. On the ESP32 the same holds for GPIO18/23 on SPI3 (VSPI), which the panel driver uses there.
 

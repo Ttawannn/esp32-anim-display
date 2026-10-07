@@ -13,7 +13,6 @@ import { BoardName, run, waitForReboot, WifiTab } from './BoardSettings';
 import { Icon, Modal } from './common';
 import { frameFactor, ModuleFrame } from './ModuleFrame';
 import { WiringGuide } from './WiringGuide';
-import { boardSpec, pinConflicts, rememberedPins, samePins, type Pins } from '../device/boards';
 import { withRotation } from '../model/presets';
 import { getLang, t } from '../i18n';
 
@@ -75,16 +74,8 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
   const [choice, setChoice] = useState(info?.display.preset ?? '');
   const [busy, setBusy] = useState<string | null>(null);
   const [blank, setBlank] = useState(false);
-  const [pins, setPins] = useState<Pins | null>(null); // wiring as saved on the board
-  const [wiring, setWiring] = useState<Pins | null>(null); // wiring being edited
 
   useEffect(() => { device.presets(host).then(setPresets, () => {}); }, [host]);
-  useEffect(() => {
-    const fallback = boardSpec(info?.board).defaults;
-    // A board never set up starts from the pins picked in the Wiring dialog before it was connected.
-    const planned = info?.display.configured === false ? rememberedPins(info.board) : null;
-    device.display(host).then((d) => { setPins(d.pins); setWiring(planned ?? d.pins); }, () => { setPins(fallback); setWiring(planned ?? fallback); });
-  }, [host]);
   // Show the test pattern whenever the check step is (re)entered.
   useEffect(() => {
     if (step === 'check') device.testPattern(host).catch(() => {});
@@ -119,10 +110,8 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
 
   const chosen = presets.find((p) => p.id === choice);
   const useDisplay = async () => {
-    const pinsChanged = !!wiring && !!pins && !samePins(wiring, pins);
-    if (choice !== info.display.preset || !info.display.configured || pinsChanged) {
-      if (!(await apply(t('Setting up the display'), { preset: choice, ...(pinsChanged ? { pins: wiring! } : {}) }))) return;
-      if (pinsChanged) setPins(wiring);
+    if (choice !== info.display.preset || !info.display.configured) {
+      if (!(await apply(t('Setting up the display'), { preset: choice }))) return;
     }
     setBlank(false);
     setStep('check');
@@ -184,14 +173,14 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        {step === 'wire' && chosen && wiring && (
+        {step === 'wire' && chosen && (
           <>
             <h3>{t('Connect the display like this')}</h3>
-            <p class="hint">{t('Match the colors: each pin on the display goes to the board pin in the same row. Unplug USB while wiring. The default pins work for most people; change a pin only if it is already used.')}</p>
-            <WiringGuide preset={chosen} board={info.board} pins={wiring} onChange={setWiring} />
+            <p class="hint">{t('Match the colors: each pin on the display goes to the board pin in the same row. Unplug USB while wiring.')}</p>
+            <WiringGuide preset={chosen} board={info.board} />
             <div class="wiz-actions">
               <button class="btn ghost" onClick={() => setStep('display')}>{t('Back')}</button>
-              <button class="btn primary" disabled={!!busy || pinConflicts(wiring, chosen.color === 'mono').size > 0} onClick={useDisplay}>
+              <button class="btn primary" disabled={!!busy} onClick={useDisplay}>
                 {t('Wired, show the test pattern')} <Icon name="right" />
               </button>
             </div>

@@ -29,7 +29,7 @@ void configApplyPreset(DisplayConfig& cfg, uint8_t presetIndex) {
 
 void configDefaults(DisplayConfig& cfg) {
   cfg = {};
-  cfg.pins = kDefaultPins;
+  cfg.pins = kPins;
   cfg.brightness = 255;
   configApplyPreset(cfg, (uint8_t)findPreset("st7789_240x240"));
 }
@@ -44,6 +44,7 @@ bool configLoad(DisplayConfig& cfg) {
   prefs.end();
   if (ok) {
     cfg = stored.cfg;
+    cfg.pins = kPins;  // the wiring is fixed; older firmware let it be changed
   } else {
     configDefaults(cfg);
   }

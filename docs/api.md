@@ -61,7 +61,7 @@ Playlist writes use `/playlist.tmp`, verify the complete JSON write, and replace
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/display` | `{preset, rotation, offset_x, offset_y, invert, bgr, mirror_x, spi_hz, spi_mode, i2c_hz, i2c_addr, brightness, pins}` |
-| PUT | `/api/display` | send only the fields to change; saves and then **reboots**. Changing `preset` resets the other tuning values to that preset's defaults. `pins` (GPIO numbers, -1 = not wired) must leave CLK/DATA wired, use only header GPIOs free on that board (C3: 0-7, 10, 20, 21; C6: 0-7, 14, 16-23; ESP32 DevKit: 4, 5, 13-19, 21-23, 25-27, 32, 33) and use no pin twice, otherwise `400 invalid pin` / `400 pin used twice` |
+| PUT | `/api/display` | send only the fields to change; saves and then **reboots**. Changing `preset` resets the other tuning values to that preset's defaults. `pins` is read-only: the wiring is fixed per board (`kPins` in `firmware/src/board.h`) and is ignored here |
 
 `/api/info` → `display.configured` is `false` until the display settings have been saved once; the editor and the remote then open the setup wizard. While unconfigured, `display.detected` reports the first-boot I2C probe: `"oled"` (an SSD1306/SH1106 answered at 0x3C/0x3D; the board starts with the 128×64 OLED preset) or `"tft"` (no answer: TFT modules cannot be identified, the default 240×240 TFT is used).
 | GET | `/api/display/presets` | `{presets: [{id, name, width, height, color, round}]}` |

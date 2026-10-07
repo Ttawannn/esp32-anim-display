@@ -733,11 +733,9 @@ label.switch input { width: 20px; height: 20px; }
 .wiring-row { padding: 5px 0; border-top: 1px solid var(--line); }
 .wiring-row b { font-size: 13px; letter-spacing: .02em; }
 .wiring-row b small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; letter-spacing: 0; }
-.wiring-row.bad select { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
 .wiring-fixed { padding: 0 10px; color: var(--muted); font-weight: 600; font-size: 13px; }
 .wire-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); }
 .wiring-notes { margin: 8px 0; padding-left: 18px; }
-.wiring-notes li.bad { color: var(--danger); }
 .mount-section { margin: 12px 0 8px; }
 .mount-section > h4 { margin: 0; font-size: 13px; }
 .mount-section > .hint { margin: 2px 0 8px; }

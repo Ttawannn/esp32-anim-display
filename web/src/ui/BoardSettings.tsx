@@ -7,7 +7,6 @@ import { store, toast } from '../model/store';
 import { Icon } from './common';
 import { WiringGuide } from './WiringGuide';
 import { frameFactor, ModuleFrame } from './ModuleFrame';
-import { pinConflicts } from '../device/boards';
 import { t } from '../i18n';
 
 export async function run(fn: () => Promise<unknown>, ok?: string) {
@@ -174,7 +173,7 @@ export function DisplayTab({ host }: { host: string }) {
       {preset && (
         <section class="wiring-section">
           <h4>{t('Wiring')}</h4>
-          <WiringGuide preset={preset} board={store.state.deviceInfo?.board} pins={d.pins} onChange={(pins) => set({ pins })} />
+          <WiringGuide preset={preset} board={store.state.deviceInfo?.board} />
         </section>
       )}
       <label class="field">
@@ -189,7 +188,7 @@ export function DisplayTab({ host }: { host: string }) {
       </p>
       <div class="row" style={{ justifyContent: 'flex-end' }}>
         <button class="btn" onClick={() => run(() => device.testPattern(host))}>{t('Test pattern')}</button>
-        <button class="btn primary" disabled={pinConflicts(d.pins, mono).size > 0} onClick={save}>{t('Save and restart')}</button>
+        <button class="btn primary" onClick={save}>{t('Save and restart')}</button>
       </div>
     </>
   );

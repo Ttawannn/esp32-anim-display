@@ -150,9 +150,15 @@ static void handleCommand(char* line) {
     saveAndReboot();
   } else if (!strcmp(cmd, "pins")) {
     BoardPins& p = cfg.pins;
+    const BoardPins before = p;
     p.clk = argInt(p.clk); p.data = argInt(p.data); p.cs = argInt(p.cs);
     p.dc = argInt(p.dc); p.rst = argInt(p.rst); p.bl = argInt(p.bl);
-    saveAndReboot();
+    if (const char* err = boardPinsError(p)) {
+      Serial.printf("%s, not saved\n", err);
+      p = before;
+    } else {
+      saveAndReboot();
+    }
   } else if (!strcmp(cmd, "bright")) {
     cfg.brightness = constrain(argInt(255), 0, 255);
     if (appPanelOk()) panel->setBrightness(cfg.brightness);

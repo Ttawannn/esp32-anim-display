@@ -4,7 +4,12 @@
 #include <driver/spi_master.h>
 #include <esp_heap_caps.h>
 
+// The ESP32's SPI2 (HSPI) has its IO_MUX pins on 14/13; SPI3 (VSPI) on 18/23, the usual TFT wiring.
+#if CONFIG_IDF_TARGET_ESP32
+static constexpr spi_host_device_t kHost = SPI3_HOST;
+#else
 static constexpr spi_host_device_t kHost = SPI2_HOST;
+#endif
 
 static constexpr uint8_t MADCTL_MY = 0x80;
 static constexpr uint8_t MADCTL_MX = 0x40;
@@ -29,22 +34,44 @@ bool IRAM_ATTR PanelSpiRgb565::onTransDone(esp_lcd_panel_io_handle_t, esp_lcd_pa
   return false;
 }
 
-bool PanelSpiRgb565::begin() {
-  const BoardPins& pins = cfg_.pins;
-  const bool swapAxes = cfg_.rotation & 1;
-  width_ = swapAxes ? preset_.height : preset_.width;
-  height_ = swapAxes ? preset_.width : preset_.height;
+static constexpr uint8_t kRotation[4] = {0, MADCTL_MX | MADCTL_MV, MADCTL_MX | MADCTL_MY, MADCTL_MY | MADCTL_MV};
 
-  // Offset of the visible area inside controller RAM. Rotations that mirror an axis
-  // measure the offset from the far edge of the controller RAM.
-  const int16_t farX = preset_.ctrlW - preset_.width - cfg_.offX;
-  const int16_t farY = preset_.ctrlH - preset_.height - cfg_.offY;
-  switch (cfg_.rotation & 3) {
+// Size, RAM offsets and MADCTL for a rotation. Rotations that mirror an axis measure the offset
+// from the far edge of the controller RAM. `r` counts from the module's upright side; the
+// controller rotation adds the preset's `turn`.
+void PanelSpiRgb565::applyRotation(uint8_t r) {
+  rotation_ = r & 3;
+  const uint8_t ctrl = (rotation_ + preset_.turn) & 3;
+  const uint16_t nativeW = (preset_.turn & 1) ? preset_.height : preset_.width;  // at controller rotation 0
+  const uint16_t nativeH = (preset_.turn & 1) ? preset_.width : preset_.height;
+  const bool swapAxes = ctrl & 1;
+  width_ = swapAxes ? nativeH : nativeW;
+  height_ = swapAxes ? nativeW : nativeH;
+  const int16_t farX = preset_.ctrlW - nativeW - cfg_.offX;
+  const int16_t farY = preset_.ctrlH - nativeH - cfg_.offY;
+  switch (ctrl) {
     case 0: colOff_ = cfg_.offX; rowOff_ = cfg_.offY; break;
     case 1: colOff_ = cfg_.offY; rowOff_ = cfg_.offX; break;
     case 2: colOff_ = farX;      rowOff_ = farY;      break;
     case 3: colOff_ = farY;      rowOff_ = cfg_.offX; break;
   }
+  if (!io_) return;
+  uint8_t madctl = kRotation[ctrl];
+  if (cfg_.mirrorX) madctl ^= MADCTL_MX;
+  if (cfg_.bgr) madctl |= MADCTL_BGR;
+  cmd(0x36, &madctl, 1);
+}
+
+bool PanelSpiRgb565::setRotation(uint8_t r) {
+  if ((r & 3) == rotation_) return true;
+  flush();
+  applyRotation(r);
+  return true;
+}
+
+bool PanelSpiRgb565::begin() {
+  const BoardPins& pins = cfg_.pins;
+  applyRotation(cfg_.rotation);  // size and offsets; MADCTL is sent after the init sequence
 
   for (auto& b : bufs_) {
     b = (uint16_t*)heap_caps_malloc(kBufPixels * 2, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
@@ -90,11 +117,7 @@ bool PanelSpiRgb565::begin() {
 
   sendInit(preset_.init, preset_.initLen);
 
-  static constexpr uint8_t kRotation[4] = {0, MADCTL_MX | MADCTL_MV, MADCTL_MX | MADCTL_MY, MADCTL_MY | MADCTL_MV};
-  uint8_t madctl = kRotation[cfg_.rotation & 3];
-  if (cfg_.mirrorX) madctl ^= MADCTL_MX;
-  if (cfg_.bgr) madctl |= MADCTL_BGR;
-  cmd(0x36, &madctl, 1);
+  applyRotation(cfg_.rotation);
   cmd(cfg_.invert ? 0x21 : 0x20);
 
   fillScreen(0x0000);

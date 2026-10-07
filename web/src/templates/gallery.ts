@@ -7,6 +7,8 @@ import { widgetsFor } from '../layers/raster';
 import { getPreset, type DisplayPreset } from '../model/presets';
 import { createProject, newFrame } from '../model/project';
 import type { ClockLayer, Layer, Pixels, Project } from '../model/types';
+import { defaultEyeOptions } from './eyeProject';
+import { EYE_ANIMS, generateEyes, type EyeAnim, type EyeOptions } from './eyes';
 import { hsv, Img, mix, rgb, rng, safeRadius, type RGB } from './kit';
 
 export interface TemplateCtx {
@@ -30,9 +32,13 @@ export interface Generated {
   frames: { data: Pixels; delay: number }[];
   layers?: Layer[];
   background?: string;
+  canvas?: { w: number; h: number; scale: number }; // when the generator picks its own canvas (eyes)
+  // Places clock layers once their rendered sizes are known (screen pixels, same order as
+  // `layers`). Without it they are centred horizontally and keep their y.
+  arrange?: (boxes: { w: number; h: number }[]) => { x: number; y: number }[];
 }
 
-export type CategoryId = 'nature' | 'fun' | 'tech' | 'text';
+export type CategoryId = 'eyes' | 'nature' | 'fun' | 'tech' | 'text';
 
 export interface AnimTemplate {
   id: string;
@@ -50,10 +56,11 @@ export interface AnimTemplate {
 
 export const CATEGORIES: { id: CategoryId | 'all'; label: string }[] = [
   { id: 'all', label: 'All' },
+  { id: 'eyes', label: 'Eyes' },
+  { id: 'text', label: 'Text & clock' },
   { id: 'nature', label: 'Nature' },
   { id: 'fun', label: 'Fun' },
   { id: 'tech', label: 'Tech' },
-  { id: 'text', label: 'Text & clock' },
 ];
 
 const BLACK: RGB = [0, 0, 0];
@@ -63,6 +70,10 @@ const WHITE: RGB = [255, 255, 255];
 const col = (c: TemplateCtx, o: Options, key: string): RGB => (c.mono ? WHITE : rgb(o[key]));
 const bgCol = (c: TemplateCtx, o: Options, key = 'bg'): RGB => (c.mono ? BLACK : rgb(o[key] ?? '#000000'));
 const smooth = (c: TemplateCtx) => c.scale <= 2;
+// Screen shapes that get their own layout: a portrait screen (0.96" upright, or any panel turned
+// a quarter) and a long strip (0.91" OLED).
+const isTall = (c: TemplateCtx) => c.screenH > c.screenW * 1.3;
+const isStrip = (c: TemplateCtx) => c.screenW > c.screenH * 3;
 
 function frames(n: number, delay: number | ((i: number) => number), draw: (t: number, i: number) => Img) {
   return Array.from({ length: n }, (_, i) => ({ data: draw(i / n, i).d, delay: typeof delay === 'number' ? delay : delay(i) }));
@@ -136,7 +147,9 @@ const spinner: AnimTemplate = {
           const a = (k / n) * Math.PI * 2 - Math.PI / 2;
           const age = (head - k + n) % n;
           const f = Math.max(0.15, 1 - age / (n * 0.6));
-          img.disc(cx + R * Math.cos(a), cy + R * Math.sin(a), Math.max(1, R * 0.13 * (0.6 + 0.4 * f)), mix(BLACK, fg, f), smooth(c));
+          // 1-bit panels can't fade a dot, so the trail shrinks instead.
+          if (c.mono) img.disc(cx + R * Math.cos(a), cy + R * Math.sin(a), Math.max(1, R * 0.15 * (0.3 + 0.7 * f)), WHITE, false);
+          else img.disc(cx + R * Math.cos(a), cy + R * Math.sin(a), Math.max(1, R * 0.13 * (0.6 + 0.4 * f)), mix(BLACK, fg, f), smooth(c));
         }
       }
       return img;
@@ -151,7 +164,10 @@ const fire: AnimTemplate = {
   generate(c, o) {
     const pal = ramp(PALETTES[o.palette] ?? PALETTES.fire);
     const w = c.w, h = c.h, max = 36;
-    const grid = new Uint8Array(w * h);
+    // Flames cool by `decay` per row on average, so they reach about 70% of the screen height
+    // whatever its shape (tall portrait or a flat strip).
+    const decay = max / (h * 0.7);
+    const grid = new Float32Array(w * h);
     const rand = rng(7);
     grid.fill(max, (h - 1) * w);
     const step = () => {
@@ -159,7 +175,7 @@ const fire: AnimTemplate = {
         for (let y = 1; y < h; y++) {
           const src = y * w + x, r = Math.floor(rand() * 3);
           const dst = src - w - r + 1;
-          const v = grid[src] - (r & 1);
+          const v = grid[src] - rand() * 2 * decay;
           if (dst >= 0 && dst < w * h) grid[dst] = Math.max(0, v);
         }
     };
@@ -338,7 +354,7 @@ const equalizer: AnimTemplate = {
 };
 
 const plasma: AnimTemplate = {
-  id: 'plasma', name: 'Rainbow plasma', icon: 'rainbow', hint: 'Flowing color waves', category: 'fun', pixel: 4, smoothMono: true,
+  id: 'plasma', name: 'Rainbow plasma', icon: 'rainbow', hint: 'Flowing color waves', category: 'fun', pixel: 4,
   options: [{ id: 'palette', label: 'Palette', type: 'choice', choices: [['rainbow', 'Rainbow'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['purple', 'Purple']] }],
   defaults: { palette: 'rainbow' },
   generate(c, o) {
@@ -351,7 +367,9 @@ const plasma: AnimTemplate = {
         for (let x = 0; x < c.w; x++) {
           const u = x * s, v = y * s;
           const val = Math.sin(u + a) + Math.sin(v * 0.8 - a) + Math.sin((u + v) * 0.6 + a) + Math.sin(Math.hypot(u - 6, v - 6) - 2 * a);
-          img.plot(x, y, pal((val / 4 + 0.5 + t) % 1));
+          const k = (val / 4 + 0.5 + t) % 1;
+          // 1-bit panels: flowing contour bands (dithered gradients turn into noise there).
+          img.plot(x, y, c.mono ? ((k * 3) % 1 < 0.5 ? WHITE : BLACK) : pal(k));
         }
       return img;
     }) };
@@ -364,7 +382,7 @@ const bounce: AnimTemplate = {
   defaults: { color: '#ff5a36', bg: '#101a30' },
   generate(c, o) {
     const fg = col(c, o, 'color'), bg = bgCol(c, o), hi = mix(fg, WHITE, 0.6), dark = mix(fg, BLACK, 0.45);
-    const r = Math.max(3, Math.min(c.w, c.h) * 0.12), floor = c.h * (c.round ? 0.8 : 0.88);
+    const r = Math.max(3, Math.min(c.w * 0.15, c.h * 0.14)), floor = c.h * (c.round ? 0.8 : 0.88);
     return { frames: frames(36, 35, (t) => {
       const img = new Img(c.w, c.h, bg);
       const hop = Math.abs(Math.sin(2 * Math.PI * t * 2)); // two bounces per loop
@@ -386,32 +404,43 @@ const pacman: AnimTemplate = {
   options: [{ id: 'ghost', label: 'Ghost', type: 'choice', choices: [['yes', 'Yes'], ['no', 'No']] }],
   defaults: { ghost: 'yes' },
   generate(c, o) {
-    const r = Math.max(3, Math.min(c.h * 0.22, c.w * 0.14)), cy = c.h / 2;
+    // Runs along the long side: left to right, or top to bottom on a portrait screen.
+    const down = isTall(c);
+    const long = down ? c.h : c.w, across = down ? c.w : c.h;
+    const r = Math.max(3, Math.min(across * 0.22, long * 0.14)), mid = across / 2;
+    const xy = (along: number): [number, number] => (down ? [mid, along] : [along, mid]);
     const yellow: RGB = c.mono ? WHITE : [255, 220, 0], ghostCol: RGB = c.mono ? WHITE : [255, 60, 70], dot: RGB = c.mono ? WHITE : [255, 200, 170];
-    const travel = c.w + r * (o.ghost === 'yes' ? 7 : 3);
+    const travel = long + r * (o.ghost === 'yes' ? 7 : 3);
     const spacing = Math.max(4, Math.round(r * 1.2));
     return { frames: frames(40, 50, (t) => {
       const img = new Img(c.w, c.h, BLACK);
-      const x = -r * 1.5 + t * travel;
-      for (let dx = spacing / 2; dx < c.w; dx += spacing) if (dx > x + r * 0.2) img.rect(dx - 1, cy - 1, 2, 2, dot);
+      const pos = -r * 1.5 + t * travel;
+      for (let d = spacing / 2; d < long; d += spacing) {
+        if (d <= pos + r * 0.2) continue;
+        const [dx, dy] = xy(d);
+        img.rect(dx - 1, dy - 1, 2, 2, dot);
+      }
       const mouth = 0.08 + 0.32 * Math.abs(Math.sin(2 * Math.PI * t * 8));
+      const [px0, py0] = xy(pos);
       img.shape((px, py) => {
-        const dx = px - x, dy = py - cy;
+        const dx = px - px0, dy = py - py0;
         if (dx * dx + dy * dy > r * r) return false;
-        return Math.abs(Math.atan2(dy, dx)) > mouth * Math.PI;
+        const [ahead, side] = down ? [dy, dx] : [dx, dy];
+        return Math.abs(Math.atan2(side, ahead)) > mouth * Math.PI;
       }, yellow);
       if (o.ghost === 'yes') {
-        const gx = x - r * 3.2, top = cy - r, wave = Math.floor(t * 16) % 2;
+        // The ghost follows behind and always stands upright.
+        const [gx, gy] = xy(pos - r * 3.2), wave = Math.floor(t * 16) % 2;
         img.shape((px, py) => {
           const dx = px - gx;
           if (Math.abs(dx) > r) return false;
-          if (py < cy) return dx * dx + (py - cy) ** 2 <= r * r;
-          const skirt = cy + r - ((Math.floor((dx + r) / (r / 2)) + wave) % 2 ? r * 0.3 : 0);
+          if (py < gy) return dx * dx + (py - gy) ** 2 <= r * r;
+          const skirt = gy + r - ((Math.floor((dx + r) / (r / 2)) + wave) % 2 ? r * 0.3 : 0);
           return py <= skirt;
-        }, ghostCol, gx - r, top, gx + r + 1, cy + r + 1);
+        }, ghostCol, gx - r, gy - r, gx + r + 1, gy + r + 1);
         if (!c.mono) for (const ex of [-0.4, 0.4]) {
-          img.disc(gx + ex * r, cy - r * 0.15, Math.max(1, r * 0.28), WHITE);
-          img.disc(gx + ex * r + r * 0.1, cy - r * 0.1, Math.max(0.6, r * 0.13), [30, 60, 220]);
+          img.disc(gx + ex * r, gy - r * 0.15, Math.max(1, r * 0.28), WHITE);
+          img.disc(gx + ex * r + (down ? 0 : r * 0.1), gy - r * (down ? 0.03 : 0.1), Math.max(0.6, r * 0.13), [30, 60, 220]);
         }
       }
       return img;
@@ -424,19 +453,25 @@ const battery: AnimTemplate = {
   options: [],
   defaults: {},
   generate(c) {
-    const bw = Math.min(c.w * 0.7, c.h * 1.3), bh = bw * 0.5, x0 = (c.w - bw) / 2, y0 = (c.h - bh) / 2;
+    // Lies flat, or stands up (terminal on top, filling from the bottom) on a portrait screen.
+    const up = isTall(c);
+    const long = up ? c.h : c.w, across = up ? c.w : c.h;
+    const bw = Math.min(long * 0.7, across * 1.3), bh = bw * 0.5, x0 = (long - bw) / 2, y0 = (across - bh) / 2;
     const line = Math.max(1, Math.round(bw / 18)), segs = 5;
     const levels = [0, 1, 2, 3, 4, 5, 5, 5];
     const colorFor = (n: number): RGB => c.mono ? WHITE : n <= 1 ? [255, 70, 60] : n <= 3 ? [255, 200, 40] : [60, 220, 90];
     return { frames: frames(levels.length, (i) => (i >= 5 ? 350 : 380), (_, i) => {
       const img = new Img(c.w, c.h, BLACK);
+      // Draws in the flat battery's coordinates; standing up, "along" runs bottom to top.
+      const rect = (a: number, b: number, la: number, lb: number, col: RGB) =>
+        up ? img.rect(b, c.h - a - la, lb, la, col) : img.rect(a, b, la, lb, col);
       const n = levels[i], frameCol: RGB = c.mono ? WHITE : [200, 205, 215];
-      img.rect(x0, y0, bw, line, frameCol); img.rect(x0, y0 + bh - line, bw, line, frameCol);
-      img.rect(x0, y0, line, bh, frameCol); img.rect(x0 + bw - line, y0, line, bh, frameCol);
-      img.rect(x0 + bw, y0 + bh * 0.3, line * 1.5, bh * 0.4, frameCol);
+      rect(x0, y0, bw, line, frameCol); rect(x0, y0 + bh - line, bw, line, frameCol);
+      rect(x0, y0, line, bh, frameCol); rect(x0 + bw - line, y0, line, bh, frameCol);
+      rect(x0 + bw, y0 + bh * 0.3, line * 1.5, bh * 0.4, frameCol);
       const blink = i >= 5 && i % 2 === 1;
       const inner = bw - line * 4, sw = inner / segs;
-      for (let k = 0; k < n; k++) if (!blink) img.rect(x0 + line * 2 + k * sw + 1, y0 + line * 2, sw - 2, bh - line * 4, colorFor(n));
+      for (let k = 0; k < n; k++) if (!blink) rect(x0 + line * 2 + k * sw + 1, y0 + line * 2, sw - 2, bh - line * 4, colorFor(n));
       return img;
     }) };
   },
@@ -594,6 +629,31 @@ function ctx2d(w: number, h: number) {
   return new OffscreenCanvas(Math.max(1, w), Math.max(1, h)).getContext('2d', { willReadFrequently: true })!;
 }
 
+// Characters as the reader sees them (keeps Thai vowels and tone marks on their consonant).
+const graphemes = (s: string) => [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s)].map((g) => g.segment);
+
+// Word wrap for a measured font; words wider than a line (or text without spaces, like Thai)
+// break between characters.
+function wrapText(m: OffscreenCanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  const push = (word: string, sep: string) => {
+    if (!line) line = word;
+    else if (m.measureText(line + sep + word).width <= maxW) line += sep + word;
+    else { lines.push(line); line = word; }
+    while (m.measureText(line).width > maxW && graphemes(line).length > 1) {
+      const chars = graphemes(line);
+      let k = chars.length - 1;
+      while (k > 1 && m.measureText(chars.slice(0, k).join('')).width > maxW) k--;
+      lines.push(chars.slice(0, k).join(''));
+      line = chars.slice(k).join('');
+    }
+  };
+  text.split(/\s+/).filter(Boolean).forEach((w) => push(w, ' '));
+  if (line) lines.push(line);
+  return lines.length ? lines : [' '];
+}
+
 const marquee: AnimTemplate = {
   id: 'marquee', name: 'Scrolling text', icon: 'marquee', hint: 'A scrolling message sign', category: 'text', pixel: 2, canvas: true,
   options: [
@@ -605,27 +665,33 @@ const marquee: AnimTemplate = {
   defaults: { text: 'Hello there!', color: '#ffd23f', bg: '#000000', size: '0.5' },
   generate(c, o) {
     const fg = c.mono ? '#ffffff' : o.color, bg = bgCol(c, o);
-    const size = Math.max(7, Math.round(Math.min(c.h, c.w * 0.6) * Number(o.size)));
+    const msg = o.text || ' ';
+    // Portrait screens are too narrow for a sideways ticker: the text wraps and rolls upward.
+    const roll = isTall(c);
+    const size = Math.max(7, Math.round((roll ? c.w * 0.62 : Math.min(c.h, c.w * 0.6)) * Number(o.size)));
     const font = `700 ${size}px ${fontCss('sans')}, ${EMOJI_FONT}`;
     const m = ctx2d(1, 1);
     m.font = font;
-    const tw = Math.ceil(m.measureText(o.text || ' ').width) + 4;
-    const strip = ctx2d(tw, c.h);
+    const lines = roll ? wrapText(m, msg, c.w - 2) : [msg];
+    const lineH = Math.round(size * 1.25);
+    const sw = roll ? c.w : Math.ceil(m.measureText(msg).width) + 4, sh = roll ? lines.length * lineH : c.h;
+    const strip = ctx2d(sw, sh);
     strip.font = font;
     strip.fillStyle = fg;
     strip.textBaseline = 'middle';
-    strip.fillText(o.text || ' ', 2, c.h / 2 + 1);
-    const text = strip.getImageData(0, 0, tw, c.h).data;
-    const total = tw + c.w, step = Math.max(1, Math.ceil(total / 300));
+    strip.textAlign = roll ? 'center' : 'left';
+    lines.forEach((line, i) => strip.fillText(line, roll ? c.w / 2 : 2, roll ? i * lineH + lineH / 2 + 1 : c.h / 2 + 1));
+    const text = strip.getImageData(0, 0, sw, sh).data;
+    const span = roll ? c.h : c.w, total = (roll ? sh : sw) + span, step = Math.max(1, Math.ceil(total / 300));
     const n = Math.ceil(total / step);
     return { frames: frames(n, 40, (_, i) => {
       const img = new Img(c.w, c.h, bg);
-      const off = c.w - i * step;
+      const off = span - i * step;
       for (let y = 0; y < c.h; y++)
         for (let x = 0; x < c.w; x++) {
-          const sx = x - off;
-          if (sx < 0 || sx >= tw) continue;
-          const k = (y * tw + sx) * 4, a = text[k + 3] / 255;
+          const sx = roll ? x : x - off, sy = roll ? y - off : y;
+          if (sx < 0 || sx >= sw || sy < 0 || sy >= sh) continue;
+          const k = (sy * sw + sx) * 4, a = text[k + 3] / 255;
           if (a > 0) img.plot(x, y, [text[k], text[k + 1], text[k + 2]], c.mono ? (a > 0.5 ? 1 : 0) : a);
         }
       return img;
@@ -699,18 +765,106 @@ const clock: AnimTemplate = {
     }
     const color = c.mono ? '#ffffff' : o.color;
     const H = c.screenH, W = c.screenW;
-    const seconds = o.show === 'seconds';
-    const big = Math.min(H * (o.show === 'time-date' ? 0.34 : 0.45), W * (seconds ? 0.17 : 0.24));
+    const seconds = o.show === 'seconds', date = o.show === 'time-date';
+    const latin = o.names === 'th' ? '' : 'L';
     const layers: Layer[] = [];
-    const timeY = o.show === 'time-date' ? H * 0.5 - big * 0.85 : H / 2 - big * 0.6;
-    layers.push(clockLayer(seconds ? 'HH:mm:ss' : 'HH:mm', big, timeY, color));
-    if (o.show === 'time-date') layers.push(clockLayer(`${o.names === 'th' ? '' : 'L'}${H < 48 ? 'd MMM' : 'ddd d MMM'}`, big * 0.42, H * 0.5 + big * 0.35, color));
-    return { ...base, layers };
+    const add = (format: string, size: number) => layers.push(clockLayer(format, size, 0, color));
+
+    // Portrait: hours above minutes, as large as the width allows, then the date.
+    if (isTall(c)) {
+      const big = Math.min(W * 0.5, H * (date ? 0.24 : 0.3));
+      add('HH', big);
+      add('mm', big);
+      if (seconds) add('ss', big * 0.5);
+      if (date) { add(`${latin}ddd`, big * 0.4); add(`${latin}d MMM`, big * 0.4); }
+      return { ...base, layers, arrange: (boxes) => stackCentered(boxes, W, H, [0, big * 0.12, big * 0.25, big * 0.1]) };
+    }
+
+    // Long strip with a date: time on the left, day and date stacked on the right.
+    if (isStrip(c) && date) {
+      const big = Math.min(H * 0.72, W * 0.2);
+      add('HH:mm', big);
+      add(`${latin}ddd`, H * 0.3);
+      add(`${latin}d MMM`, H * 0.3);
+      return {
+        ...base, layers,
+        arrange: ([t, d1, d2]) => {
+          const gap = H * 0.25, total = t.w + gap + Math.max(d1.w, d2.w), x0 = (W - total) / 2, xd = x0 + t.w + gap;
+          const dh = d1.h + d2.h + 1, yd = (H - dh) / 2;
+          return [{ x: x0, y: (H - t.h) / 2 }, { x: xd, y: yd }, { x: xd, y: yd + d1.h + 1 }];
+        },
+      };
+    }
+
+    const big = isStrip(c) && !date
+      ? Math.min(H * 0.75, W * (seconds ? 0.17 : 0.24))
+      : Math.min(H * (date ? 0.34 : 0.45), W * (seconds ? 0.17 : 0.24));
+    add(seconds ? 'HH:mm:ss' : 'HH:mm', big);
+    if (date) add(`${latin}${H < 48 ? 'd MMM' : 'ddd d MMM'}`, big * 0.42);
+    return { ...base, layers, arrange: (boxes) => stackCentered(boxes, W, H, [0, big * 0.2]) };
   },
 };
 
+// Stacks boxes vertically, each centred horizontally, the whole stack centred on the screen.
+// gaps[i] is the space above box i.
+function stackCentered(boxes: { w: number; h: number }[], W: number, H: number, gaps: number[]) {
+  const gap = (i: number) => (i ? gaps[Math.min(i, gaps.length - 1)] : 0);
+  const total = boxes.reduce((s, b, i) => s + b.h + gap(i), 0);
+  let y = (H - total) / 2;
+  return boxes.map((b, i) => {
+    y += gap(i);
+    const at = { x: (W - b.w) / 2, y };
+    y += b.h;
+    return at;
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Eye moods (templates/eyes.ts), one template each plus every mood back to back.
+
+const EYE_OPTIONS: OptionDef[] = [
+  { id: 'style', label: 'Style', type: 'choice', choices: [['auto', 'Auto'], ['robot', 'Robot'], ['cartoon', 'Cartoon'], ['single', 'Single eye']] },
+  { id: 'color', label: 'Eye color', type: 'color' },
+  { id: 'bg', label: 'Background', type: 'color' },
+  { id: 'size', label: 'Eye size', type: 'choice', choices: [['0.8', 'Small'], ['1', 'Medium'], ['1.15', 'Large']] },
+  { id: 'look', label: 'Look', type: 'choice', choices: [['1', 'Fine, smooth edges'], ['2', 'Pixels ×2'], ['4', 'Pixels ×4 (smallest file)']] },
+];
+
+function eyeOptions(c: TemplateCtx, o: Options): EyeOptions {
+  const base = defaultEyeOptions(c.mono, c.round);
+  return {
+    ...base,
+    style: o.style === 'auto' ? base.style : (o.style as EyeOptions['style']),
+    eyeColor: o.color, irisColor: o.color, bgColor: o.bg,
+    size: Number(o.size), pixel: Number(o.look),
+  };
+}
+
+function eyeTemplate(id: string, name: string, icon: string, hint: string, anims: () => EyeAnim[]): AnimTemplate {
+  return {
+    id, name, icon, hint, category: 'eyes', pixel: 1, canvas: true,
+    options: EYE_OPTIONS,
+    defaults: { style: 'auto', color: '#2ee6ff', bg: '#000000', size: '1', look: '1' },
+    generate(c, o) {
+      const eo = eyeOptions(c, o);
+      let canvas: Generated['canvas'];
+      const frames = anims().flatMap((a) => {
+        const g = generateEyes(c.screenW, c.screenH, a, eo);
+        canvas = { w: g.width, h: g.height, scale: g.scale };
+        return g.frames;
+      });
+      return { frames, canvas, background: c.mono ? '#000000' : eo.bgColor };
+    },
+  };
+}
+
+const EYES: AnimTemplate[] = [
+  ...EYE_ANIMS.map((a) => eyeTemplate(`eyes-${a.id}`, a.name, a.icon, 'Eye mood', () => [a])),
+  eyeTemplate('eyes-all', 'All moods in one', 'eye', 'Every mood back to back', () => EYE_ANIMS.filter((a) => a.id !== 'look-around')),
+];
+
 export const TEMPLATES: AnimTemplate[] = [
-  clock, heart, fire, stars, rain, snow, wave, plasma, bounce, pacman, fireworks, emojiBounce, marquee,
+  clock, ...EYES, heart, fire, stars, rain, snow, wave, plasma, bounce, pacman, fireworks, emojiBounce, marquee,
   spinner, warp, matrix, equalizer, battery, wifi, radar, life,
 ];
 
@@ -733,20 +887,21 @@ export function templateContext(t: AnimTemplate, presetId: string): TemplateCtx 
 export function templateProject(t: AnimTemplate, presetId: string, o: Options, speed = 1): Project {
   const c = templateContext(t, presetId);
   const g = t.generate(c, { ...t.defaults, ...o });
+  const w = g.canvas?.w ?? c.w, h = g.canvas?.h ?? c.h;
   const p = createProject({
-    presetId, width: c.w, height: c.h, scale: c.scale, name: t.name, background: g.background ?? '#000000',
-    frames: g.frames.map((f) => newFrame(c.w, c.h, Math.max(20, Math.round(f.delay / speed)), f.data)),
+    presetId, width: w, height: h, scale: g.canvas?.scale ?? c.scale, name: t.name, background: g.background ?? '#000000',
+    frames: g.frames.map((f) => newFrame(w, h, Math.max(20, Math.round(f.delay / speed)), f.data)),
   });
   if (c.mono && !t.smoothMono) p.adjust.dither = 'none';
   if (g.layers?.length) {
     p.layers = g.layers;
-    // Centre clock layers horizontally now that their rendered width is known.
+    // Place clock layers now that their rendered size is known.
     const w = widgetsFor(p);
     if (w) {
-      p.layers = p.layers.map((l) => {
-        const i = w.layers.findIndex((x) => x.id === l.id);
-        return i >= 0 ? { ...l, x: Math.round((c.screenW - w.boxes[i].w) / 2) } : l;
-      });
+      const boxes = p.layers.map((l) => w.boxes[w.layers.findIndex((x) => x.id === l.id)] ?? { w: 0, h: 0 });
+      const at = g.arrange?.(boxes) ?? boxes.map((b, i) => ({ x: (c.screenW - b.w) / 2, y: g.layers![i].y }));
+      p.layers = p.layers.map((l, i) =>
+        w.layers.some((x) => x.id === l.id) ? { ...l, x: Math.round(at[i].x), y: Math.round(at[i].y) } : l);
     }
   }
   return p;

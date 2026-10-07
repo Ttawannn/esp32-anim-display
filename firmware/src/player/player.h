@@ -18,6 +18,8 @@ public:
 
   bool playFile(const String& name);          // /anims/<name>.dpa
   bool playMemory(uint8_t* data, size_t len); // takes ownership of a malloc'd buffer (live preview)
+  // Panel rotation for screens that are not animations (info, test pattern); files set their own.
+  void setBaseRotation(uint8_t r) { baseRotation_ = r & 3; }
   void stop();
   void tick();
 
@@ -61,6 +63,7 @@ private:
   bool colorOverlay_ = false;
   uint32_t clockAt_ = 0;
   int32_t shown_ = -1;  // frame currently on the panel
+  uint8_t baseRotation_ = 0;
 
   JPEGDEC* jpeg_ = nullptr;
   uint8_t* jpegBuf_ = nullptr;

@@ -47,10 +47,7 @@ bool PanelI2cMono::begin() {
   }
 
   sendInit(preset_.init, preset_.initLen);
-  // Rotation 0: segment remap + COM scan reversed (module's normal orientation). Rotation 2: both flipped.
-  const bool flip = (cfg_.rotation & 3) == 2;
-  command(flip ? 0xA0 : 0xA1);
-  command(flip ? 0xC0 : 0xC8);
+  setRotation(cfg_.rotation & 2);
   command(cfg_.invert ? 0xA7 : 0xA6);
   setBrightness(cfg_.brightness);
 
@@ -115,6 +112,17 @@ void PanelI2cMono::flush() {
     }
   }
   dirty_ = 0;
+}
+
+// Rotation 0: segment remap + COM scan reversed (module's normal orientation). Rotation 2: both flipped.
+bool PanelI2cMono::setRotation(uint8_t r) {
+  if (r & 1) return false;
+  rotation_ = r & 3;
+  const bool flip = rotation_ == 2;
+  command(flip ? 0xA0 : 0xA1);
+  command(flip ? 0xC0 : 0xC8);
+  markAllDirty();  // the panel RAM is now shown mirrored: resend everything
+  return true;
 }
 
 void PanelI2cMono::setBrightness(uint8_t level) {

@@ -9,7 +9,7 @@ import { sendToBoard } from '../device/send';
 import { clockTimeOf } from '../layers/clock';
 import { clockOverlay } from '../layers/preview';
 import { widgetsFor } from '../layers/raster';
-import { getPreset } from '../model/presets';
+import { getPreset, presetRotation, withRotation } from '../model/presets';
 import { totalDuration } from '../model/project';
 import { store, toast } from '../model/store';
 import type { Project } from '../model/types';
@@ -17,16 +17,22 @@ import { outputFrame } from '../render/output';
 import { composeScreen } from '../render/screen';
 import { CATEGORIES, TEMPLATES, templateProject, type AnimTemplate, type CategoryId, type Options } from '../templates/gallery';
 import { formatBytes, Icon, Modal } from './common';
+import { fitFrame, ModuleFrame } from './ModuleFrame';
+import { RotationPicker } from './RotationPicker';
 import { getLang, t } from '../i18n';
 
 let initialTemplate = 'clock';
+let initialCategory: CategoryId | 'all' = 'all';
 
 // Options that depend on the UI language (the clock's day/month names).
 function langDefaults(tpl: AnimTemplate): Options {
   return 'names' in tpl.defaults ? { ...tpl.defaults, names: getLang() } : tpl.defaults;
 }
-export function openTemplates(id?: string) {
+// Opens the gallery on a template and/or a category ("eyes", "text", ...).
+export function openTemplates(id?: string, category: CategoryId | 'all' = 'all') {
+  initialCategory = category;
   if (id) initialTemplate = id;
+  else if (category !== 'all') initialTemplate = TEMPLATES.find((x) => x.category === category)?.id ?? initialTemplate;
   store.set({ dialog: 'templates' });
 }
 
@@ -51,10 +57,12 @@ function frameCanvas(p: Project, i: number, mono: boolean) {
   return c;
 }
 
-function Thumb({ tpl, presetId, tick }: { tpl: AnimTemplate; presetId: string; tick: number }) {
+export function Thumb({ tpl, presetId, tick }: { tpl: AnimTemplate; presetId: string; tick: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const key = `${tpl.id}|${presetId}|${getLang()}`;
-  const [p, setP] = useState<Project | null>(() => thumbCache.get(key) ?? null);
+  // Keyed so a new display or rotation regenerates instead of showing the old project.
+  const [made, setMade] = useState<{ key: string; p: Project } | null>(null);
+  const p = made?.key === key ? made.p : thumbCache.get(key) ?? null;
   useEffect(() => {
     if (p) return;
     // Spread generation over idle time so the dialog opens instantly.
@@ -62,7 +70,7 @@ function Thumb({ tpl, presetId, tick }: { tpl: AnimTemplate; presetId: string; t
       try {
         const proj = templateProject(tpl, presetId, langDefaults(tpl));
         thumbCache.set(key, proj);
-        setP(proj);
+        setMade({ key, p: proj });
       } catch { /* shows the emoji instead */ }
     }, 30 + TEMPLATES.indexOf(tpl) * 25);
     return () => clearTimeout(id);
@@ -96,12 +104,15 @@ function Thumb({ tpl, presetId, tick }: { tpl: AnimTemplate; presetId: string; t
 export interface BoardTarget { host: string; info: DeviceInfo; onClose: () => void; onInstalled?: (name: string) => void }
 
 export function TemplatesDialog({ board, initialId }: { board?: BoardTarget; initialId?: string } = {}) {
-  const presetId = board ? boardPresetId(board.info) : store.state.project.presetId;
+  // Starts on the board's (or project's) rotation; every template is generated for the chosen one.
+  const startId = board ? boardPresetId(board.info) : store.state.project.presetId;
+  const [rotation, setRotation] = useState(() => presetRotation(startId));
+  const presetId = withRotation(startId, rotation);
   const [installing, setInstalling] = useState<number | null>(null);
   const preset = getPreset(presetId);
   const mono = preset.color === 'mono';
   const [id, setId] = useState(initialId ?? initialTemplate);
-  const [cat, setCat] = useState<CategoryId | 'all'>('all');
+  const [cat, setCat] = useState<CategoryId | 'all'>(board ? 'all' : initialCategory);
   const [opts, setOpts] = useState<Record<string, Options>>({});
   const [speed, setSpeed] = useState(1);
   const [tick, setTick] = useState(0);
@@ -175,12 +186,12 @@ export function TemplatesDialog({ board, initialId }: { board?: BoardTarget; ini
   const createOnly = () => { if (create()) toast(t('Created "{name}" with {n} frames', { name: t(tpl.name), n: project!.frames.length })); };
   const createAndSend = () => { if (create()) sendToBoard(); };
 
-  const zoom = Math.min(260 / preset.width, 260 / preset.height);
+  const zoom = fitFrame(presetId, 270, 300);
   const shown = TEMPLATES.filter((x) => cat === 'all' || x.category === cat);
   const visibleOptions = tpl.options.filter((op) => !(mono && op.type === 'color'));
 
   return (
-    <Modal title={t('Animation templates')} onClose={close}
+    <Modal title={t('Templates')} onClose={close}
       footer={board ? <>
         <span class="hint grow">{t('For the {display}', { display: preset.name })}</span>
         <button class="btn primary big" onClick={installOnBoard} disabled={!project || installing !== null}>
@@ -194,11 +205,12 @@ export function TemplatesDialog({ board, initialId }: { board?: BoardTarget; ini
       <div class="tpl">
         <div class="tpl-side">
           <div class="device">
-            <div class={`bezel${preset.round ? ' round' : ''}`}>
+            <ModuleFrame presetId={presetId} screenW={preset.width * zoom} screenH={preset.height * zoom}>
               <canvas ref={canvasRef} width={preset.width} height={preset.height}
                 style={{ width: preset.width * zoom, height: preset.height * zoom }} />
-            </div>
+            </ModuleFrame>
           </div>
+          <RotationPicker presetId={presetId} onChange={(id) => setRotation(presetRotation(id))} />
           <h3 class="tpl-title"><Icon name={tpl.icon} /> {t(tpl.name)}</h3>
           <p class="preview-info">
             {project && <>{t('{n} frames', { n: project.frames.length })} · {t('{s} s', { s: (totalDuration(project) / 1000).toFixed(1) })} · </>}

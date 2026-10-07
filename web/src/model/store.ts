@@ -7,7 +7,7 @@ import { cloneFrame, createProject, newFrame } from './project';
 import type { Frame, OledTint, Project } from './types';
 import type { Pixels } from './types';
 
-export type Dialog = null | 'new' | 'gif' | 'video' | 'eyes' | 'templates' | 'device';
+export type Dialog = null | 'new' | 'gif' | 'video' | 'templates' | 'device' | 'wiring';
 
 export interface EditorState {
   project: Project;

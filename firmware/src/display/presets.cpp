@@ -129,12 +129,14 @@ static const uint8_t kInitSH1106_128x64[] = {
 
 #define INIT(seq) seq, sizeof(seq)
 
-//  id, name, driver, w, h, ctrlW, ctrlH, offX, offY, invert, bgr, mirrorX, round, spiMode, spiHz, i2cHz, i2cAddr, init
+//  id, name, driver, w, h, ctrlW, ctrlH, offX, offY, invert, bgr, mirrorX, round, spiMode, spiHz, i2cHz, i2cAddr, init[, turn]
 const Preset kPresets[] = {
+  // 0.96" IPS: the controller is portrait (80x160), but the module's text reads upright with the
+  // header on top, so rotation 0 is that landscape side (controller rotation 3).
   {"st7735s_80x160", "TFT 0.96\" ST7735S 80x160", Driver::SpiRgb565,
-   80, 160, 132, 162, 26, 1, true, true, false, false, 0, 27000000, 0, 0, INIT(kInitST7735S)},
+   160, 80, 132, 162, 26, 1, true, true, false, false, 0, 27000000, 0, 0, INIT(kInitST7735S), 3},
   {"st7735s_80x160_b", "TFT 0.96\" ST7735S 80x160 (alt offset)", Driver::SpiRgb565,
-   80, 160, 132, 162, 24, 0, false, true, false, false, 0, 27000000, 0, 0, INIT(kInitST7735S)},
+   160, 80, 132, 162, 24, 0, false, true, false, false, 0, 27000000, 0, 0, INIT(kInitST7735S), 3},
   {"st7789_240x240", "TFT 1.3\" ST7789 240x240", Driver::SpiRgb565,
    240, 240, 240, 320, 0, 0, true, false, false, false, 3, 40000000, 0, 0, INIT(kInitST7789)},
   {"gc9a01_240_round", "TFT 1.28\" round GC9A01 240x240", Driver::SpiRgb565,

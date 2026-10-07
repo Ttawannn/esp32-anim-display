@@ -12,7 +12,7 @@
 └────────────────────────────────────┬────────────────────────────────────────────┘
                                      │ HTTP: upload / live preview / playlist / settings
 ┌────────────────────────────────────▼────────────────────────────────────────────┐
-│  ESP32-C3 / C6 SuperMini (firmware/)                                            │
+│  ESP32-C3 / C6 SuperMini or ESP32 DevKit (firmware/)                            │
 │   net/web.cpp ──► app/commands ──► app/controller ──► player/player ──► panel   │
 │      │                                       │                  │               │
 │   net/wifi_manager                        playlist        storage (LittleFS)    │
@@ -21,7 +21,7 @@
 ```
 
 **Principle:** all the heavy work happens in the browser: GIF/video decoding, resampling, color adjustment, dithering, color reduction and compression.
-The board receives files already sized for its display; it only decodes RLE/JPEG and streams the result to the panel in bands. No full-screen framebuffer is needed, which matters because the ESP32-C3/C6 have no PSRAM.
+The board receives files already sized for its display; it only decodes RLE/JPEG and streams the result to the panel in bands. No full-screen framebuffer is needed, which matters because these boards have no PSRAM.
 
 ## The .dpa file
 
@@ -67,7 +67,7 @@ The browser waits for an upload receipt confirming the rename. Replacement keeps
 |--------|----------------|
 | `model/` | project, display presets, palettes, store (state + undo + autosave) |
 | `editor/` | drawing tools |
-| `templates/` | procedurally generated animations: 12 eye moods (`eyes.ts`) and the 21-template gallery (`gallery.ts`, pixel helpers in `kit.ts`) |
+| `templates/` | procedurally generated animations: 12 eye moods (`eyes.ts`) and the template gallery that lists them alongside the clock and 21 animations (`gallery.ts`, pixel helpers in `kit.ts`) |
 | `layers/` | things placed on top of the animation: sticker catalogue (emoji, icons, fonts), rasterizing and baking stickers into frames, clock formats, the widget block writer/reader and its reference renderer |
 | `color/` | RGB565, color adjustment, dithering, color reduction |
 | `render/` | the image the panel will actually show + display preview |
@@ -116,7 +116,7 @@ python -m ziglang c++ -std=c++17 -O1 -w -Ifirmware/test/native/stubs -Ifirmware/
 build/controller_test.exe
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs typechecking, web tests, all native tests and firmware builds for C3/C6 on pushes and pull requests. Node, PlatformIO, firmware libraries and web dependencies are pinned; use `npm ci` for installation.
+GitHub Actions (`.github/workflows/ci.yml`) runs typechecking, web tests, all native tests and firmware builds for C3/C6/ESP32 on pushes and pull requests. Node, PlatformIO, firmware libraries and web dependencies are pinned; use `npm ci` for installation.
 
 Estimates use an AbortSignal and share an encoding job with exports. Removing the final consumer cancels queued work or terminates its active worker; cancellation does not stop another caller's export. GIFs decode one patch at a time in a separate worker and transfer completed RGBA buffers. Inputs are capped at 16 MB for GIF files, 64 MB of decoded RGBA frames, 2,000 frames and 4096 pixels per dimension; video extraction and encoding enforce the frame budget too. These are data limits, not a guarantee about total browser heap usage.
 

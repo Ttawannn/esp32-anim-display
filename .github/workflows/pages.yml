@@ -43,7 +43,7 @@ jobs:
         run: npm run build:device
       - name: Build firmware
         working-directory: firmware
-        run: python -m platformio run -e c3_supermini -e c6_supermini
+        run: python -m platformio run -e c3_supermini -e c6_supermini -e esp32_devkit
       - name: Assemble site
         run: |
           version="$(grep -oP 'FIRMWARE_VERSION "\K[^"]+' firmware/src/app/app.h)+${GITHUB_SHA::7}"
@@ -52,7 +52,7 @@ jobs:
           mkdir -p _site/flash
           sed "s/__VERSION__/${version}/" site/flash/index.html > _site/flash/index.html
           sed "s/__VERSION__/${version}/" site/flash/manifest.json > _site/flash/manifest.json
-          for env in c3_supermini c6_supermini; do
+          for env in c3_supermini c6_supermini esp32_devkit; do
             mkdir -p "_site/flash/firmware/$env"
             cp "firmware/.pio/build/$env/firmware.factory.bin" "_site/flash/firmware/$env/"
           done

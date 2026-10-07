@@ -24,7 +24,7 @@ struct Header {
   uint16_t frameCount;
   uint16_t paletteSize;
   uint16_t bgColor;
-  uint16_t flags;  // bit 0: widget block after the palette (player/widgets.h)
+  uint16_t flags;  // bit 0: widget block after the palette (player/widgets.h), bit 1: rotation set, bits 2-3: rotation
   uint32_t tableOffset;
 };
 

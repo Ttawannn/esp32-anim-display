@@ -1,6 +1,6 @@
 # esp32-anim-display
 
-**Create animations in your browser and play them on small TFT/OLED displays driven by an ESP32-C3 / ESP32-C6, over Wi-Fi.**
+**Create animations in your browser and play them on small TFT/OLED displays driven by an ESP32-C3 / ESP32-C6 SuperMini or a 30-pin ESP32 DevKit, over Wi-Fi.**
 
 Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then send them to the board with one click.
 
@@ -16,7 +16,7 @@ Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then 
 - **Setup wizard:** a new board walks you through picking the display (it detects OLEDs by itself and shows what the test pattern should look like, with one-tap fixes for inverted colours, swapped red/blue or rotation), naming the board, installing a first animation, and joining your Wi-Fi.
 - **Phone remote:** phones open a remote page with a thumbnail for every animation on the board; tap one to show it. It also has next/stop, brightness, auto-cycle, renaming and deleting files, a one-tap install of the eye moods and every template, **sending a text message to the screen**, and the board settings (display, Wi-Fi, name).
 - **Pixel art editor:** drawing tools, frames, onion skin, palette presets, undo/redo.
-- **Animation templates:** 21 ready-made animations generated for your display: fire, rain, snow, stars, ocean waves, plasma, fireworks, a bouncing ball, Pac-Man, scrolling text, emoji, spinners, an equalizer, radar, and more. Colours and speed are adjustable.
+- **One template gallery:** the 12 eye moods, a live clock and 21 generated animations in one place, with live previews, generated for your display: fire, rain, snow, stars, ocean waves, plasma, fireworks, a bouncing ball, Pac-Man, scrolling text, emoji, spinners, an equalizer, radar, and more. Colours and speed are adjustable.
 - **English or Thai:** the interface is in English with a one-click switch to Thai (EN / ไทย).
 - **Drag-and-drop objects:** drop emoji, icons, text, and the **live date and time** onto the animation, then move and resize them. The clock keeps running on the board (Thai or English names, Buddhist-era years). The board takes the time from the internet, or from the editor or remote whenever they connect.
 - **Eye templates:** 12 moods in 3 styles (robot, cartoon, single eye for round displays). Color, size and smoothness are adjustable.
@@ -47,14 +47,14 @@ The display model is selected from the web UI at runtime, so changing it needs n
 ## Getting started
 
 1. **Flash the firmware.** Either:
-   - **From the browser (easiest):** plug the board in over USB, open the [firmware installer](https://ttawannn.github.io/esp32-anim-display/flash/) in Chrome or Edge, and press **Install firmware**. The C3 or C6 is detected automatically.
+   - **From the browser (easiest):** plug the board in over USB, open the [firmware installer](https://ttawannn.github.io/esp32-anim-display/flash/) in Chrome or Edge, and press **Install firmware**. The C3, C6 or ESP32 is detected automatically.
    - **With [PlatformIO](https://platformio.org/):** run this from PowerShell or VS Code (the build does not work under Git Bash):
 
      ```bash
      cd firmware; python -m platformio run -e c3_supermini -t upload
      ```
 
-     For a C6 board, use `-e c6_supermini`.
+     For a C6 board, use `-e c6_supermini`; for a 30-pin ESP32 DevKit, `-e esp32_devkit`.
 
 2. **Join the board's Wi-Fi.** The network is `DisplayEditor-XXXX` and the password is `displayedit`. The page opens automatically, or go to http://192.168.4.1.
    - **On a phone:** the remote opens. Tap **Install the eye moods** to load all 12 of them, then tap any face to show it.
@@ -101,7 +101,7 @@ Then open http://localhost:5173.
 
 ## Status
 
-All parts are implemented and the firmware builds for both ESP32-C3 and ESP32-C6. So far it has been verified with:
+All parts are implemented and the firmware builds for the ESP32-C3, ESP32-C6 and ESP32. So far it has been verified with:
 - web unit tests
 - a native (PC) test of the C++ decoder
 - the mock board

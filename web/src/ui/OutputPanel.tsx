@@ -3,8 +3,8 @@ import { resolveMode, type EncodeResult } from '../codec/dpa';
 import { encodeProject } from '../codec/encode';
 import { deviceFileName, presetForDevice } from '../device/api';
 import { sendToBoard } from '../device/send';
-import { getPreset } from '../model/presets';
-import { retarget } from '../model/project';
+import { getPreset, sameDisplay } from '../model/presets';
+import { useBoardDisplay } from '../model/project';
 import { store, type EditorState } from '../model/store';
 import type { Encoding } from '../model/types';
 import { download } from '../storage/projectFile';
@@ -66,7 +66,8 @@ export function OutputPanel({ s }: { s: EditorState }) {
   const capacity = info ? info.fs.free : DEVICE_STORAGE;
   const pct = Math.min(100, (size / capacity) * 100);
   const avgFrame = estimate ? size / Math.max(1, estimate.frameSizes.length) : 0;
-  const mismatch = info && presetForDevice(info) !== p.presetId;
+  const boardId = info ? presetForDevice(info) : null;
+  const mismatch = !!boardId && !sameDisplay(boardId, p.presetId);
 
   return (
     <div class="section">
@@ -113,7 +114,7 @@ export function OutputPanel({ s }: { s: EditorState }) {
       {mismatch && (
         <div class="callout warn">
           {t('This project is for the {a}, but the board has the {b}', { a: getPreset(p.presetId).name, b: info!.display.name })}
-          <button class="btn small" onClick={() => store.commit(retarget(p, presetForDevice(info!)!))}>{t("Use the board's display")}</button>
+          <button class="btn small" onClick={() => store.commit(useBoardDisplay(p, boardId!))}>{t("Use the board's display")}</button>
         </div>
       )}
       {working && <p class="hint">{working}</p>}

@@ -15,7 +15,6 @@ export interface EyeOptions {
   spacing: number; // 0.4..1.6
   fps: number;
   pixel: number; // 1 = full resolution (smooth edges), 2/4 = chunky pixels
-  rotate: 0 | 90 | 270; // draw landscape eyes on a portrait panel mounted sideways
   mono: boolean;
 }
 
@@ -417,8 +416,10 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, W: number, H: number,
     return;
   }
 
-  let ew = Math.min(W * (H > W * 1.3 ? 0.4 : 0.3), H * 0.62) * o.size;
-  let eh = Math.min(ew * (o.style === 'robot' ? 1.05 : 1.2), H * 0.72);
+  // Portrait screens get taller eyes so the face fills the height.
+  const tall = H > W * 1.3;
+  let ew = Math.min(W * (tall ? 0.34 : 0.3), H * 0.62) * o.size;
+  let eh = Math.min(ew * (o.style === 'robot' ? (tall ? 1.7 : 1.05) : (tall ? 1.45 : 1.2)), H * 0.72);
   let gap = ew * 0.38 * o.spacing;
   const total = ew * 2 + gap;
   if (total > W - 2 * margin) {
@@ -476,32 +477,14 @@ export interface GeneratedEyes {
 
 export function generateEyes(screenW: number, screenH: number, anim: EyeAnim, o: EyeOptions): GeneratedEyes {
   const width = Math.floor(screenW / o.pixel), height = Math.floor(screenH / o.pixel);
-  // Landscape drawing area when rotated for a sideways-mounted portrait panel.
-  const dw = o.rotate ? height : width, dh = o.rotate ? width : height;
-  const draw = new OffscreenCanvas(dw, dh).getContext('2d')!;
-  const out = o.rotate ? new OffscreenCanvas(width, height).getContext('2d', { willReadFrequently: true })! : null;
+  const draw = new OffscreenCanvas(width, height).getContext('2d', { willReadFrequently: true })!;
   const c = colorsFor(o);
   const frameMs = Math.round(1000 / o.fps);
   const frames: GeneratedEyes['frames'] = [];
 
   const render = (l: EyePose, r: EyePose, delay: number) => {
-    drawFrame(draw, dw, dh, l, r, o, c);
-    let data: Pixels;
-    if (out) {
-      out.save();
-      if (o.rotate === 90) {
-        out.translate(width, 0);
-        out.rotate(Math.PI / 2);
-      } else {
-        out.translate(0, height);
-        out.rotate(-Math.PI / 2);
-      }
-      out.drawImage(draw.canvas, 0, 0);
-      out.restore();
-      data = out.getImageData(0, 0, width, height).data;
-    } else {
-      data = draw.getImageData(0, 0, width, height).data;
-    }
+    drawFrame(draw, width, height, l, r, o, c);
+    const data: Pixels = draw.getImageData(0, 0, width, height).data;
     if (o.pixel > 1 || o.mono) snapToPalette(data, c);
     frames.push({ data, delay });
   };

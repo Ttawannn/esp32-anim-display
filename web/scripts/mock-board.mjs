@@ -4,12 +4,21 @@
 //   DEVICE=localhost:8787 npm run dev      (editor proxies /api to it)
 //   MOCK_VERSION=0.1.0 ...                 (pretend to run old firmware)
 //   MOCK_FRESH=1 ...                       (display never configured: the setup wizard opens)
+//   MOCK_BOARD=esp32 ...                   (board type: c3 (default), c6 or esp32)
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
 const PORT = Number(process.env.PORT ?? 8787);
+// Mirrors firmware/src/board.h: default pins and the header GPIOs a display may use.
+const BOARDS = {
+  c3: { name: 'ESP32-C3 SuperMini', pins: { clk: 6, data: 7, cs: 10, dc: 4, rst: 3, bl: 5 }, usable: [0, 1, 2, 3, 4, 5, 6, 7, 10, 20, 21] },
+  c6: { name: 'ESP32-C6 SuperMini', pins: { clk: 6, data: 7, cs: 14, dc: 20, rst: 21, bl: 22 }, usable: [0, 1, 2, 3, 4, 5, 6, 7, 14, 16, 17, 18, 19, 20, 21, 22, 23] },
+  esp32: { name: 'ESP32 DevKit 30-pin', pins: { clk: 18, data: 23, cs: 5, dc: 16, rst: 17, bl: 4 }, usable: [4, 5, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33] },
+};
+const BOARD_ID = BOARDS[process.env.MOCK_BOARD] ? process.env.MOCK_BOARD : 'c3';
+const BOARD = BOARDS[BOARD_ID];
 const PRESETS = [
-  { id: 'st7735s_80x160', name: 'TFT 0.96" ST7735S 80x160', width: 80, height: 160, color: 'rgb565', round: false },
+  { id: 'st7735s_80x160', name: 'TFT 0.96" ST7735S 80x160', width: 160, height: 80, color: 'rgb565', round: false },
   { id: 'st7789_240x240', name: 'TFT 1.3" ST7789 240x240', width: 240, height: 240, color: 'rgb565', round: false },
   { id: 'gc9a01_240_round', name: 'TFT 1.28" round GC9A01 240x240', width: 240, height: 240, color: 'rgb565', round: true },
   { id: 'ssd1306_128x64', name: 'OLED 0.96" SSD1306 128x64', width: 128, height: 64, color: 'mono', round: false },
@@ -28,7 +37,7 @@ const state = {
   display: {
     preset: process.env.PRESET ?? 'st7789_240x240', rotation: 0, offset_x: 0, offset_y: 0, invert: true, bgr: false,
     mirror_x: false, spi_hz: 40000000, spi_mode: 3, i2c_hz: 800000, i2c_addr: 60, brightness: 255,
-    pins: { clk: 6, data: 7, cs: 10, dc: 4, rst: 3, bl: 5 },
+    pins: { ...BOARD.pins },
   },
   name: 'display-a1b2',
   configured: !process.env.MOCK_FRESH,
@@ -52,6 +61,16 @@ function confirmed(res, apply) {
   return send(res, 202, { ok: true, command_id: id });
 }
 const preset = () => PRESETS.find((p) => p.id === state.display.preset);
+
+// Same rule as boardPinsError() in firmware/src/board.h.
+const USABLE_PINS = BOARD.usable;
+function pinsError(p) {
+  const all = [p.clk, p.data, p.cs, p.dc, p.rst, p.bl];
+  if (p.clk < 0 || p.data < 0) return 'invalid pin';
+  if (all.some((v) => v >= 0 && !USABLE_PINS.includes(v))) return 'invalid pin';
+  if (all.some((v, i) => v >= 0 && all.indexOf(v) !== i)) return 'pin used twice';
+  return null;
+}
 
 function header(buf) {
   if (buf.length < 32 || buf.toString('latin1', 0, 4) !== 'DPA1') return null;
@@ -105,8 +124,9 @@ createServer(async (req, res) => {
     case 'GET /api/info': {
       const p = preset();
       return send(res, 200, {
-        version: VERSION, name: state.name, time: clockNow(), board: 'c3', board_name: 'Mock board', chip: 'mock', heap_free: 180000, heap_min: 150000, uptime_s: Math.round(process.uptime()),
-        display: { ok: true, preset: p.id, name: p.name, width: p.width, height: p.height, color: p.color, shape: p.round ? 'round' : 'rect', brightness: state.display.brightness,
+        version: VERSION, name: state.name, time: clockNow(), board: BOARD_ID, board_name: `Mock ${BOARD.name}`, chip: 'mock', heap_free: 180000, heap_min: 150000, uptime_s: Math.round(process.uptime()),
+        display: { ok: true, preset: p.id, name: p.name, rotation: state.display.rotation,
+          width: state.display.rotation & 1 ? p.height : p.width, height: state.display.rotation & 1 ? p.width : p.height, color: p.color, shape: p.round ? 'round' : 'rect', brightness: state.display.brightness,
           configured: state.configured, ...(state.configured ? {} : { detected: 'tft' }) },
         fs: { total: FS_TOTAL, used: used(), free: FS_TOTAL - used() },
         wifi: { ...state.wifi, hostname: `${hostFor(state.name)}.local` },
@@ -193,6 +213,11 @@ createServer(async (req, res) => {
       return send(res, 200, state.display);
     case 'PUT /api/display': {
       const display = JSON.parse((await readBody(req)).toString());
+      if (display.pins) {
+        const err = pinsError({ ...state.display.pins, ...display.pins });
+        if (err) return send(res, 400, { error: err });
+        display.pins = { ...state.display.pins, ...display.pins };
+      }
       return confirmed(res, () => { state.display = { ...state.display, ...display }; state.configured = true; });
     }
     case 'GET /api/display/presets':

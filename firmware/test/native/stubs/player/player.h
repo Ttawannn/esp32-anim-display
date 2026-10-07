@@ -9,6 +9,7 @@ public:
   void begin(Panel*) {}
   bool playFile(const String& name) { nativePlays++; name_ = name; active_ = true; live_ = false; return true; }
   bool playMemory(uint8_t* data, size_t) { free(data); active_ = live_ = true; return true; }
+  void setBaseRotation(uint8_t) {}
   void stop() { active_ = live_ = false; name_.clear(); }
   void tick() {}
   bool active() const { return active_; }

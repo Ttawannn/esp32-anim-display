@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { clockTimeOf, usesSeconds } from '../layers/clock';
 import { widgetsFor } from '../layers/raster';
 import { presetForDevice } from '../device/api';
-import { getPreset, PRESETS } from '../model/presets';
-import { retarget } from '../model/project';
+import { basePresetId, getPreset, PRESETS, presetRotation, sameDisplay, withRotation } from '../model/presets';
+import { ModuleFrame, fitFrame } from './ModuleFrame';
+import { RotationPicker } from './RotationPicker';
+import { retarget, useBoardDisplay } from '../model/project';
 import { store, type EditorState } from '../model/store';
 import type { OledTint } from '../model/types';
 import { isMono, outputFrame } from '../render/output';
@@ -15,12 +17,12 @@ export function PreviewPanel({ s }: { s: EditorState }) {
   const { project: p } = s;
   const preset = getPreset(p.presetId);
   const ref = useRef<HTMLCanvasElement>(null);
-  // Fit a 180px box (fractional zoom is fine with pixelated scaling) so the tabs below stay in view.
-  const zoom = Math.min(180 / preset.width, 180 / preset.height);
+  // The module with its frame fits a 280×210 box; the tabs below stay in view.
+  const zoom = fitFrame(p.presetId, 280, 210);
   const mono = isMono(p);
   const boardPreset = s.deviceInfo ? presetForDevice(s.deviceInfo) : null;
   const [unlocked, setUnlocked] = useState(false);
-  const following = !!boardPreset && boardPreset === p.presetId && !unlocked;
+  const following = !!boardPreset && sameDisplay(boardPreset, p.presetId) && !unlocked;
 
   // Clock layers tick in the preview like they will on the board.
   const [, setTick] = useState(0);
@@ -56,25 +58,26 @@ export function PreviewPanel({ s }: { s: EditorState }) {
       ) : (
         <>
           <div class="row">
-            <select class="grow" value={p.presetId} title={t('Display type')}
-              onChange={(e) => store.commit(retarget(p, (e.target as HTMLSelectElement).value))}>
+            <select class="grow" value={basePresetId(p.presetId)} title={t('Display type')}
+              onChange={(e) => store.commit(retarget(p, withRotation((e.target as HTMLSelectElement).value, presetRotation(p.presetId))))}>
               {PRESETS.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
             </select>
           </div>
-          {boardPreset && boardPreset !== p.presetId && (
+          {boardPreset && !sameDisplay(boardPreset, p.presetId) && (
             <div class="callout warn">
               <span class="grow">{t('The connected board has the {display}', { display: getPreset(boardPreset).name })}</span>
-              <button class="btn small" onClick={() => { store.commit(retarget(p, boardPreset)); setUnlocked(false); }}>{t("Use the board's display")}</button>
+              <button class="btn small" onClick={() => { store.commit(useBoardDisplay(p, boardPreset)); setUnlocked(false); }}>{t("Use the board's display")}</button>
             </div>
           )}
         </>
       )}
       <div class="device">
-        <div class={`bezel${preset.round ? ' round' : ''}`}>
+        <ModuleFrame presetId={p.presetId} screenW={preset.width * zoom} screenH={preset.height * zoom}>
           <canvas ref={ref} width={preset.width} height={preset.height}
             style={{ width: preset.width * zoom, height: preset.height * zoom }} />
-        </div>
+        </ModuleFrame>
       </div>
+      <RotationPicker presetId={p.presetId} onChange={(id) => store.commit(retarget(p, id))} />
       <div class="preview-info">
         {preset.width}×{preset.height} · {mono ? t('1-bit mono') : t('RGB565 color')}
       </div>

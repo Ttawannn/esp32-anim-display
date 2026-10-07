@@ -11,10 +11,14 @@ import { testPatternImage } from '../render/testPattern';
 import { defaultEyeOptions, installMoodSet } from '../templates/eyeProject';
 import { BoardName, run, waitForReboot, WifiTab } from './BoardSettings';
 import { Icon, Modal } from './common';
+import { frameFactor, ModuleFrame } from './ModuleFrame';
+import { WiringGuide } from './WiringGuide';
+import { boardSpec, pinConflicts, rememberedPins, samePins, type Pins } from '../device/boards';
+import { withRotation } from '../model/presets';
 import { getLang, t } from '../i18n';
 
-type Step = 'display' | 'check' | 'name' | 'content' | 'wifi' | 'done';
-const STEPS: [Step, string][] = [['display', 'Display'], ['check', 'Check'], ['name', 'Name'], ['content', 'Animation'], ['wifi', 'Wi-Fi']];
+type Step = 'display' | 'wire' | 'check' | 'name' | 'content' | 'wifi' | 'done';
+const STEPS: [Step, string][] = [['display', 'Display'], ['wire', 'Wiring'], ['check', 'Check'], ['name', 'Name'], ['content', 'Animation'], ['wifi', 'Wi-Fi']];
 
 let dismissed = false;
 
@@ -38,17 +42,22 @@ export function openSetupWizard() {
   window.dispatchEvent(new Event('open-setup'));
 }
 
-function PatternPreview({ preset }: { preset: DevicePreset }) {
+// The test pattern as the board draws it at its own rotation, inside the real-looking module.
+function PatternPreview({ preset, rotation }: { preset: DevicePreset; rotation: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const odd = rotation & 1;
+  const w = odd ? preset.height : preset.width, h = odd ? preset.width : preset.height;
   useEffect(() => {
-    ref.current!.getContext('2d')!.putImageData(testPatternImage(preset.width, preset.height, preset.round, preset.color === 'mono'), 0, 0);
-  }, [preset.id]);
-  const zoom = Math.min(200 / preset.width, 160 / preset.height);
+    ref.current!.getContext('2d')!.putImageData(testPatternImage(w, h, preset.round, preset.color === 'mono'), 0, 0);
+  }, [preset.id, rotation]);
+  const id = withRotation(preset.id, rotation);
+  const { fx, fy } = frameFactor(id);
+  const zoom = Math.min(240 / (w * fx), 220 / (h * fy));
   return (
     <div class="device">
-      <div class={`bezel${preset.round ? ' round' : ''}`}>
-        <canvas ref={ref} width={preset.width} height={preset.height} style={{ width: preset.width * zoom, height: preset.height * zoom }} />
-      </div>
+      <ModuleFrame presetId={id} screenW={w * zoom} screenH={h * zoom}>
+        <canvas ref={ref} width={w} height={h} style={{ width: w * zoom, height: h * zoom }} />
+      </ModuleFrame>
     </div>
   );
 }
@@ -66,8 +75,16 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
   const [choice, setChoice] = useState(info?.display.preset ?? '');
   const [busy, setBusy] = useState<string | null>(null);
   const [blank, setBlank] = useState(false);
+  const [pins, setPins] = useState<Pins | null>(null); // wiring as saved on the board
+  const [wiring, setWiring] = useState<Pins | null>(null); // wiring being edited
 
   useEffect(() => { device.presets(host).then(setPresets, () => {}); }, [host]);
+  useEffect(() => {
+    const fallback = boardSpec(info?.board).defaults;
+    // A board never set up starts from the pins picked in the Wiring dialog before it was connected.
+    const planned = info?.display.configured === false ? rememberedPins(info.board) : null;
+    device.display(host).then((d) => { setPins(d.pins); setWiring(planned ?? d.pins); }, () => { setPins(fallback); setWiring(planned ?? fallback); });
+  }, [host]);
   // Show the test pattern whenever the check step is (re)entered.
   useEffect(() => {
     if (step === 'check') device.testPattern(host).catch(() => {});
@@ -86,11 +103,11 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
   const apply = async (label: string, patch: Partial<DisplaySettings>) => {
     setBusy(label);
     try {
-      if (await run(() => device.saveDisplay(host, patch))) {
-        await waitForReboot();
-        await refreshDevice().catch(() => {});
-        await device.testPattern(host).catch(() => {});
-      }
+      if (!(await run(() => device.saveDisplay(host, patch)))) return false;
+      await waitForReboot();
+      await refreshDevice().catch(() => {});
+      await device.testPattern(host).catch(() => {});
+      return true;
     } finally {
       setBusy(null);
     }
@@ -100,8 +117,13 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
     if (d) await apply(label, change(d));
   };
 
+  const chosen = presets.find((p) => p.id === choice);
   const useDisplay = async () => {
-    if (choice !== info.display.preset || !info.display.configured) await apply(t('Setting up the display'), { preset: choice });
+    const pinsChanged = !!wiring && !!pins && !samePins(wiring, pins);
+    if (choice !== info.display.preset || !info.display.configured || pinsChanged) {
+      if (!(await apply(t('Setting up the display'), { preset: choice, ...(pinsChanged ? { pins: wiring! } : {}) }))) return;
+      if (pinsChanged) setPins(wiring);
+    }
     setBlank(false);
     setStep('check');
   };
@@ -111,7 +133,7 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
     try {
       if (what === 'eyes') {
         const d = info.display;
-        const o = defaultEyeOptions(d.width, d.height, d.color === 'mono', d.shape === 'round');
+        const o = defaultEyeOptions(d.color === 'mono', d.shape === 'round');
         const names = await installMoodSet(host, boardPresetId(info), d, o, (done, total) => setBusy(t('Installing the eye set {n}/{total}', { n: done + 1, total })));
         await device.play(host, names[0]);
       } else {
@@ -157,7 +179,21 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
             </div>
             <div class="wiz-actions">
               <button class="btn ghost" onClick={onClose}>{t('Later')}</button>
-              <button class="btn primary" disabled={!choice || !!busy} onClick={useDisplay}>{t('Use this display')} <Icon name="right" /></button>
+              <button class="btn primary" disabled={!choice || !!busy} onClick={() => setStep('wire')}>{t('Use this display')} <Icon name="right" /></button>
+            </div>
+          </>
+        )}
+
+        {step === 'wire' && chosen && wiring && (
+          <>
+            <h3>{t('Connect the display like this')}</h3>
+            <p class="hint">{t('Match the colors: each pin on the display goes to the board pin in the same row. Unplug USB while wiring. The default pins work for most people; change a pin only if it is already used.')}</p>
+            <WiringGuide preset={chosen} board={info.board} pins={wiring} onChange={setWiring} />
+            <div class="wiz-actions">
+              <button class="btn ghost" onClick={() => setStep('display')}>{t('Back')}</button>
+              <button class="btn primary" disabled={!!busy || pinConflicts(wiring, chosen.color === 'mono').size > 0} onClick={useDisplay}>
+                {t('Wired, show the test pattern')} <Icon name="right" />
+              </button>
             </div>
           </>
         )}
@@ -165,7 +201,7 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
         {step === 'check' && current && (
           <>
             <h3>{t('Does your screen look like this?')}</h3>
-            <PatternPreview preset={current} />
+            <PatternPreview preset={current} rotation={info.display.rotation ?? 0} />
             <p class="hint center">
               {current.round ? t('Red at the top, green right, blue left, a yellow circle around the edge.')
                 : mono ? t('A full border, squares in the top-left, top-right and bottom-left corners, and a checkerboard at the bottom right.')
@@ -191,9 +227,8 @@ export function SetupWizard({ onClose }: { onClose: () => void }) {
             </div>
             {blank && (
               <div class="callout warn">
-                <span>
-                  {t('Check the wiring first:')} VCC→3V3, GND→GND, {mono ? 'SCL→GPIO6, SDA→GPIO7' : `SCL/SCK→GPIO6, SDA/MOSI→GPIO7, DC, RES, CS, BLK ${t('as in the guide')}`} · {t('If the wiring is right, try another display model.')}
-                </span>
+                <span>{t('Check the wiring first, wire by wire. If the wiring is right, try another display model.')}</span>
+                <button class="btn small" onClick={() => setStep('wire')}>{t('Check the wiring')}</button>
                 <button class="btn small" onClick={() => setStep('display')}>{t('Pick another model')}</button>
               </div>
             )}

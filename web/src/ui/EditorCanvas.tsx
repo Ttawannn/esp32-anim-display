@@ -12,6 +12,7 @@ import { rgbToHex } from '../model/project';
 import { setFrameData, store, type EditorState } from '../model/store';
 import type { Layer, Pixels } from '../model/types';
 import { IconButton } from './common';
+import { frameFactor, ModuleFrame } from './ModuleFrame';
 import { t } from '../i18n';
 
 interface Stroke {
@@ -68,15 +69,18 @@ export function EditorCanvas({ s }: { s: EditorState }) {
   // Auto zoom: largest integer zoom that fits the stage.
   useLayoutEffect(() => {
     const el = stageRef.current!;
+    // The module frame is drawn around the screen, so fit the whole module.
     const update = () => {
-      const fz = Math.floor(Math.min((el.clientWidth - 40) / p.width, (el.clientHeight - 90) / p.height));
+      const screen = getPreset(p.presetId);
+      const { fx, fy } = frameFactor(p.presetId);
+      const fz = Math.floor(Math.min(((el.clientWidth - 40) * p.scale) / (screen.width * fx), ((el.clientHeight - 90) * p.scale) / (screen.height * fy)));
       setFitZoom(Math.max(1, Math.min(40, fz)));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [p.width, p.height]);
+  }, [p.width, p.height, p.presetId, p.scale]);
 
   // Clocks show the real time while editing.
   useEffect(() => {
@@ -340,12 +344,13 @@ export function EditorCanvas({ s }: { s: EditorState }) {
         </button>
         <IconButton icon="zoomIn" title={t('Zoom in')} onClick={() => store.set({ zoom: Math.min(40, z + 1) })} />
       </div>
+      <ModuleFrame presetId={p.presetId} screenW={preset.width * (z / p.scale)} screenH={preset.height * (z / p.scale)} background={p.background}>
       <canvas
         class="edit"
+        style={{ cursor, position: 'absolute', left: p.offsetX * (z / p.scale), top: p.offsetY * (z / p.scale) }}
         ref={canvasRef}
         width={p.width * z}
         height={p.height * z}
-        style={{ cursor }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -353,6 +358,7 @@ export function EditorCanvas({ s }: { s: EditorState }) {
         onPointerLeave={() => setHover(null)}
         onContextMenu={(e) => e.preventDefault()}
       />
+      </ModuleFrame>
       {dropping && <div class="drop-hint">{t('Drop to place it here')}</div>}
       <div class="meta">
         {t('Image')} {p.width}×{p.height}

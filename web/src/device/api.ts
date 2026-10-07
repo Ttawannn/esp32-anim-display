@@ -1,7 +1,7 @@
 // Client for the board API (firmware/src/net/api.cpp, docs/api.md), over Wi-Fi or USB.
 // Over Wi-Fi, an empty host means the board that served this page; otherwise http://<host>.
 
-import { PRESETS } from '../model/presets';
+import { PRESETS, withRotation } from '../model/presets';
 import { CHUNK_BYTES, fromBase64, toBase64, type SerialLink } from './serial';
 import { invalidateThumbnails } from './thumbnailCache';
 import { t } from '../i18n';
@@ -16,6 +16,7 @@ export interface DeviceInfo {
   display: {
     ok: boolean; error?: string; preset: string; name: string; width: number; height: number; color: 'rgb565' | 'mono';
     shape: 'round' | 'rect'; brightness: number;
+    rotation?: number; // the board's own rotation (firmware 0.6.0+)
     configured?: boolean; // false until the display settings were saved once (firmware 0.5.0+)
     detected?: 'oled' | 'tft'; // first boot: result of the I2C probe for an OLED
   };
@@ -101,6 +102,8 @@ const ERRORS: Record<string, string> = {
   'invalid time': "Couldn't set the board's clock",
   'invalid name': "That board name can't be used (too long or special characters)",
   'cannot save playlist': "The board couldn't save the playlist. The old one is kept.",
+  'invalid pin': "That pin can't be used on this board",
+  'pin used twice': 'The same pin is used twice',
 };
 
 function errorFrom(status: number, body: any): Error {
@@ -334,12 +337,15 @@ export const device = {
 };
 
 // Map the board's display to an editor preset by geometry (the firmware has extra variants).
+// Includes the board's own rotation ("st7789_240x240@1" for a 1.3" panel mounted sideways).
 export function presetForDevice(info: DeviceInfo): string | null {
   const d = info.display;
+  const r = (d.rotation ?? 0) & 3;
+  const [w, h] = r & 1 ? [d.height, d.width] : [d.width, d.height];
   const match = PRESETS.find(
-    (p) => p.width === d.width && p.height === d.height && p.color === d.color && p.round === (d.shape === 'round'),
+    (p) => p.width === w && p.height === h && p.color === d.color && p.round === (d.shape === 'round'),
   );
-  return match?.id ?? null;
+  return match ? withRotation(match.id, r) : null;
 }
 
 // File names on the board are limited to 48 UTF-8 bytes.

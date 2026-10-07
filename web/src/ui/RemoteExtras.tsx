@@ -67,7 +67,7 @@ export function TemplatesSection({ host, info, onInstalled }: { host: string; in
       <h3><Icon name="wand" /> {t('Animation templates')}</h3>
       <p class="hint">{t('Tap to preview, adjust the colors, then install on the board')}</p>
       <div class="tpl-chips">
-        {TEMPLATES.map((tpl) => (
+        {TEMPLATES.filter((tpl) => tpl.category !== 'eyes').map((tpl) => (
           <button key={tpl.id} class="tpl-chip" onClick={() => setOpen(tpl.id)}>
             <span class="ico"><Icon name={tpl.icon} /></span>{t(tpl.name)}
           </button>

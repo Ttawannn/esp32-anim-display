@@ -18,6 +18,8 @@ public:
   void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) override;
   void flush() override;
   void setBrightness(uint8_t level) override;
+  bool setRotation(uint8_t r) override;
+  uint8_t rotation() const override { return rotation_; }
 
   // Direct access for the player: page-layout bits, then markDirty() + flush().
   uint8_t* framebuffer() { return fb_; }
@@ -45,6 +47,7 @@ private:
   uint8_t addr_ = 0;
   uint8_t* fb_ = nullptr;
   uint8_t dirty_ = 0;
+  uint8_t rotation_ = 0;
   const char* error_ = nullptr;
 };
 

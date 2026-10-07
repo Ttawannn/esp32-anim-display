@@ -10,6 +10,10 @@
     {
       "chipFamily": "ESP32-C6",
       "parts": [{ "path": "firmware/c6_supermini/firmware.factory.bin", "offset": 0 }]
+    },
+    {
+      "chipFamily": "ESP32",
+      "parts": [{ "path": "firmware/esp32_devkit/firmware.factory.bin", "offset": 0 }]
     }
   ]
 }

@@ -1,7 +1,8 @@
 import { encodeProject } from '../codec/encode';
 import { store, toast } from '../model/store';
 import { retarget } from '../model/project';
-import { getPreset } from '../model/presets';
+import { getPreset, sameDisplay } from '../model/presets';
+import type { Project } from '../model/types';
 import { device, deviceConnectionKey, isServedByBoard, presetForDevice, setUsbLink, usbConnected, type DeviceInfo } from './api';
 import { SerialLink } from './serial';
 import { t } from '../i18n';
@@ -90,12 +91,17 @@ export async function autoConnect() {
   }
 }
 
+function isBlank(p: Project) {
+  return p.frames.length === 1 && !p.frames[0].data.some((v, i) => i % 4 === 3 && v !== 0);
+}
+
 function matchDisplay(info: DeviceInfo) {
   const presetId = presetForDevice(info);
   const p = store.state.project;
   if (!presetId || presetId === p.presetId) return;
-  const blank = p.frames.length === 1 && !p.frames[0].data.some((v, i) => i % 4 === 3 && v !== 0);
-  if (blank) store.load(retarget(p, presetId));
+  // A drawing keeps its own rotation; only a different panel is worth mentioning.
+  if (sameDisplay(presetId, p.presetId) && !isBlank(p)) return;
+  if (isBlank(p)) store.load(retarget(p, presetId));
   else toast(t('The board has the {display}. Switch to it in "Display preview".', { display: getPreset(presetId).name }));
 }
 

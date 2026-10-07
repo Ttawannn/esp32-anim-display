@@ -159,7 +159,7 @@ export function RemoteApp() {
     if (!info) return;
     const presetId = presetForDevice(info) ?? 'st7789_240x240';
     const d = info.display;
-    const o = { ...defaultEyeOptions(d.width, d.height, d.color === 'mono', d.shape === 'round'), style };
+    const o = { ...defaultEyeOptions(d.color === 'mono', d.shape === 'round'), style };
     try {
       const names = await installMoodSet(host, presetId, d, o, (done, total, name) => setInstall({ done, total, name }));
       await loadFiles();

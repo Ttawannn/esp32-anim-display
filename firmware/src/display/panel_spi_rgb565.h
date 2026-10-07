@@ -21,11 +21,14 @@ public:
   void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) override;
   void flush() override;
   void setBrightness(uint8_t level) override;
+  bool setRotation(uint8_t r) override;
+  uint8_t rotation() const override { return rotation_; }
 
 private:
   static constexpr size_t kBufPixels = 240 * 24;
 
   void sendInit(const uint8_t* seq, size_t len);
+  void applyRotation(uint8_t r);
   void cmd(uint8_t c, const uint8_t* data = nullptr, size_t len = 0);
   void setWindow(int16_t x, int16_t y, int16_t w, int16_t h);
   uint16_t* nextBuffer();
@@ -36,6 +39,7 @@ private:
   const Preset& preset_;
   uint16_t width_ = 0, height_ = 0;
   int16_t colOff_ = 0, rowOff_ = 0;
+  uint8_t rotation_ = 0;
   esp_lcd_panel_io_handle_t io_ = nullptr;
   uint16_t* bufs_[2] = {nullptr, nullptr};
   uint8_t nextBuf_ = 0;

@@ -27,24 +27,24 @@ A single firmware supports every display; the display model is chosen from the w
 
 ## 2. Hardware
 
-### Boards: ESP32-C3 SuperMini and ESP32-C6 SuperMini
-| | ESP32-C3 SuperMini | ESP32-C6 SuperMini |
-|--|--------------------|--------------------|
-| CPU | RISC-V, 1 core, 160 MHz | RISC-V, 1 core, 160 MHz |
-| SRAM | 400 KB | 512 KB |
-| PSRAM | none | none |
-| Flash | 4 MB | 4 MB (most boards; check with `esptool flash_id`) |
-| USB | native USB (CDC) | native USB (CDC) |
-| BOOT button | GPIO9 | GPIO9 |
-| On-board LED | GPIO8 (blue) | GPIO8 (RGB WS2812) |
+### Boards: ESP32-C3 SuperMini, ESP32-C6 SuperMini and ESP32 DevKit 30-pin
+| | ESP32-C3 SuperMini | ESP32-C6 SuperMini | ESP32 DevKit 30-pin (WROOM-32) |
+|--|--------------------|--------------------|--------------------|
+| CPU | RISC-V, 1 core, 160 MHz | RISC-V, 1 core, 160 MHz | Xtensa, 2 cores, 240 MHz |
+| SRAM | 400 KB | 512 KB | 520 KB |
+| PSRAM | none | none | none |
+| Flash | 4 MB | 4 MB (most boards; check with `esptool flash_id`) | 4 MB |
+| USB | native USB (CDC) | native USB (CDC) | CP2102 / CH340 USB-UART (115200) |
+| BOOT button | GPIO9 | GPIO9 | GPIO0 |
+| On-board LED | GPIO8 (blue) | GPIO8 (RGB WS2812) | GPIO2 (blue, active high) |
 
 Design consequences:
 - **No PSRAM, so no full frame in RAM (240×240×2 = 115 KB).** The firmware decodes in bands and sends them to the display over DMA immediately, using roughly 2 × 7.5 KB of buffers.
 - **Single core:** Wi-Fi and playback share the CPU.
 - **Limited storage (about 2 MB of the 4 MB flash):** files must compress well, and the web UI shows the remaining space before uploading.
-- **BOOT button (GPIO9):** present on both boards; used to switch animations.
-- **Safe mode:** press BOOT **while the boot screen is shown**. Holding it from power-on doesn't work: GPIO9 is a strapping pin, so the board would enter firmware-download mode instead.
-- **On-board LED (GPIO8):** shows status (C6 in color).
+- **BOOT button (GPIO9, GPIO0 on the ESP32):** present on every board; used to switch animations.
+- **Safe mode:** press BOOT **while the boot screen is shown**. Holding it from power-on doesn't work: BOOT is a strapping pin, so the board would enter firmware-download mode instead.
+- **On-board LED (GPIO8, GPIO2 on the ESP32):** shows status (C6 in color).
 
 ### Supported displays
 | Preset | Controller | Resolution | Bus | Color | Notes |
@@ -59,22 +59,23 @@ Design consequences:
 
 ### Pin assignment (defaults, changeable from the web UI)
 Idea: **one wiring harness for every display.** CLK and DATA are shared between SPI (TFT) and I2C (OLED), because a board drives one display at a time.
-GPIO6/7 are SPI2's IO_MUX pins on both the C3 and the C6 (bypassing the GPIO matrix), so SPI can run at up to 80 MHz.
+GPIO6/7 are SPI2's IO_MUX pins on both the C3 and the C6 (bypassing the GPIO matrix), so SPI can run at up to 80 MHz. On the ESP32 the same holds for GPIO18/23 on SPI3 (VSPI), which the panel driver uses there.
 
-| Signal | TFT pin (SPI) | OLED pin (I2C) | C3 SuperMini | C6 SuperMini |
-|--------|---------------|----------------|--------------|--------------|
-| VCC | VCC | VCC | 3V3 | 3V3 |
-| GND | GND | GND | GND | GND |
-| CLK | SCL / SCK / CLK | SCL | **GPIO6** | **GPIO6** |
-| DATA | SDA / MOSI / DIN | SDA | **GPIO7** | **GPIO7** |
-| CS | CS | — | GPIO10 | GPIO14 |
-| DC | DC / RS / A0 | — | GPIO4 | GPIO20 |
-| RST | RES / RST | — | GPIO3 | GPIO21 |
-| BL | BLK / BL / LED | — | GPIO5 (PWM) | GPIO22 (PWM) |
+| Signal | TFT pin (SPI) | OLED pin (I2C) | C3 SuperMini | C6 SuperMini | ESP32 DevKit |
+|--------|---------------|----------------|--------------|--------------|--------------|
+| VCC | VCC | VCC | 3V3 | 3V3 | 3V3 |
+| GND | GND | GND | GND | GND | GND |
+| CLK | SCL / SCK / CLK | SCL | **GPIO6** | **GPIO6** | **GPIO18** |
+| DATA | SDA / MOSI / DIN | SDA | **GPIO7** | **GPIO7** | **GPIO23** |
+| CS | CS | — | GPIO10 | GPIO14 | GPIO5 |
+| DC | DC / RS / A0 | — | GPIO4 | GPIO20 | GPIO16 |
+| RST | RES / RST | — | GPIO3 | GPIO21 | GPIO17 |
+| BL | BLK / BL / LED | — | GPIO5 (PWM) | GPIO22 (PWM) | GPIO4 (PWM) |
 
 Pins to avoid:
 - **C3:** GPIO2, 8, 9 (strapping), GPIO18, 19 (USB)
 - **C6:** GPIO4, 5, 8, 9, 15 (strapping), GPIO12, 13 (USB), GPIO16, 17 (UART0)
+- **ESP32:** GPIO0, 2, 12 (strapping, 12 high at reset selects 1.8 V flash), GPIO1, 3 (UART0 / USB), GPIO6-11 (flash), GPIO34-39 (input only)
 - GPIO6/7 on the C6 are also JTAG pins, but they work as SPI because USB debugging uses the internal USB-JTAG.
 
 Wiring notes:
@@ -192,7 +193,7 @@ These targets still need to be measured on hardware (`bench` command).
 ```
 esp32-anim-display/
 ├─ firmware/
-│  ├─ platformio.ini          # envs: c3_supermini, c6_supermini
+│  ├─ platformio.ini          # envs: c3_supermini, c6_supermini, esp32_devkit
 │  ├─ partitions/             # 4mb_storage.csv, 4mb_ota.csv
 │  ├─ src/{app,display,player,net,storage,bench}/ + main.cpp
 │  └─ test/native/            # C++ decoder test against the shared vectors
@@ -206,7 +207,7 @@ esp32-anim-display/
 ## 8. Development phases
 
 ### Phase 0: hardware bring-up ✅ (code), ⏳ (hardware)
-- PlatformIO (pioarduino) envs `c3_supermini` and `c6_supermini`.
+- PlatformIO (pioarduino) envs `c3_supermini`, `c6_supermini` and `esp32_devkit`.
 - Drivers on `esp_lcd` (SPI) and `Wire` (I2C) with a test pattern for all 5 displays.
 - **Still to measure on hardware:**
   - the highest SPI clock that stays clean (start at 40 MHz, go up to 80 MHz)

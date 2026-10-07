@@ -15,7 +15,7 @@ export function eyeProject(presetId: string, g: GeneratedEyes, o: EyeOptions, na
   return p;
 }
 
-export function defaultEyeOptions(width: number, height: number, mono: boolean, round: boolean): EyeOptions {
+export function defaultEyeOptions(mono: boolean, round: boolean): EyeOptions {
   return {
     style: round ? 'single' : 'robot',
     eyeColor: '#2ee6ff',
@@ -25,7 +25,6 @@ export function defaultEyeOptions(width: number, height: number, mono: boolean, 
     spacing: 1,
     fps: 20,
     pixel: 1,
-    rotate: height > width * 1.5 ? 90 : 0,
     mono,
   };
 }

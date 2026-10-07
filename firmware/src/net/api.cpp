@@ -62,8 +62,10 @@ static void info(JsonDocument& doc) {
   if (!appPanelOk() && panel && panel->error()) d["error"] = panel->error();
   d["preset"] = p.id;
   d["name"] = p.name;
-  d["width"] = appPanelOk() ? panel->width() : p.width;
-  d["height"] = appPanelOk() ? panel->height() : p.height;
+  // The board's orientation, not whatever the current animation turned the panel to.
+  d["width"] = (cfg.rotation & 1) ? p.height : p.width;
+  d["height"] = (cfg.rotation & 1) ? p.width : p.height;
+  d["rotation"] = cfg.rotation;
   d["color"] = p.driver == Driver::I2cMonoPage ? "mono" : "rgb565";
   d["shape"] = p.round ? "round" : "rect";
   d["brightness"] = cfg.brightness;
@@ -157,6 +159,7 @@ static int saveDisplay(JsonVariantConst json, JsonDocument& out) {
     pin("dc", cfg.pins.dc);
     pin("rst", cfg.pins.rst);
     pin("bl", cfg.pins.bl);
+    if (const char* err = boardPinsError(cfg.pins)) return fail(out, 400, err);
   }
   return confirmed(out, Cmd::SaveDisplay, &cfg, sizeof(cfg));
 }

@@ -103,3 +103,19 @@ describe('dpa', () => {
     expect(Array.from(toPages(bits, 2, 8, 0))).toEqual([0x01, 0x80]);
   });
 });
+
+describe('rotation', () => {
+  it('stores the chosen rotation and the rotated screen size', async () => {
+    const { encodeDpa, FLAG_ROTATION } = await import('./dpa');
+    const { createProject } = await import('../model/project');
+    const p = createProject({ presetId: 'st7735s_80x160@1', width: 80, height: 160, scale: 1 });
+    const v = new DataView((await encodeDpa(p)).bytes.buffer);
+    expect([v.getUint16(6, true), v.getUint16(8, true)]).toEqual([80, 160]);
+    expect(v.getUint16(26, true)).toBe(FLAG_ROTATION | (1 << 2));
+    const mono = createProject({ presetId: 'ssd1306_128x64@1', width: 128, height: 64, scale: 1 });
+    expect(mono.presetId).toBe('ssd1306_128x64'); // OLEDs turn only by 180°: a quarter turn is dropped
+    const flipped = createProject({ presetId: 'ssd1306_128x64@2', width: 128, height: 64, scale: 1 });
+    const mv = new DataView((await encodeDpa(flipped)).bytes.buffer);
+    expect((mv.getUint16(26, true) >> 2) & 3).toBe(2);
+  });
+});

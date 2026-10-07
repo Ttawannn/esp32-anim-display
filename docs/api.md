@@ -10,7 +10,7 @@ The JSON API is implemented in [firmware/src/net/api.cpp](../firmware/src/net/ap
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/info` | version, board `name`, `time` (board clock, unix seconds, 0 = unknown), board, display (`width`, `height`, `color`, `shape`), storage `fs`, Wi-Fi, player status |
+| GET | `/api/info` | version, board `name`, `display.rotation` (the board's own rotation; width/height follow it), `time` (board clock, unix seconds, 0 = unknown), board, display (`width`, `height`, `color`, `shape`), storage `fs`, Wi-Fi, player status |
 | GET | `/api/commands/status?id=<id>` | settings receipt: `{state: "pending" | "saved" | "failed"}`; failures include `error` |
 
 Display, Wi-Fi, board name, time, playlist and brightness updates return HTTP `202` with `{ok: true, command_id}`. The loop task saves and applies the queued settings; a full queue leaves persisted settings unchanged. Clients poll `/api/commands/status` before announcing success. Failed persistence returns a `failed` receipt and does not reboot. Display/Wi-Fi changes reboot 400 ms after a completed receipt is read, or after a 3-second grace period for clients that do not poll. The browser also supports older firmware returning no receipt. Settings and uploads share the 16-slot receipt pool.
@@ -61,7 +61,7 @@ Playlist writes use `/playlist.tmp`, verify the complete JSON write, and replace
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/display` | `{preset, rotation, offset_x, offset_y, invert, bgr, mirror_x, spi_hz, spi_mode, i2c_hz, i2c_addr, brightness, pins}` |
-| PUT | `/api/display` | send only the fields to change; saves and then **reboots**. Changing `preset` resets the other tuning values to that preset's defaults |
+| PUT | `/api/display` | send only the fields to change; saves and then **reboots**. Changing `preset` resets the other tuning values to that preset's defaults. `pins` (GPIO numbers, -1 = not wired) must leave CLK/DATA wired, use only header GPIOs free on that board (C3: 0-7, 10, 20, 21; C6: 0-7, 14, 16-23; ESP32 DevKit: 4, 5, 13-19, 21-23, 25-27, 32, 33) and use no pin twice, otherwise `400 invalid pin` / `400 pin used twice` |
 
 `/api/info` → `display.configured` is `false` until the display settings have been saved once; the editor and the remote then open the setup wizard. While unconfigured, `display.detected` reports the first-boot I2C probe: `"oled"` (an SSD1306/SH1106 answered at 0x3C/0x3D; the board starts with the 128×64 OLED preset) or `"tft"` (no answer: TFT modules cannot be identified, the default 240×240 TFT is used).
 | GET | `/api/display/presets` | `{presets: [{id, name, width, height, color, round}]}` |

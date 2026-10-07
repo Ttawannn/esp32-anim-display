@@ -2,7 +2,7 @@
 #include "config.h"
 #include "display/panel.h"
 
-#define FIRMWARE_VERSION "0.5.0"
+#define FIRMWARE_VERSION "0.6.0"
 
 // Shared app state owned by main.cpp.
 DisplayConfig& appConfig();

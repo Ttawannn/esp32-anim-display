@@ -20,7 +20,7 @@ Frame data    ...
 | 0 | char[4] | magic | `"DPA1"` |
 | 4 | u8 | version | `1` |
 | 5 | u8 | color_mode | `0` = RGB565, `1` = MONO (1 bit) |
-| 6 | u16 | screen_w | target display width |
+| 6 | u16 | screen_w | target display width (after the rotation in `flags`) |
 | 8 | u16 | screen_h | target display height |
 | 10 | u16 | canvas_w | stored image width |
 | 12 | u16 | canvas_h | stored image height |
@@ -31,7 +31,7 @@ Frame data    ...
 | 20 | u16 | frame_count | |
 | 22 | u16 | palette_size | 0..256 |
 | 24 | u16 | bg_color | RGB565 for the area outside the image (MONO: 0 or 1) |
-| 26 | u16 | flags | bit 0: a widget block follows the palette; other bits 0 |
+| 26 | u16 | flags | bit 0: a widget block follows the palette. Bit 1: the file sets the panel rotation, given in bits 2-3 (quarter turns, same numbering as the board's display setting; 1-bit panels only 0 or 2). Without bit 1 the board uses its own rotation. Other bits 0 |
 | 28 | u32 | frame_table_offset | |
 
 ### Frame table entry (12 bytes)

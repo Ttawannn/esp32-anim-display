@@ -25,6 +25,11 @@ public:
 
   virtual void setBrightness(uint8_t level) = 0;
 
+  // Quarter turns (0..3) without re-initialising; width()/height() follow. Mono panels only
+  // support 0 and 2. Returns false when unsupported. The previous image is not preserved.
+  virtual bool setRotation(uint8_t r) { return (r & 3) == rotation(); }
+  virtual uint8_t rotation() const { return 0; }
+
   void fillScreen(uint16_t color) { fillRect(0, 0, width(), height(), color); }
 };
 

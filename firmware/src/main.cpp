@@ -54,7 +54,8 @@ static void ledSet(uint8_t r, uint8_t g, uint8_t b) {
     rgbLedWrite(PIN_LED, r / 8, g / 8, b / 8);  // WS2812 at full power is blinding
   } else {
     pinMode(PIN_LED, OUTPUT);
-    digitalWrite(PIN_LED, (r | g | b) ? LOW : HIGH);  // active low
+    const bool on = r | g | b;
+    digitalWrite(PIN_LED, on != LED_ACTIVE_LOW ? HIGH : LOW);
   }
 }
 
@@ -63,7 +64,7 @@ static void bootStatus(const char* line) {
   if (panelOk) screenBoot(*panel, line);
 }
 
-// GPIO9 is a strapping pin: holding it through reset enters the ROM bootloader, so safe mode is
+// BOOT (GPIO9, GPIO0 on the ESP32) is a strapping pin: holding it through reset enters the ROM bootloader, so safe mode is
 // triggered by pressing it while the boot screen is shown instead.
 static void checkSafeMode() {
   bootStatus("hold BOOT: safe mode");
@@ -103,7 +104,7 @@ void setup() {
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   ledSet(255, 0, 0);
   const uint32_t serialWait = millis();
-  while (!Serial && millis() - serialWait < 1000) delay(10);  // USB CDC: give the monitor a chance
+  while (!Serial && millis() - serialWait < 1000) delay(10);  // USB CDC: give the monitor a chance (UART: at once)
 
   const bool stored = configLoad(cfg);
   displayStored = stored;

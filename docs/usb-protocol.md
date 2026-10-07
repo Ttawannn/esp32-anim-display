@@ -1,6 +1,6 @@
 # USB serial protocol (version 1)
 
-The editor can manage a board through Web Serial without a Wi-Fi connection. Open the editor on localhost or HTTPS in a browser exposing `navigator.serial`, then use **บอร์ด → เชื่อมผ่าน USB** (Board → Connect over USB), or the USB control on the remote page. Select the ESP32 native USB port (vendor ID `0x303a`). Close any serial monitor using that port first.
+The editor can manage a board through Web Serial without a Wi-Fi connection. Open the editor on localhost or HTTPS in a browser exposing `navigator.serial`, then use **บอร์ด → เชื่อมผ่าน USB** (Board → Connect over USB), or the USB control on the remote page. Select the board's port: the native USB of a C3/C6 (vendor ID `0x303a`), or the USB-UART chip of an ESP32 DevKit (CP210x `0x10c4`, CH340/CH9102 `0x1a86`, FTDI `0x0403`; 115200 baud). Close any serial monitor using that port first.
 
 The client opens at 115200 baud and releases DTR/RTS. Each request and response is one UTF-8 line beginning with `@`, followed by JSON and a newline. Unprefixed lines are firmware logs. Responses echo `id` and contain an HTTP-style `status`; JSON results/errors are in `body`.
 

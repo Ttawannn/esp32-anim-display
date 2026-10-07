@@ -17,6 +17,10 @@
 namespace dpa {
 
 constexpr uint16_t kFlagWidgets = 1;
+// Header flags bit 1: the file sets the panel rotation; bits 2-3: that rotation (quarter turns,
+// same numbering as the board's display setting). Without bit 1 the board's own rotation is used.
+constexpr uint16_t kFlagRotation = 2;
+constexpr uint8_t kRotationShift = 2;
 constexpr uint32_t kMaxWidgetBlock = 48 * 1024;
 constexpr uint8_t kMaxWidgets = 8;
 constexpr uint8_t kMaxParts = 32;

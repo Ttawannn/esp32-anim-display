@@ -232,9 +232,6 @@ export const TH: Record<string, string> = {
   "Shifted / garbage at the edge": "ภาพเลื่อน / มีขอบขยะ",
   "Trying SH1106": "ลอง SH1106",
   "Shifted / garbage lines at the side": "ภาพเลื่อน / มีเส้นขยะด้านข้าง",
-  "Check the wiring first:": "ตรวจสายก่อน:",
-  "as in the guide": "ตามคู่มือ",
-  "If the wiring is right, try another display model.": "ถ้าสายถูกแล้ว ลองเลือกรุ่นจออื่น",
   "Pick another model": "เลือกรุ่นจอใหม่",
   "Name your board": "ตั้งชื่อบอร์ด",
   "Tells your boards apart. An English name also becomes the web address, e.g. desk-eyes.local": "ใช้แยกบอร์ดหลายตัวในบ้าน ชื่อภาษาอังกฤษจะกลายเป็นที่อยู่เว็บ เช่น desk-eyes.local",
@@ -416,7 +413,6 @@ export const TH: Record<string, string> = {
   "Swap red/blue (BGR)": "สลับแดง/น้ำเงิน (BGR)",
   "Mirror left-right": "กลับซ้าย-ขวา",
   "SPI speed": "ความเร็ว SPI",
-  "Pins (GPIO, -1 = not connected)": "ขาที่ต่อ (GPIO, -1 = ไม่ได้ต่อ)",
   "Check the test pattern: the red square must be top-left (round: at the top) · red/blue swapped → BGR · colors like a photo negative → invert · missing edge or garbage lines → offset · garbled picture → lower the speed": "ดูภาพทดสอบ: สี่เหลี่ยมแดงต้องอยู่มุมซ้ายบน (จอกลม: ด้านบน) · แดง/น้ำเงินสลับ → BGR · สีเหมือนฟิล์มเนกาทีฟ → invert · ขอบหายหรือมีเส้นขยะ → offset · ภาพเพี้ยน → ลดความเร็ว",
   "Save and restart": "บันทึกและรีบูต",
   "Join Wi-Fi \"{ssid}\" and restart the board?\nAfterwards open http://{host}, or see the IP on its screen (hold BOOT for 2 seconds).": "ให้บอร์ดเชื่อม Wi-Fi \"{ssid}\" แล้วรีบูต?\nหลังจากนั้นเปิด http://{host} หรือดู IP บนจอ (กดปุ่ม BOOT ค้าง 2 วินาที)",
@@ -532,7 +528,6 @@ export const TH: Record<string, string> = {
   "Keep it to edit later (.dpe)": "เก็บไว้แก้ต่อ (.dpe)",
   "Download .dpa": "ดาวน์โหลด .dpa",
   "The file the board plays": "ไฟล์สำหรับเล่นบนบอร์ด",
-  "Install firmware on a board": "ติดตั้งเฟิร์มแวร์ลงบอร์ด",
   "Flash over USB from the browser": "แฟลชผ่าน USB จากเบราว์เซอร์",
   "Fire, rain, stars, fireworks, a clock and 20+ more": "ไฟ ฝน ดาว พลุ นาฬิกา และอีก 20+ แบบ",
   "12 ready-made moods": "12 อารมณ์ พร้อมใช้",
@@ -774,4 +769,56 @@ export const TH: Record<string, string> = {
 
   // ui/RemoteExtras.tsx
   "Type a message, e.g. Happy birthday!": "พิมพ์ข้อความ เช่น สุขสันต์วันเกิด!",
+
+  // templates/gallery.ts (eyes)
+  "Eyes": "ดวงตา",
+  "Look": "ลักษณะ",
+  "Eye mood": "อารมณ์ดวงตา",
+  "Every mood back to back": "ทุกอารมณ์ต่อกัน",
+
+  // ui/TopBar.tsx
+  "Templates": "แม่แบบ",
+  "Eyes, clocks and {n} animations in one place": "ดวงตา นาฬิกา และแอนิเมชันรวม {n} แบบในที่เดียว",
+  "12 moods in 3 styles": "12 อารมณ์ 3 สไตล์",
+  "Clock & text": "นาฬิกาและข้อความ",
+  "Live time, date and scrolling text": "เวลา วันที่ และตัวอักษรวิ่ง",
+
+  // ui/StartScreen.tsx
+  "See all {n} templates": "ดูแม่แบบทั้งหมด {n} แบบ",
+  "Or start from": "หรือเริ่มจาก",
+  "Open project": "เปิดโปรเจกต์",
+
+  // ui/WiringGuide.tsx, wiring step
+  "Check the wiring first, wire by wire. If the wiring is right, try another display model.": "ไล่ตรวจสายทีละเส้นก่อน ถ้าสายถูกแล้ว ลองเลือกรุ่นจออื่น",
+  "Check the wiring": "ดูวิธีต่อสาย",
+  "Wiring": "ต่อสาย",
+  "Connect the display like this": "ต่อสายจอแบบนี้",
+  "Match the colors: each pin on the display goes to the board pin in the same row. Unplug USB while wiring. The default pins work for most people; change a pin only if it is already used.": "ดูตามสี: ขาบนจอแต่ละขาต่อเข้ากับขาบนบอร์ดในแถวเดียวกัน ถอดสาย USB ก่อนต่อ ขาค่าเริ่มต้นใช้ได้กับเกือบทุกคน เปลี่ยนเฉพาะเมื่อขานั้นถูกใช้ไปแล้ว",
+  "Wired, show the test pattern": "ต่อแล้ว แสดงภาพทดสอบ",
+  "Display pin": "ขาบนจอ",
+  "Board pin": "ขาบนบอร์ด",
+  "if your module has it": "ถ้าจอของคุณมีขานี้",
+  "Not wired": "ไม่ได้ต่อ",
+  "not on this board": "ไม่มีบนบอร์ดนี้",
+  "default": "ค่าเริ่มต้น",
+  "The same board pin is used twice. Pick another pin for the red rows.": "ขาบนบอร์ดถูกใช้ซ้ำ เลือกขาอื่นให้แถวสีแดง",
+  "RES not connected: tie RES to 3V3.": "ไม่ได้ต่อ RES: ให้ต่อ RES เข้ากับ 3V3",
+  "BLK not connected: leave it open or tie it to 3V3. Brightness then stays at full.": "ไม่ได้ต่อ BLK: ปล่อยว่างหรือต่อเข้ากับ 3V3 ได้ ความสว่างจะเต็มตลอด",
+  "SPI is fastest with CLK on GPIO{clk} and DATA on GPIO{data}. On other pins, lower the SPI speed if the picture is garbled.": "SPI เร็วที่สุดเมื่อ CLK อยู่ที่ GPIO{clk} และ DATA อยู่ที่ GPIO{data} ถ้าใช้ขาอื่นแล้วภาพเพี้ยน ให้ลดความเร็ว SPI",
+  "The board prints only the number: GPIO{n} is the pin marked {n}.": "บนบอร์ดพิมพ์ไว้แค่ตัวเลข: GPIO{n} คือขาที่เขียนว่า {n}",
+  "The board prints a D before the number: GPIO{n} is the pin marked D{n}. GPIO16 and GPIO17 are marked RX2 and TX2.": "บนบอร์ดพิมพ์ D นำหน้าตัวเลข: GPIO{n} คือขาที่เขียนว่า D{n} ส่วน GPIO16 และ GPIO17 เขียนว่า RX2 และ TX2",
+  "That pin can't be used on this board": "ขานี้ใช้กับบอร์ดนี้ไม่ได้",
+  "The same pin is used twice": "มีขาที่ถูกใช้ซ้ำ",
+
+  // ui/WiringDialog.tsx
+  "Which display pin goes to which board pin": "ขาไหนของจอต่อกับขาไหนของบอร์ด",
+  "How to wire the display": "วิธีต่อสายจอ",
+  "Board": "บอร์ด",
+  "Reset to default": "กลับเป็นค่าเริ่มต้น",
+  "Install firmware": "ติดตั้งเฟิร์มแวร์",
+  "Connected board:": "บอร์ดที่เชื่อมต่อ:",
+  "The board restarts to use new pins.": "บอร์ดจะรีสตาร์ตเพื่อใช้ขาใหม่",
+  "Your pins are kept in this browser. When you connect this board, the setup wizard uses them.": "ขาที่เลือกจะจำไว้ในเบราว์เซอร์นี้ เมื่อเชื่อมต่อบอร์ด ตัวช่วยตั้งค่าจะใช้ขาเหล่านี้",
+  "Mounting direction": "ทิศที่ติดตั้งจอ",
+  "How the display sits in your build. Used for the boot and IP screens and for templates and messages installed from the phone. Animations sent from the editor turn by their own project rotation.": "จอติดตั้งอยู่ในชิ้นงานทิศไหน ใช้กับหน้าบูต หน้าแสดง IP และ template หรือข้อความที่ติดตั้งจากมือถือ ส่วนแอนิเมชันที่ส่งจาก editor จะหมุนตามการตั้งค่าของ project เอง",
 };

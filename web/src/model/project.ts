@@ -1,5 +1,5 @@
 import { DEFAULT_ADJUST, type Frame, type Pixels, type Project } from './types';
-import { fitScale, getPreset } from './presets';
+import { fitScale, getPreset, presetRotation, withRotation } from './presets';
 
 let nextFrameId = 1;
 
@@ -47,6 +47,11 @@ export function centerOnScreen(p: Project) {
   const preset = getPreset(p.presetId);
   p.offsetX = Math.floor((preset.width - p.width * p.scale) / 2);
   p.offsetY = Math.floor((preset.height - p.height * p.scale) / 2);
+}
+
+// Switches to the board's panel but keeps the rotation chosen for this animation.
+export function useBoardDisplay(p: Project, boardPresetId: string): Project {
+  return retarget(p, withRotation(boardPresetId, presetRotation(p.presetId)));
 }
 
 // Switching displays keeps the artwork and picks the largest scale that fits the new screen.

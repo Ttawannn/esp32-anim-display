@@ -5,6 +5,9 @@ import { device, usbConnected, type DevicePreset, type DisplaySettings, type Wif
 import { connectUsb, refreshDevice } from '../device/session';
 import { store, toast } from '../model/store';
 import { Icon } from './common';
+import { WiringGuide } from './WiringGuide';
+import { frameFactor, ModuleFrame } from './ModuleFrame';
+import { pinConflicts } from '../device/boards';
 import { t } from '../i18n';
 
 export async function run(fn: () => Promise<unknown>, ok?: string) {
@@ -71,7 +74,32 @@ export function BoardName({ host }: { host: string }) {
 
 // ---------------------------------------------------------------------------------------------
 
-const ROTATIONS = ['0°', '90°', '180°', '270°'];
+// How the display module sits on the board's project, shown as the module itself turned each way.
+// It sets the board's own screens (boot, IP, test pattern) and what is made without a project
+// (templates and messages from the phone, the setup wizard). Editor animations carry their own.
+function MountPicker({ preset, rotation, onChange }: { preset: DevicePreset; rotation: number; onChange: (r: number) => void }) {
+  const options = preset.color === 'mono' ? [0, 2] : [0, 1, 2, 3];
+  return (
+    <div class="mount-picker" role="radiogroup" aria-label={t('Mounting direction')}>
+      {options.map((r) => {
+        const id = r ? `${preset.id}@${r}` : preset.id;
+        const [w, h] = r & 1 ? [preset.height, preset.width] : [preset.width, preset.height];
+        const { fx, fy } = frameFactor(id);
+        const zoom = Math.min(72 / (w * fx), 72 / (h * fy));
+        return (
+          <button key={r} role="radio" aria-label={`${r * 90}°`} aria-checked={rotation === r} class={`mount-option${rotation === r ? ' sel' : ''}`} onClick={() => onChange(r)}>
+            <span class="mount-module">
+              <ModuleFrame presetId={id} screenW={w * zoom} screenH={h * zoom}>
+                <span class="mount-up"><Icon name="arrowUp" /></span>
+              </ModuleFrame>
+            </span>
+            <small>{r * 90}°</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function DisplayTab({ host }: { host: string }) {
   const [d, setD] = useState<DisplaySettings | null>(null);
@@ -98,19 +126,20 @@ export function DisplayTab({ host }: { host: string }) {
           {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </div>
-      <div class="row">
-        <span class="hint">{t('Rotation')}</span>
-        <select value={d.rotation} onChange={(e) => set({ rotation: num((e.target as HTMLSelectElement).value) })}>
-          {ROTATIONS.map((r, i) => (mono && i % 2 ? null : <option key={i} value={i}>{r}</option>))}
-        </select>
-        {!mono && (
-          <>
-            <span class="hint">offset</span>
-            <input type="number" value={d.offset_x} onChange={(e) => set({ offset_x: num((e.target as HTMLInputElement).value) })} />
-            <input type="number" value={d.offset_y} onChange={(e) => set({ offset_y: num((e.target as HTMLInputElement).value) })} />
-          </>
-        )}
-      </div>
+      {preset && (
+        <section class="mount-section">
+          <h4>{t('Mounting direction')}</h4>
+          <p class="hint">{t('How the display sits in your build. Used for the boot and IP screens and for templates and messages installed from the phone. Animations sent from the editor turn by their own project rotation.')}</p>
+          <MountPicker preset={preset} rotation={d.rotation} onChange={(rotation) => set({ rotation })} />
+        </section>
+      )}
+      {!mono && (
+        <div class="row">
+          <span class="hint">offset</span>
+          <input type="number" value={d.offset_x} onChange={(e) => set({ offset_x: num((e.target as HTMLInputElement).value) })} />
+          <input type="number" value={d.offset_y} onChange={(e) => set({ offset_y: num((e.target as HTMLInputElement).value) })} />
+        </div>
+      )}
       <div class="row">
         <label class="check"><input type="checkbox" checked={d.invert} onChange={() => set({ invert: !d.invert })} /> {t('Invert colors')}</label>
         {!mono && <label class="check"><input type="checkbox" checked={d.bgr} onChange={() => set({ bgr: !d.bgr })} /> {t('Swap red/blue (BGR)')}</label>}
@@ -142,17 +171,12 @@ export function DisplayTab({ host }: { host: string }) {
           </>
         )}
       </div>
-      <details>
-        <summary class="hint" style={{ cursor: 'pointer' }}>{t('Pins (GPIO, -1 = not connected)')}</summary>
-        <div class="row">
-          {(['clk', 'data', 'cs', 'dc', 'rst', 'bl'] as const).map((k) => (
-            <label key={k} class="hint">{k.toUpperCase()}{' '}
-              <input type="number" min={-1} max={48} value={d.pins[k]}
-                onChange={(e) => set({ pins: { ...d.pins, [k]: num((e.target as HTMLInputElement).value) } })} />
-            </label>
-          ))}
-        </div>
-      </details>
+      {preset && (
+        <section class="wiring-section">
+          <h4>{t('Wiring')}</h4>
+          <WiringGuide preset={preset} board={store.state.deviceInfo?.board} pins={d.pins} onChange={(pins) => set({ pins })} />
+        </section>
+      )}
       <label class="field">
         <span>{t('Brightness')}</span>
         <input type="range" min={0} max={255} value={d.brightness}
@@ -165,7 +189,7 @@ export function DisplayTab({ host }: { host: string }) {
       </p>
       <div class="row" style={{ justifyContent: 'flex-end' }}>
         <button class="btn" onClick={() => run(() => device.testPattern(host))}>{t('Test pattern')}</button>
-        <button class="btn primary" onClick={save}>{t('Save and restart')}</button>
+        <button class="btn primary" disabled={pinConflicts(d.pins, mono).size > 0} onClick={save}>{t('Save and restart')}</button>
       </div>
     </>
   );

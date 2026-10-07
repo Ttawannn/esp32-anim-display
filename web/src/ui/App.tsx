@@ -5,13 +5,13 @@ import { nudgeLayer, removeLayer } from '../model/layers';
 import { addFrame, deleteFrame, selectFrame, store, useEditor } from '../model/store';
 import { DeviceDialog } from './DeviceDialog';
 import { EditorCanvas } from './EditorCanvas';
-import { EyesDialog } from './EyesDialog';
 import { ImportGifDialog } from './ImportGifDialog';
 import { ImportVideoDialog } from './ImportVideoDialog';
 import { NewProjectDialog } from './NewProjectDialog';
 import { SidePanel } from './SidePanel';
 import { isBlankProject, StartScreen } from './StartScreen';
 import { SetupWizardAuto } from './SetupWizard';
+import { WiringDialog } from './WiringDialog';
 import { TemplatesDialog } from './TemplatesDialog';
 import { Timeline } from './Timeline';
 import { ToolBar, TOOLS } from './ToolBar';
@@ -94,9 +94,9 @@ export function App() {
       {s.dialog === 'new' && <NewProjectDialog />}
       {s.dialog === 'gif' && <ImportGifDialog />}
       {s.dialog === 'video' && <ImportVideoDialog />}
-      {s.dialog === 'eyes' && <EyesDialog />}
       {s.dialog === 'templates' && <TemplatesDialog />}
       {s.dialog === 'device' && <DeviceDialog />}
+      {s.dialog === 'wiring' && <WiringDialog />}
       <SetupWizardAuto />
       {s.toast && <div class={`toast${s.toast.error ? ' error' : ''}`} role="status">{s.toast.text}</div>}
     </div>

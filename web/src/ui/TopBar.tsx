@@ -9,6 +9,7 @@ import { ConnectionChip } from './ConnectionChip';
 import { LangSwitch } from './LangSwitch';
 import { Menu, MenuItem, MenuSeparator } from './Menu';
 import { openTemplates } from './TemplatesDialog';
+import { TEMPLATES } from '../templates/gallery';
 import { t } from '../i18n';
 
 export async function openProjectFile() {
@@ -54,17 +55,21 @@ export function TopBar({ s }: { s: EditorState }) {
         <MenuItem icon="save" label={t('Save project')} hint={t('Keep it to edit later (.dpe)')} onClick={saveProject} />
         <MenuSeparator />
         <MenuItem icon="download" label={t('Download .dpa')} hint={t('The file the board plays')} onClick={downloadDpa} />
-        <MenuSeparator />
-        <MenuItem icon="board" label={t('Install firmware on a board')} hint={t('Flash over USB from the browser')}
-          onClick={() => window.open(firmwareInstallerUrl(), '_blank', 'noopener')} />
       </Menu>
       <Menu label={t('Create')} icon="sparkle" open={menu === 'create'} onToggle={toggle('create')}>
-        <MenuItem icon="wand" label={t('Animation templates')} hint={t('Fire, rain, stars, fireworks, a clock and 20+ more')} onClick={() => openTemplates()} />
-        <MenuItem icon="sparkle" label={t('Eye templates')} hint={t('12 ready-made moods')} onClick={() => open('eyes')} />
-        <MenuItem icon="clock" label={t('Digital clock')} hint={t('Live time on the board')} onClick={() => openTemplates('clock')} />
+        <MenuItem icon="wand" label={t('Templates')} hint={t('Eyes, clocks and {n} animations in one place', { n: TEMPLATES.length })} onClick={() => openTemplates()} />
+        <MenuItem icon="eye" label={t('Eyes')} hint={t('12 moods in 3 styles')} onClick={() => openTemplates(undefined, 'eyes')} />
+        <MenuItem icon="clock" label={t('Clock & text')} hint={t('Live time, date and scrolling text')} onClick={() => openTemplates('clock', 'text')} />
+        <MenuSeparator />
         <MenuItem icon="image" label={t('Import GIF')} hint={t('Use a ready-made animation')} onClick={() => open('gif')} />
         <MenuItem icon="film" label={t('Import video')} hint="MP4, WebM, MOV" onClick={() => open('video')} />
       </Menu>
+      <button class="btn ghost" title={t('Which display pin goes to which board pin')} onClick={() => open('wiring')}>
+        <Icon name="cable" /><span class="lbl">{t('Wiring')}</span>
+      </button>
+      <a class="btn ghost" href={firmwareInstallerUrl()} target="_blank" rel="noopener" title={t('Flash over USB from the browser')}>
+        <Icon name="board" /><span class="lbl">{t('Install firmware')}</span>
+      </a>
       <span class="tb-sep" />
       <IconButton icon="undo" title={t('Undo (Ctrl+Z)')} disabled={!store.canUndo} onClick={() => store.undo()} />
       <IconButton icon="redo" title={t('Redo (Ctrl+Y)')} disabled={!store.canRedo} onClick={() => store.redo()} />

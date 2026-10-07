@@ -42,8 +42,14 @@ static void rememberLast(const String& name) {
   p.end();
 }
 
+// Info and test screens use the board's own rotation (an animation may have turned the panel).
+static void baseRotation() {
+  panel->setRotation(appConfig().rotation);
+}
+
 static void showIdle() {
   player.stop();
+  baseRotation();
   screenInfo(*panel);
 }
 
@@ -147,6 +153,7 @@ bool controllerRenameFile(const String& from, const String& to) {
 static void beginOverlay() {
   if (player.active() && !player.isLive()) resumeName = player.name();
   player.stop();
+  baseRotation();
 }
 
 void controllerShowInfo(uint32_t ms) {
@@ -255,6 +262,7 @@ static void handle(Command& c) {
 void controllerBegin(Panel* p) {
   panel = p;
   player.begin(p);
+  player.setBaseRotation(appConfig().rotation);
   playlistLoad(playlist);
   startDefault();
 }

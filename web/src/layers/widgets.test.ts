@@ -71,7 +71,7 @@ describe('widget block', () => {
     p.frames = [newFrame(60, 60, 100, a), newFrame(60, 60, 100, a.slice())]; // second frame unchanged
     const { bytes } = await encodeDpa(p, undefined, undefined, built);
     const v = new DataView(bytes.buffer);
-    expect(v.getUint16(26, true)).toBe(FLAG_WIDGETS);
+    expect(v.getUint16(26, true) & FLAG_WIDGETS).toBe(FLAG_WIDGETS);
     const table = v.getUint32(28, true);
     expect(table - 32 - v.getUint16(22, true) * 2).toBe(built.block.length);
     const off = v.getUint32(table + 12, true);

@@ -4,11 +4,12 @@ import { SerialLink } from '../device/serial';
 import { firmwareInstallerUrl } from '../device/send';
 import { firmwareOutdated } from '../device/version';
 import { connectUsb, disconnectUsb, refreshDevice, setLive } from '../device/session';
-import { getPreset } from '../model/presets';
-import { retarget } from '../model/project';
+import { getPreset, sameDisplay } from '../model/presets';
+import { useBoardDisplay } from '../model/project';
 import { store, toast, useEditor } from '../model/store';
 import { Icon } from './common';
 import { FirmwareNotice } from './FirmwareNotice';
+import { openSetupWizard } from './SetupWizard';
 import { useDismiss } from './Menu';
 import { t } from '../i18n';
 
@@ -37,7 +38,7 @@ export function ConnectionChip() {
   };
 
   const devicePreset = info ? presetForDevice(info) : null;
-  const mismatch = !!devicePreset && devicePreset !== s.project.presetId;
+  const mismatch = !!devicePreset && !sameDisplay(devicePreset, s.project.presetId);
 
   const label = info ? info.name || (usb ? 'USB' : 'Wi-Fi') : t('No board connected');
   const outdated = !!info && firmwareOutdated(info.version);
@@ -61,7 +62,7 @@ export function ConnectionChip() {
               {mismatch && (
                 <div class="callout warn">
                   {t('This project is for the {a}, but the board has the {b}', { a: getPreset(s.project.presetId).name, b: info.display.name })}
-                  <button class="btn small" onClick={() => store.commit(retarget(s.project, devicePreset!))}>{t("Use the board's display")}</button>
+                  <button class="btn small" onClick={() => store.commit(useBoardDisplay(s.project, devicePreset!))}>{t("Use the board's display")}</button>
                 </div>
               )}
               <label class="toggle">
@@ -79,6 +80,9 @@ export function ConnectionChip() {
                   <button class="btn" disabled={!!working} onClick={() => run(t('Refreshing'), refreshDevice)}>{t('Refresh')}</button>
                 )}
               </div>
+              <button class="btn wide" onClick={() => { setOpen(false); openSetupWizard(); }}>
+                <Icon name="sparkle" /> {t('Re-run setup')}
+              </button>
             </div>
           ) : (
             <div class="conn-status">
@@ -107,6 +111,9 @@ export function ConnectionChip() {
               <p class="hint" style={{ margin: '12px 0 0' }}>
                 {t('No firmware on the board yet?')} <a href={firmwareInstallerUrl()} target="_blank" rel="noopener">{t('Install it from the browser')}</a>
               </p>
+              <button class="btn wide" style={{ marginTop: 8 }} onClick={() => { setOpen(false); store.set({ dialog: 'wiring' }); }}>
+                <Icon name="cable" /> {t('How to wire the display')}
+              </button>
             </div>
           )}
           {working && <div class="hint">{working}…</div>}

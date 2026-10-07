@@ -2,7 +2,7 @@
 
 import { expand565Table, to565 } from '../color/rgb565';
 import { toIndices, quantize } from '../color/quantize';
-import { getPreset } from '../model/presets';
+import { getPreset, presetRotation } from '../model/presets';
 import { hexToRgb } from '../model/project';
 import type { Project } from '../model/types';
 import { isMono, processFrame } from '../render/output';
@@ -14,6 +14,7 @@ export const FRAME_INDEXED = 0;
 export const FRAME_JPEG = 1;
 export const FRAME_MONO = 2;
 export const FLAG_WIDGETS = 1;
+export const FLAG_ROTATION = 2; // bits 2-3 hold the rotation the board must use for this file
 const HEADER_SIZE = 32;
 const ENTRY_SIZE = 12;
 
@@ -210,7 +211,8 @@ function assemble(p: Project, mode: OutputMode, palette: Uint16Array, frames: En
   v.setUint16(20, frames.length, true);
   v.setUint16(22, palette.length, true);
   v.setUint16(24, mode === 'mono' ? monoBgBit(p) : to565(br, bgc, bb), true);
-  v.setUint16(26, widgets ? FLAG_WIDGETS : 0, true);
+  // Every file says how the panel is turned, so it plays the same whatever the board's setting.
+  v.setUint16(26, (widgets ? FLAG_WIDGETS : 0) | FLAG_ROTATION | (presetRotation(p.presetId) << 2), true);
   v.setUint32(28, tableOffset, true);
   palette.forEach((c, i) => v.setUint16(HEADER_SIZE + i * 2, c, true));
   if (widgets) out.set(widgets, widgetsOffset);

@@ -153,6 +153,11 @@ bool Player::open(std::unique_ptr<Source> src) {
   rowPx_ = (uint16_t*)malloc(h_.canvasW * 2);
   if (!row_ || !rowPx_) return fail("out of memory (row buffer)");
 
+  // Orientation chosen in the editor (absolute), else the board's own. 1-bit panels turn only
+  // by 180°, so the editor offers them 0° / 180° only.
+  const uint8_t rot = (h_.flags & dpa::kFlagRotation) ? (h_.flags >> dpa::kRotationShift) & 3 : baseRotation_;
+  if (!panel_->setRotation(rot)) panel_->setRotation(baseRotation_);
+
   // Files made for a different screen size are centred.
   baseX_ = h_.offsetX + ((int)panel_->width() - (int)h_.screenW) / 2;
   baseY_ = h_.offsetY + ((int)panel_->height() - (int)h_.screenH) / 2;

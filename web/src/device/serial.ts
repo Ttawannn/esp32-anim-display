@@ -18,6 +18,8 @@ export interface PortLike {
 }
 
 const ESPRESSIF_VID = 0x303a; // native USB of ESP32-C3/C6 (USB-Serial-JTAG)
+// USB-UART chips on ESP32 DevKits: Silicon Labs CP210x, WCH CH340/CH9102, FTDI.
+const BOARD_VIDS = [ESPRESSIF_VID, 0x10c4, 0x1a86, 0x0403];
 export const CHUNK_BYTES = 3072; // must not exceed the firmware's kMaxReadChunk
 
 export class SerialLink {
@@ -43,13 +45,14 @@ export class SerialLink {
     const serial = navigator.serial!;
     let port: SerialPort | undefined;
     if (reuseGranted) {
-      port = (await serial.getPorts()).find((p) => p.getInfo().usbVendorId === ESPRESSIF_VID);
+      port = (await serial.getPorts()).find((p) => BOARD_VIDS.includes(p.getInfo().usbVendorId ?? -1));
       if (!port) throw new Error('no granted port');
     } else {
-      port = await serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF_VID }] });
+      port = await serial.requestPort({ filters: BOARD_VIDS.map((usbVendorId) => ({ usbVendorId })) });
     }
     await port.open({ baudRate: 115200 });
-    // Keep EN/BOOT released: on the USB-Serial-JTAG these lines can reset the chip into the bootloader.
+    // Keep EN/BOOT released: on the USB-Serial-JTAG and on a DevKit's auto-reset circuit these lines
+    // can reset the chip into the bootloader.
     await port.setSignals({ dataTerminalReady: false, requestToSend: false }).catch(() => {});
     const link = new SerialLink(port);
     port.addEventListener('disconnect', () => link.handleClose());

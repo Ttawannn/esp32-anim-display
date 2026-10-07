@@ -46,6 +46,6 @@ jobs:
           build/robustness_test shared/test-vectors
           g++ -std=c++17 -O1 -Wall -Wextra -Ifirmware/test/native/stubs -Ifirmware/src firmware/test/native/controller_test.cpp firmware/src/app/controller.cpp firmware/src/app/commands.cpp -o build/controller_test
           build/controller_test
-      - name: Build ESP32-C3 and ESP32-C6
+      - name: Build ESP32-C3, ESP32-C6 and ESP32
         working-directory: firmware
-        run: python -m platformio run -e c3_supermini -e c6_supermini
+        run: python -m platformio run -e c3_supermini -e c6_supermini -e esp32_devkit

@@ -704,3 +704,63 @@ label.switch input { width: 20px; height: 20px; }
 
 .cards .card.mood-card { display: flex; align-items: center; gap: 8px; text-align: left; line-height: 1.25; }
 .cards .card.mood-card svg { width: 22px; height: 22px; margin: 0; flex: none; }
+
+/* Start screen: template picks */
+.start-picks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 6px 0 16px; }
+.start-pick {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px 10px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer;
+  transition: transform .15s var(--ease), border-color .15s, background .15s;
+}
+.start-pick:hover { transform: translateY(-2px); border-color: rgba(79, 140, 255, .55); background: var(--panel-2); }
+.start-pick .tpl-thumb { height: 86px; }
+.start-pick .tpl-thumb canvas { max-width: 100%; max-height: 86px; }
+.start-pick .name { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; text-align: center; }
+.start-pick .name svg { width: 14px; height: 14px; color: #8fb3ff; flex: none; }
+.start-all { margin: 0 auto 18px; display: inline-flex; gap: 10px; padding: 0 26px; height: 48px; }
+.start-other { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.start-other .hint { margin-right: 4px; }
+@media (max-width: 900px) { .start-picks { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .start-picks { grid-template-columns: repeat(2, 1fr); } }
+
+/* Display module frame (ModuleFrame.tsx) */
+/* Wiring guide: module with coloured pins + table of wires */
+.wiring { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; margin: 10px 0; }
+.wiring-module { flex: none; display: grid; place-items: center; min-width: 160px; padding: 8px 0; }
+.wiring-table { flex: 1; min-width: 240px; }
+.wiring-head, .wiring-row { display: grid; grid-template-columns: 14px 1fr minmax(150px, auto); align-items: center; gap: 10px; }
+.wiring-head { grid-template-columns: 1fr minmax(150px, auto); padding: 0 0 4px 24px; }
+.wiring-row { padding: 5px 0; border-top: 1px solid var(--line); }
+.wiring-row b { font-size: 13px; letter-spacing: .02em; }
+.wiring-row b small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; letter-spacing: 0; }
+.wiring-row.bad select { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.wiring-fixed { padding: 0 10px; color: var(--muted); font-weight: 600; font-size: 13px; }
+.wire-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); }
+.wiring-notes { margin: 8px 0; padding-left: 18px; }
+.wiring-notes li.bad { color: var(--danger); }
+.mount-section { margin: 12px 0 8px; }
+.mount-section > h4 { margin: 0; font-size: 13px; }
+.mount-section > .hint { margin: 2px 0 8px; }
+.mount-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.mount-option {
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 4px;
+  width: 92px; height: 112px; padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--panel-2); color: var(--muted); cursor: pointer;
+}
+.mount-option:hover { border-color: var(--line-2); }
+.mount-option.sel { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); color: var(--text); }
+.mount-module { flex: 1; display: grid; place-items: center; }
+.mount-module .module-frame { filter: none; }
+.mount-up { display: grid; place-items: center; width: 100%; height: 100%; color: #fff; }
+.mount-up svg { width: 60%; height: 60%; max-width: 22px; max-height: 22px; }
+.wiring-section { margin: 14px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.wiring-section > h4 { margin: 0; font-size: 13px; }
+.module-frame { position: relative; flex: none; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .55)); }
+.module-frame > svg { position: absolute; transform-origin: center; }
+.module-screen { position: absolute; overflow: hidden; }
+.module-screen.round { border-radius: 50%; }
+.module-screen canvas { display: block; image-rendering: pixelated; }
+.stage .module-frame { margin: 4px 0; }
+.rotation-picker { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; }
+.rotation-picker .seg { flex: 1; margin: 0; }
+.rotation-picker .seg button { height: 30px; font-size: 12px; }

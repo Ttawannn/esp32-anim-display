@@ -1,6 +1,6 @@
 # Plan: drawing layers that move and scale as objects
 
-Status: steps 1-6 implemented; not yet tried on a real board. Scope is the web editor only (`web/`). The `.dpa` format, the firmware and the
+Status: phases 1 and 2 implemented; not yet tried on a real board. Scope is the web editor only (`web/`). The `.dpa` format, the firmware and the
 REST API do not change: the board still receives flattened frames.
 
 ## Goal
@@ -62,6 +62,10 @@ type Layer = PaintLayer | StickerLayer | ClockLayer;              // every kind 
 - **Arrow keys** nudge the selected layer; Delete removes it.
 - **Flip H/V** flip the selected paint layer's cel on this frame around its own centre.
 - **Picker** samples the visible result.
+- **Drawing on a sticker:** with an emoji / icon / text selected, the first stroke turns it into a
+  paint layer in the same place (`rasterizeSticker`, one cel shared by every frame; Ctrl+Z undoes
+  it). The sticker panel also has a "Draw on it" button. Strokes then change only the current
+  frame's cel, like any paint layer.
 
 ### Layers tab (`ui/LayersPanel.tsx`)
 
@@ -95,6 +99,34 @@ type Layer = PaintLayer | StickerLayer | ClockLayer;              // every kind 
 5. Persistence, thumbnails, palette, Thai strings. *(done)*
 6. Tests (`layers/paint.test.ts`: cels, baking, `.dpe` round trip), typecheck, browser check. *(done)*
 7. Docs (`CLAUDE.md` layers section, `docs/architecture.md`), `npm run build:device`. *(done)*
+
+## Phase 2: one word, layered templates
+
+### One concept: "layer"
+
+Everything placed on the picture (drawings, emoji / icons / text, clocks) is a **layer** in the UI,
+in English and Thai ("เลเยอร์"). The words "object", "วัตถุ" and "ของที่ใส่" are gone from the UI.
+The background drawing is the "Background" row at the bottom of the Layers tab, not a layer.
+Internally the three kinds stay (`paint`, `sticker`, `clock`).
+
+### Templates arrive as layers
+
+`templateProject` (and `eyeProject`) turn generated frames into layers so a template can be moved,
+resized, hidden or drawn on right away:
+
+- **Generic split (every template):** the most common colour across all frames (when it covers at
+  least a quarter of the pixels) becomes the project background. Every other pixel goes into a paint
+  layer named after the template, one trimmed cel per frame; the background drawing starts empty.
+  Full-screen effects with no dominant colour (plasma, fire) become one layer as they are.
+- **Named parts:** a generator may return `parts: { name, frames }[]`, frames drawn on transparent
+  images, stacked bottom to top over its background frames. Used where a template has separate
+  things: Pac-Man (dots, ghost, Pac-Man), bouncing ball (shadow, ball), eyes (left eye, right eye,
+  split at the canvas centre; one eye on round screens).
+- Clock templates keep their clock layers on top.
+- Output on the board is unchanged: baking the layers over the background reproduces the
+  generated frames (`gallery.test.ts` checks this pixel for pixel on every pure-pixel template
+  without parts, on every display).
+- `eyeProject` (mood sets installed straight to the board) stays flat: nobody edits those.
 
 ## Later
 

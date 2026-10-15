@@ -3,18 +3,22 @@ import {
   ellipse, floodFill, getPixel, hexToRgba, line, rect, shifted, TRANSPARENT,
   type RGBA, type Surface,
 } from '../editor/tools';
-import { usesSeconds } from '../layers/clock';
+import { clockTimeOf, usesSeconds } from '../layers/clock';
 import { celAlphaAt, celInto, toLayer, trimCel, type Box } from '../layers/paint';
 import { clockOverlay } from '../layers/preview';
 import { bakeLayers } from '../layers/raster';
 import {
-  addLayer, INSERT_MIME, layerBounds, layersOf, liftToLayer, paintTarget, scaleLayer, setCel, updateLayer, withCel, type InsertItem,
+  addLayer, INSERT_MIME, layerBounds, layersOf, liftToLayer, paintTarget, rasterizeSticker, scaleLayer, setCel, updateLayer, withCel,
+  type InsertItem,
 } from '../model/layers';
 import { getPreset } from '../model/presets';
 import { rgbToHex } from '../model/project';
+import { isMono, processFrame } from '../render/output';
+import { monoCanvasImage, oledScreenColor } from '../render/screen';
 import { setFrameData, store, toast, type EditorState } from '../model/store';
 import type { Cel, Frame, Layer, PaintLayer, Pixels } from '../model/types';
 import { IconButton } from './common';
+import { layerLabel } from './InsertPanel';
 import { frameFactor, ModuleFrame } from './ModuleFrame';
 import { t } from '../i18n';
 
@@ -68,6 +72,7 @@ export function EditorCanvas({ s }: { s: EditorState }) {
   const z = zoom || fitZoom;
   const layers = layersOf(p);
   const target = paintTarget(p, s.selectedLayer);
+  const selectedSticker = layers.find((l) => l.id === s.selectedLayer && l.kind === 'sticker');
   const hasClock = layers.some((l) => l.kind === 'clock' && !l.hidden);
   const seconds = layers.some((l) => l.kind === 'clock' && !l.hidden && usesSeconds(l.format));
 
@@ -138,20 +143,25 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     ctx.restore();
   };
 
-  const toImage = (data: Pixels) => {
+  const toImage = (data: Pixels | ImageData) => {
     const img = new OffscreenCanvas(p.width, p.height);
-    img.getContext('2d')!.putImageData(new ImageData(data, p.width, p.height), 0, 0);
+    img.getContext('2d')!.putImageData(data instanceof ImageData ? data : new ImageData(data, p.width, p.height), 0, 0);
     return img;
   };
 
-  // The frame as the panel shows it (drawing, paint layers and stickers), plus editor overlays.
-  const draw = (shown: Frame) => {
+  // The frame as the panel shows it (drawing, paint layers and stickers), plus editor overlays. A
+  // 1-bit OLED shows its real output: lit pixels in the chosen OLED color, with threshold and dither.
+  const panelImage = (shown: Frame, proj: typeof p) => isMono(proj)
+    ? monoCanvasImage(proj, (processFrame(proj, shown) as { bits: Uint8Array }).bits, s.oledTint)
+    : bakeLayers(proj, shown);
+
+  const draw = (shown: Frame, proj = p) => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, c.width, c.height);
-    ctx.drawImage(toImage(bakeLayers(p, shown)), 0, 0, p.width * z, p.height * z);
+    ctx.drawImage(toImage(panelImage(shown, proj)), 0, 0, p.width * z, p.height * z);
     if (onion && frameIndex > 0) {
       ctx.globalAlpha = 0.3;
       ctx.drawImage(toImage(bakeLayers(p, p.frames[frameIndex - 1])), 0, 0, p.width * z, p.height * z);
@@ -176,10 +186,10 @@ export function EditorCanvas({ s }: { s: EditorState }) {
   };
 
   // What a stroke in progress looks like on the frame.
-  const strokeFrame = (st: Stroke): Frame => {
-    if (!st.layer) return { ...frame, data: st.work.slice() }; // copy: baked results are cached per buffer
+  const strokeFrame = (st: Stroke, f = frame): Frame => {
+    if (!st.layer) return { ...f, data: st.work.slice() }; // copy: baked results are cached per buffer
     const { l, ox, oy, w, h } = st.layer;
-    return withCel(frame, l.id, { x: ox, y: oy, w, h, data: st.work });
+    return withCel(f, l.id, { x: ox, y: oy, w, h, data: st.work });
   };
 
   useEffect(() => {
@@ -198,8 +208,8 @@ export function EditorCanvas({ s }: { s: EditorState }) {
   const surface = (data: Pixels): Surface => ({ data, w: p.width, h: p.height, mirror: s.mirror });
 
   // Work area for drawing on a paint layer: the canvas and the existing cel, in layer pixels.
-  const layerWork = (l: PaintLayer) => {
-    const cel = frame.cels?.[l.id];
+  const layerWork = (l: PaintLayer, f = frame) => {
+    const cel = f.cels?.[l.id];
     let x0 = Math.floor(-l.x / l.scale), y0 = Math.floor(-l.y / l.scale);
     let x1 = Math.ceil((p.width - l.x) / l.scale), y1 = Math.ceil((p.height - l.y) / l.scale);
     if (cel) {
@@ -302,7 +312,7 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     if (tool === 'select') {
       const hit = hitLayer(pt);
       if (!hit) {
-        // Empty spot: drag a rectangle to turn the drawing inside it into an object.
+        // Empty spot: drag a rectangle to turn the drawing inside it into a layer.
         startDrag({ id: '', mode: 'marquee' });
         return;
       }
@@ -336,14 +346,29 @@ export function EditorCanvas({ s }: { s: EditorState }) {
       if (a) store.set(secondary ? { secondary: rgbToHex(r, g, b) } : { primary: rgbToHex(r, g, b), tool: 'pencil' });
       return;
     }
+    if (tool === 'fill' && (x < 0 || y < 0 || x >= p.width || y >= p.height)) return;
+
+    // Drawing on a selected emoji / icon / text turns it into a drawing layer first (Ctrl+Z undoes it).
+    let into = target, proj = p;
+    if (!into && selectedSticker) {
+      if (selectedSticker.hidden) {
+        toast(t('This layer is hidden. Show it to edit it.'), true);
+        return;
+      }
+      into = rasterizeSticker(selectedSticker.id);
+      if (!into) return;
+      proj = store.state.project;
+      toast(t('Turned it into a drawing layer so you can draw on it (Ctrl+Z to undo)'));
+    }
+    const cur = proj.frames[frameIndex];
+
     if (tool === 'fill') {
-      if (x < 0 || y < 0 || x >= p.width || y >= p.height) return;
-      if (target) {
-        const { area, data } = layerWork(target);
+      if (into) {
+        const { area, data } = layerWork(into, cur);
         const st: Stroke = { base: data, work: data, color, startX: x, startY: y, lastX: x, lastY: y, changed: true, layer: area };
         const surf = strokeSurface(st);
         for (const m of passes(st)) floodFill(surf, ...m(x, y), color);
-        setCel(frameIndex, target.id, trimCel(data, area.w, area.h, area.ox, area.oy));
+        setCel(frameIndex, into.id, trimCel(data, area.w, area.h, area.ox, area.oy));
         return;
       }
       const work = frame.data.slice();
@@ -353,15 +378,15 @@ export function EditorCanvas({ s }: { s: EditorState }) {
     }
     canvasRef.current!.setPointerCapture(e.pointerId);
     let st: Stroke;
-    if (target) {
-      const { area, data } = layerWork(target);
+    if (into) {
+      const { area, data } = layerWork(into, cur);
       st = { base: data, work: data.slice(), color, startX: x, startY: y, lastX: x, lastY: y, changed: false, layer: area };
     } else {
       st = { base: frame.data, work: frame.data.slice(), color, startX: x, startY: y, lastX: x, lastY: y, changed: false };
     }
     stroke.current = st;
     apply(st, x, y);
-    draw(strokeFrame(st));
+    draw(strokeFrame(st, cur), proj);
   };
 
   const dragLayer = (d: LayerDrag, pt: { x: number; y: number }) => {
@@ -472,6 +497,12 @@ export function EditorCanvas({ s }: { s: EditorState }) {
           {z}×
         </button>
         <IconButton icon="zoomIn" title={t('Zoom in')} onClick={() => store.set({ zoom: Math.min(40, z + 1) })} />
+        {drawing && tool !== 'move' && !target && selectedSticker && (
+          <button class="btn small target-chip" title={t('Click to draw on the background instead')}
+            onClick={() => store.set({ selectedLayer: null })}>
+            {t('Drawing on: {name}', { name: layerLabel(selectedSticker, clockTimeOf(new Date())) })} ✕
+          </button>
+        )}
         {drawing && target && (
           <button class="btn small target-chip" title={t('Click to draw on the background instead')}
             onClick={() => store.set({ selectedLayer: null })}>
@@ -479,9 +510,10 @@ export function EditorCanvas({ s }: { s: EditorState }) {
           </button>
         )}
       </div>
-      <ModuleFrame presetId={p.presetId} screenW={preset.width * (z / p.scale)} screenH={preset.height * (z / p.scale)} background={p.background}>
+      <ModuleFrame presetId={p.presetId} screenW={preset.width * (z / p.scale)} screenH={preset.height * (z / p.scale)}
+        background={isMono(p) ? oledScreenColor(p, s.oledTint) : p.background}>
       <canvas
-        class="edit"
+        class={`edit${isMono(p) ? ' oled' : ''}`}
         style={{ cursor, position: 'absolute', left: p.offsetX * (z / p.scale), top: p.offsetY * (z / p.scale) }}
         ref={canvasRef}
         width={p.width * z}
@@ -501,7 +533,7 @@ export function EditorCanvas({ s }: { s: EditorState }) {
         {p.scale > 1 && <> · {t('enlarged ×{k}', { k: p.scale })}</>} → {t('screen')} {preset.width}×{preset.height}
         {!fitsExactly && <> · {t('margin')} {p.offsetX},{p.offsetY}</>}
         {hover && tool !== 'select' && <> · ({hover.x}, {hover.y})</>}
-        {tool === 'select' && <> · {t('drag to move · drag the corner to resize · drag on an empty spot to turn a drawing into an object')}</>}
+        {tool === 'select' && <> · {t('drag to move · drag the corner to resize · drag on an empty spot to turn a drawing into a layer')}</>}
         {tool === 'move' && target && <> · {t('moves this frame of the layer only')}</>}
       </div>
     </div>

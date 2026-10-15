@@ -845,6 +845,7 @@ const EYE_OPTIONS: OptionDef[] = [
   { id: 'style', label: 'Style', type: 'choice', choices: [['auto', 'Auto'], ['robot', 'Robot'], ['cartoon', 'Cartoon'], ['single', 'Single eye']] },
   { id: 'color', label: 'Eye color', type: 'color' },
   { id: 'bg', label: 'Background', type: 'color' },
+  { id: 'mouth', label: 'Mouth', type: 'choice', choices: [['no', 'No'], ['yes', 'Yes']] },
   { id: 'size', label: 'Eye size', type: 'choice', choices: [['0.8', 'Small'], ['1', 'Medium'], ['1.15', 'Large']] },
   { id: 'look', label: 'Look', type: 'choice', choices: [['1', 'Fine, smooth edges'], ['2', 'Pixels ×2'], ['4', 'Pixels ×4 (smallest file)']] },
 ];
@@ -855,25 +856,28 @@ function eyeOptions(c: TemplateCtx, o: Options): EyeOptions {
     ...base,
     style: o.style === 'auto' ? base.style : (o.style as EyeOptions['style']),
     eyeColor: o.color, irisColor: o.color, bgColor: o.bg,
-    size: Number(o.size), pixel: Number(o.look),
+    size: Number(o.size), pixel: Number(o.look), mouth: o.mouth === 'yes',
   };
 }
 
-function eyeTemplate(id: string, name: string, icon: string, hint: string, anims: () => EyeAnim[]): AnimTemplate {
+function eyeTemplate(id: string, name: string, icon: string, hint: string, anims: () => EyeAnim[], mouth = false): AnimTemplate {
   return {
     id, name, icon, hint, category: 'eyes', pixel: 1, canvas: true,
     options: EYE_OPTIONS,
-    defaults: { style: 'auto', color: '#2ee6ff', bg: '#000000', size: '1', look: '1' },
+    defaults: { style: 'auto', color: '#2ee6ff', bg: '#000000', mouth: mouth ? 'yes' : 'no', size: '1', look: '1' },
     generate(c, o) {
       const eo = eyeOptions(c, o);
       let canvas: Generated['canvas'];
+      const mouths: Pixels[] = [];
       const frames = anims().flatMap((a) => {
         const g = generateEyes(c.screenW, c.screenH, a, eo);
         canvas = { w: g.width, h: g.height, scale: g.scale };
+        if (g.mouth) mouths.push(...g.mouth);
         return g.frames;
       });
+      const parts = mouths.length ? [{ name: 'Mouth', frames: mouths }] : undefined;
       const split = eo.style === 'single' || !canvas ? undefined : { x: Math.floor(canvas.w / 2), names: ['Left eye', 'Right eye'] as [string, string] };
-      return { frames, canvas, split, background: c.mono ? '#000000' : eo.bgColor };
+      return { frames, canvas, split, parts, background: c.mono ? '#000000' : eo.bgColor };
     },
   };
 }
@@ -881,6 +885,8 @@ function eyeTemplate(id: string, name: string, icon: string, hint: string, anims
 const EYES: AnimTemplate[] = [
   ...EYE_ANIMS.map((a) => eyeTemplate(`eyes-${a.id}`, a.name, a.icon, 'Eye mood', () => [a])),
   eyeTemplate('eyes-all', 'All moods in one', 'eye', 'Every mood back to back', () => EYE_ANIMS.filter((a) => a.id !== 'look-around')),
+  eyeTemplate('eyes-face', 'Face with a mouth', 'smile', 'Eyes and a mouth that change with every mood',
+    () => EYE_ANIMS.filter((a) => a.id !== 'look-around'), true),
 ];
 
 export const TEMPLATES: AnimTemplate[] = [

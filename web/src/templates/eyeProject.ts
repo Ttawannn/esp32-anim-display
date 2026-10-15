@@ -1,18 +1,27 @@
 import { encodeProject } from '../codec/encode';
 import { device, deviceFileName } from '../device/api';
 import { createProject, newFrame } from '../model/project';
-import type { Project } from '../model/types';
+import type { Pixels, Project } from '../model/types';
 import { EYE_ANIMS, generateEyes, type EyeOptions, type GeneratedEyes } from './eyes';
+import { blendPixel } from '../layers/paint';
 import { t } from '../i18n';
 
 // Wraps generated eye frames in an editor project for the given display preset.
 export function eyeProject(presetId: string, g: GeneratedEyes, o: EyeOptions, name: string): Project {
   const p = createProject({
     presetId, width: g.width, height: g.height, scale: g.scale, name, background: o.mono ? '#000000' : o.bgColor,
-    frames: g.frames.map((f) => newFrame(g.width, g.height, f.delay, f.data)),
+    frames: g.frames.map((f, i) => newFrame(g.width, g.height, f.delay, withMouth(f.data, g.mouth?.[i]))),
   });
   if (o.mono) p.adjust.dither = 'none';
   return p;
+}
+
+// Flat picture for the board: the mouth (if any) painted over the eyes.
+function withMouth(data: Pixels, mouth?: Pixels): Pixels {
+  if (!mouth) return data;
+  const out = data.slice();
+  for (let i = 0; i < out.length; i += 4) blendPixel(out, i, mouth, i);
+  return out;
 }
 
 export function defaultEyeOptions(mono: boolean, round: boolean): EyeOptions {

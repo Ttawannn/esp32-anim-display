@@ -16,6 +16,7 @@ export interface EyeOptions {
   fps: number;
   pixel: number; // 1 = full resolution (smooth edges), 2/4 = chunky pixels
   mono: boolean;
+  mouth?: boolean; // a mouth under the eyes that follows the mood (drawn as its own picture)
 }
 
 export interface EyePose {
@@ -401,9 +402,13 @@ function drawEye(
   }
 }
 
-function drawFrame(ctx: OffscreenCanvasRenderingContext2D, W: number, H: number, l: EyePose, r: EyePose, o: EyeOptions, c: Colors) {
+// Height of the area the eyes use: the whole screen, or the top part when there is a mouth.
+const eyesHeight = (H: number, o: EyeOptions) => (o.mouth ? H * 0.68 : H);
+
+function drawFrame(ctx: OffscreenCanvasRenderingContext2D, W: number, fullH: number, l: EyePose, r: EyePose, o: EyeOptions, c: Colors) {
   ctx.fillStyle = c.bg;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, fullH);
+  const H = eyesHeight(fullH, o);
   const margin = Math.max(1, Math.min(W, H) * 0.04);
 
   if (o.style === 'single') {
@@ -412,7 +417,7 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, W: number, H: number,
     const maxDY = Math.max(0, (H - ew) / 2 - margin) * 0.35;
     const cx = W / 2 + l.lookX * maxDX + l.shake * ew * 0.08;
     const cy = H / 2 + l.lookY * maxDY + l.bounce * ew * 0.08;
-    drawEye(ctx, cx, cy, ew, ew, l, 0, o, c, H);
+    drawEye(ctx, cx, cy, ew, ew, l, 0, o, c, fullH);
     return;
   }
 
@@ -433,10 +438,55 @@ function drawFrame(ctx: OffscreenCanvasRenderingContext2D, W: number, H: number,
   const place = (p: EyePose, side: number) => {
     const cx = W / 2 + side * (gap / 2 + ew / 2) + p.lookX * maxDX + p.shake * ew * 0.12;
     const cy = H / 2 + p.lookY * maxDY + p.bounce * eh * 0.12;
-    drawEye(ctx, cx, cy, ew, eh, p, side, o, c, H);
+    drawEye(ctx, cx, cy, ew, eh, p, side, o, c, fullH);
   };
   place(l, -1);
   place(r, 1);
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+// The mouth follows the eyes' mood: smile (happy, love), frown (sad, angry), "O" (surprised,
+// snoring), a wavy line (dizzy) and a smirk when the eyes differ (wink, suspicious).
+function drawMouth(ctx: OffscreenCanvasRenderingContext2D, W: number, H: number, l: EyePose, r: EyePose, o: EyeOptions, c: Colors) {
+  ctx.clearRect(0, 0, W, H);
+  const p = lerpPose(l, r, 0.5);
+  const top = eyesHeight(H, o);
+  const mw = Math.min(W * 0.34, (H - top) * 1.6) * o.size;
+  const lw = Math.max(1.5, mw * 0.1);
+  const cx = W / 2 + p.lookX * mw * 0.15 + p.shake * mw * 0.12;
+  const cy = top + (H - top) * 0.42 + p.bounce * mw * 0.1;
+  const smile = clamp(p.happy * 0.9 + (p.heart > 0.5 ? 0.8 : 0) + 0.15 - p.sad - p.angry * 0.7 - p.tired * 0.2, -1, 1);
+  const open = clamp(Math.max(0, (p.scale - 1.1) * 4) + (1 - p.pupil) * 1.2 + (p.zzz > 0.02 ? 0.3 : 0), 0, 1);
+  const tilt = clamp(r.happy - l.happy + (r.scale - l.scale) * 1.5 + (l.tired - r.tired) * 0.6, -1, 1);
+  ctx.fillStyle = ctx.strokeStyle = o.style === 'robot' || o.mono ? c.eye : c.sclera;
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (p.spiral > 0.5) {
+    for (let i = 0; i <= 40; i++) {
+      const t = i / 40, x = cx - mw / 2 + t * mw, y = cy + Math.sin(t * Math.PI * 4 + p.spin) * mw * 0.08;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  } else if (open > 0.08) {
+    const rx = mw * (0.12 + 0.08 * open), ry = rx * (1 + 0.35 * open);
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (smile > 0.6) {
+    // Big open smile: flat top, round bottom.
+    const half = mw / 2, depth = mw * 0.32 * smile;
+    ctx.moveTo(cx - half, cy - depth * 0.3);
+    ctx.quadraticCurveTo(cx, cy + depth * 1.6, cx + half, cy - depth * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    const half = mw / 2, dy = tilt * mw * 0.14;
+    ctx.moveTo(cx - half, cy + dy);
+    ctx.quadraticCurveTo(cx, cy + smile * mw * 0.45, cx + half, cy - dy);
+    ctx.stroke();
+  }
 }
 
 function hexRgb(hex: string): number[] {
@@ -468,25 +518,48 @@ function snapToPalette(data: Pixels, c: Colors) {
   }
 }
 
+// Pixel-art and 1-bit look for a picture on a transparent background: hard edges, style colors.
+function snapLayer(data: Pixels, c: Colors) {
+  const pal = [...new Set(Object.values(c))].map(hexRgb);
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 128) { data[i + 3] = 0; continue; }
+    let bd = Infinity, best = 0;
+    for (let k = 0; k < pal.length; k++) {
+      const d = (data[i] - pal[k][0]) ** 2 + (data[i + 1] - pal[k][1]) ** 2 + (data[i + 2] - pal[k][2]) ** 2;
+      if (d < bd) { bd = d; best = k; }
+    }
+    data.set([pal[best][0], pal[best][1], pal[best][2], 255], i);
+  }
+}
+
 export interface GeneratedEyes {
   width: number;
   height: number;
   scale: number;
   frames: { data: Pixels; delay: number }[];
+  mouth?: Pixels[]; // with `mouth`: the mouth of each frame on a transparent background
 }
 
 export function generateEyes(screenW: number, screenH: number, anim: EyeAnim, o: EyeOptions): GeneratedEyes {
   const width = Math.floor(screenW / o.pixel), height = Math.floor(screenH / o.pixel);
   const draw = new OffscreenCanvas(width, height).getContext('2d', { willReadFrequently: true })!;
+  const mouthCtx = o.mouth ? new OffscreenCanvas(width, height).getContext('2d', { willReadFrequently: true })! : null;
   const c = colorsFor(o);
   const frameMs = Math.round(1000 / o.fps);
   const frames: GeneratedEyes['frames'] = [];
+  const mouth: Pixels[] = [];
 
   const render = (l: EyePose, r: EyePose, delay: number) => {
     drawFrame(draw, width, height, l, r, o, c);
     const data: Pixels = draw.getImageData(0, 0, width, height).data;
     if (o.pixel > 1 || o.mono) snapToPalette(data, c);
     frames.push({ data, delay });
+    if (mouthCtx) {
+      drawMouth(mouthCtx, width, height, l, r, o, c);
+      const m: Pixels = mouthCtx.getImageData(0, 0, width, height).data;
+      if (o.pixel > 1 || o.mono) snapLayer(m, c);
+      mouth.push(m);
+    }
   };
 
   let L = { ...NEUTRAL }, R = { ...NEUTRAL };
@@ -508,5 +581,5 @@ export function generateEyes(screenW: number, screenH: number, anim: EyeAnim, o:
     }
     L = tL; R = tR;
   }
-  return { width, height, scale: o.pixel, frames };
+  return { width, height, scale: o.pixel, frames, ...(mouthCtx && { mouth }) };
 }

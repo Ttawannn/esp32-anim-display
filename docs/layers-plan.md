@@ -121,7 +121,8 @@ resized, hidden or drawn on right away:
 - **Named parts:** a generator may return `parts: { name, frames }[]`, frames drawn on transparent
   images, stacked bottom to top over its background frames. Used where a template has separate
   things: Pac-Man (dots, ghost, Pac-Man), bouncing ball (shadow, ball), eyes (left eye, right eye,
-  split at the canvas centre; one eye on round screens).
+  split at the canvas centre; one eye on round screens), and the mouth of eye templates with
+  "Mouth: Yes" (the new "Face with a mouth" template has it on by default).
 - Clock templates keep their clock layers on top.
 - Output on the board is unchanged: baking the layers over the background reproduces the
   generated frames (`gallery.test.ts` checks this pixel for pixel on every pure-pixel template

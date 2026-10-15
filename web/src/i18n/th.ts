@@ -842,4 +842,8 @@ export const TH: Record<string, string> = {
   "Left eye": "ตาซ้าย",
   "Right eye": "ตาขวา",
   "Background animation": "พื้นหลังเคลื่อนไหว",
+  // eye templates with a mouth
+  "Mouth": "ปาก",
+  "Face with a mouth": "หน้าตาพร้อมปาก",
+  "Eyes and a mouth that change with every mood": "ตากับปากที่เปลี่ยนไปตามอารมณ์",
 };

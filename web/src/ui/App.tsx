@@ -54,7 +54,8 @@ export function App() {
       if (ctrl && key === 'z') { e.preventDefault(); e.shiftKey ? store.redo() : store.undo(); return; }
       if (ctrl && key === 'y') { e.preventDefault(); store.redo(); return; }
       if (ctrl) return;
-      // A selected layer takes Delete, arrows (Shift = 10 px) and Esc.
+      // A selected layer takes Delete, arrows (Shift = 10 px) and Esc (Esc in any tool: back to the background drawing).
+      if (e.key === 'Escape' && st.selectedLayer) { store.set({ selectedLayer: null }); return; }
       const layer = st.tool === 'select' ? st.selectedLayer : null;
       if (layer) {
         const step = e.shiftKey ? 10 : 1;

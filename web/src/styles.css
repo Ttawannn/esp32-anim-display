@@ -563,6 +563,15 @@ label.switch input { width: 20px; height: 20px; }
 .layer-ico { width: 20px; display: inline-flex; justify-content: center; font-size: 16px; }
 .layer-ico svg { width: 16px; height: 16px; }
 .layer-row .del { display: inline-flex; padding: 4px; border-radius: 6px; color: var(--muted); }
+.layer-row.hidden .grow, .layer-row.hidden .layer-ico { opacity: .4; }
+.layer-row .eye { display: inline-flex; width: 22px; justify-content: center; padding: 3px 0; border-radius: 6px; color: var(--muted); }
+.layer-row .eye:hover { color: var(--text); background: var(--bg-2); }
+.layer-row .eye svg { width: 15px; height: 15px; }
+.layer-row.hidden .eye { opacity: .35; }
+.layer-gap { margin-top: 10px; }
+.lift-all { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 2px 0 4px; }
+.wide-btn { width: 100%; margin-top: 16px; justify-content: center; }
+.target-chip { margin-left: 8px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-color: rgba(79, 140, 255, .55); }
 .layer-row .del:hover { color: var(--danger); background: rgba(255, 90, 90, .1); }
 .layer-row .del svg { width: 15px; height: 15px; }
 .stage.dropping canvas.edit { box-shadow: 0 0 0 2px var(--accent), 0 0 0 8px var(--accent-soft), var(--shadow-lg); }

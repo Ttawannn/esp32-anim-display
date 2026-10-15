@@ -12,7 +12,7 @@ import {
 } from '../model/layers';
 import { getPreset } from '../model/presets';
 import { store, type EditorState } from '../model/store';
-import type { ClockLayer, FontId, Layer, StickerLayer } from '../model/types';
+import type { ClockLayer, FontId, Layer, PaintLayer, StickerLayer } from '../model/types';
 import { Icon, IconButton, Slider } from './common';
 import { getLang, t } from '../i18n';
 
@@ -50,7 +50,7 @@ function IconPreview({ name, size = 26, color = '#e9ecf3' }: { name: string; siz
   return <canvas ref={ref} width={size * dpr} height={size * dpr} style={{ width: size, height: size }} />;
 }
 
-function useNow(ms: number) {
+export function useNow(ms: number) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), ms);
@@ -62,10 +62,10 @@ function useNow(ms: number) {
 export function InsertPanel({ s }: { s: EditorState }) {
   const p = s.project;
   const layers = layersOf(p);
-  const selected = layers.find((l) => l.id === s.selectedLayer) ?? null;
+  const found = layers.find((l) => l.id === s.selectedLayer);
+  const selected = found && found.kind !== 'paint' ? found : null;
   const [cat, setCat] = useState(EMOJI[0].id);
-  const now = useNow(1000);
-  const time = clockTimeOf(now);
+  const time = clockTimeOf(useNow(1000));
 
   return (
     <div class="insert">
@@ -105,34 +105,24 @@ export function InsertPanel({ s }: { s: EditorState }) {
       </div>
 
       {layers.length > 0 && (
-        <>
-          <h4 class="ins-h"><Icon name="layers" /> {t('On the picture ({n})', { n: layers.length })}</h4>
-          <div class="layer-list">
-            {[...layers].reverse().map((l) => (
-              <button key={l.id} class={`layer-row${l.id === s.selectedLayer ? ' active' : ''}`}
-                onClick={() => store.set({ selectedLayer: l.id, tool: 'select' })}>
-                <span class="layer-ico">{layerIcon(l)}</span>
-                <span class="grow">{layerLabel(l, time)}</span>
-                <span class="del" role="button" title={t('Delete')} onClick={(e) => { e.stopPropagation(); removeLayer(l.id); }}>
-                  <Icon name="trash" />
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
+        <button class="btn small wide-btn" onClick={() => store.set({ sideTab: 'layers' })}>
+          <Icon name="layers" /> {t('On the picture ({n})', { n: layers.length })}
+        </button>
       )}
     </div>
   );
 }
 
-function layerIcon(l: Layer) {
+export function layerIcon(l: Layer) {
+  if (l.kind === 'paint') return <Icon name="pencil" />;
   if (l.kind === 'clock') return <Icon name="clock" />;
   if (l.source.type === 'emoji') return <span style={{ fontFamily: EMOJI_FONT }}>{l.source.char}</span>;
   if (l.source.type === 'icon') return <IconPreview name={l.source.name} size={16} color={l.color} />;
   return <Icon name="text" />;
 }
 
-function layerLabel(l: Layer, time: ReturnType<typeof clockTimeOf>): string {
+export function layerLabel(l: Layer, time: ReturnType<typeof clockTimeOf>): string {
+  if (l.kind === 'paint') return l.name;
   if (l.kind === 'clock') return formatClock(l.format, time) || l.format;
   if (l.source.type === 'text') return l.source.text || t('Text');
   if (l.source.type === 'icon') return t(ICONS.find((i) => i.id === (l.source as { name: string }).name)?.label ?? 'Icon');
@@ -141,7 +131,8 @@ function layerLabel(l: Layer, time: ReturnType<typeof clockTimeOf>): string {
 
 // ---------------------------------------------------------------------------------------------
 
-function LayerProps({ s, layer }: { s: EditorState; layer: Layer }) {
+// Properties of a sticker or clock (paint layers have theirs in the Layers tab).
+export function LayerProps({ s, layer }: { s: EditorState; layer: Exclude<Layer, PaintLayer> }) {
   const p = s.project;
   const mono = getPreset(p.presetId).color === 'mono';
   const live = (patch: Partial<StickerLayer> | Partial<ClockLayer>) => updateLayer(layer.id, patch, true);

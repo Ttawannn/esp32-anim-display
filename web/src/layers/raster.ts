@@ -1,12 +1,14 @@
 // Turns layers into pixels.
-//   Stickers: RGBA bitmaps at canvas resolution, baked over every frame (bakeLayers).
+//   Paint layers and stickers: baked over every frame in list order (bakeLayers).
+//   Stickers are RGBA bitmaps at canvas resolution; paint layers are per-frame cels (paint.ts).
 //   Clocks:   glyph atlases at screen resolution for the board (widgetsFor).
 // Needs OffscreenCanvas (main thread and workers); without it layers are skipped.
 
 import { to565 } from '../color/rgb565';
 import { getPreset } from '../model/presets';
 import { hexToRgb } from '../model/project';
-import type { ClockLayer, Layer, Pixels, Project, StickerLayer } from '../model/types';
+import type { ClockLayer, Frame, Layer, PaintLayer, Pixels, Project, StickerLayer } from '../model/types';
+import { blendPixel, compositeCel } from './paint';
 import { EMOJI_FONT, fontCss, ICONS } from './catalog';
 import { parseFormat } from './clock';
 import { buildWidgetBlock, parseWidgetBlock, type GlyphBitmap, type GlyphStyle, type ParsedBlock, type Rect, type TextRasterizer } from './widgets';
@@ -118,11 +120,16 @@ export function stickerBitmap(l: StickerLayer): Bitmap | null {
 }
 
 export function stickers(p: Project): StickerLayer[] {
-  return (p.layers ?? []).filter((l): l is StickerLayer => l.kind === 'sticker');
+  return (p.layers ?? []).filter((l): l is StickerLayer => l.kind === 'sticker' && !l.hidden);
 }
 
 export function clocks(p: Project): ClockLayer[] {
-  return (p.layers ?? []).filter((l): l is ClockLayer => l.kind === 'clock' && parseFormat(l.format).length > 0);
+  return (p.layers ?? []).filter((l): l is ClockLayer => l.kind === 'clock' && !l.hidden && parseFormat(l.format).length > 0);
+}
+
+// Visible layers baked into the frame pixels, bottom to top.
+function bakedLayers(p: Project): (StickerLayer | PaintLayer)[] {
+  return (p.layers ?? []).filter((l): l is StickerLayer | PaintLayer => l.kind !== 'clock' && !l.hidden);
 }
 
 // Source-over of a bitmap onto RGBA canvas pixels (in place).
@@ -133,46 +140,46 @@ export function composite(dst: Pixels, dw: number, dh: number, b: Bitmap, x: num
     for (let sx = 0; sx < b.w; sx++) {
       const tx = x + sx;
       if (tx < 0 || tx >= dw) continue;
-      const s = (sy * b.w + sx) * 4, a = b.data[s + 3];
-      if (!a) continue;
-      const d = (ty * dw + tx) * 4;
-      if (a === 255) {
-        dst[d] = b.data[s]; dst[d + 1] = b.data[s + 1]; dst[d + 2] = b.data[s + 2]; dst[d + 3] = 255;
-        continue;
-      }
-      const sa = a / 255, da = dst[d + 3] / 255, oa = sa + da * (1 - sa);
-      for (let k = 0; k < 3; k++) dst[d + k] = (b.data[s + k] * sa + dst[d + k] * da * (1 - sa)) / oa;
-      dst[d + 3] = oa * 255;
+      blendPixel(dst, (ty * dw + tx) * 4, b.data, (sy * b.w + sx) * 4);
     }
   }
 }
 
 const layersKeyCache = new WeakMap<Layer[], string>();
-export function stickerKey(p: Project): string {
+
+// Everything about the layers that changes baked pixels ('' when nothing is baked).
+export function bakeKey(p: Project): string {
   const layers = p.layers;
   if (!layers?.length) return '';
   let k = layersKeyCache.get(layers);
   if (k === undefined) {
-    k = JSON.stringify(stickers(p));
+    k = JSON.stringify(bakedLayers(p));
     layersKeyCache.set(layers, k);
   }
   return k === '[]' ? '' : k;
 }
 
-const bakeCache = new WeakMap<Uint8ClampedArray, { key: string; out: Pixels }>();
+const bakeCache = new WeakMap<Uint8ClampedArray, { key: string; cels: Frame['cels']; out: Pixels }>();
 
-// Frame pixels with every sticker drawn on top (the original buffer when there are none).
-export function bakeLayers(p: Project, data: Pixels): Pixels {
-  const key = stickerKey(p);
-  if (!key || !hasCanvas()) return data;
-  const hit = bakeCache.get(data);
-  if (hit && hit.key === key) return hit.out;
-  const out = data.slice();
-  for (const l of stickers(p)) {
-    const b = stickerBitmap(l);
-    if (b) composite(out, p.width, p.height, b, Math.round(l.x), Math.round(l.y));
+// The frame as it will be shown: the drawing with paint layers and stickers on top (the frame's own
+// buffer when no layer touches it). The same buffer comes back until the frame or layers change.
+export function bakeLayers(p: Project, f: Frame): Pixels {
+  const key = bakeKey(p);
+  if (!key) return f.data;
+  const layers = bakedLayers(p).filter((l) => (l.kind === 'paint' ? !!f.cels?.[l.id] : hasCanvas()));
+  if (!layers.length) return f.data;
+  const hit = bakeCache.get(f.data);
+  if (hit && hit.key === key && hit.cels === f.cels) return hit.out;
+  const out = f.data.slice();
+  for (const l of layers) {
+    if (l.kind === 'paint') {
+      compositeCel(out, p.width, p.height, l, f.cels![l.id]);
+    } else {
+      const b = stickerBitmap(l);
+      if (b) composite(out, p.width, p.height, b, Math.round(l.x), Math.round(l.y));
+    }
   }
-  bakeCache.set(data, { key, out });
+  bakeCache.set(f.data, { key, cels: f.cels, out });
   return out;
 }
 

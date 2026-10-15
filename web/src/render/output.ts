@@ -4,7 +4,7 @@
 import { adjustTo565, adjustToLuma } from '../color/adjust';
 import { toMono } from '../color/mono';
 import { quantize, type Quantized } from '../color/quantize';
-import { bakeLayers, stickerKey } from '../layers/raster';
+import { bakeKey, bakeLayers } from '../layers/raster';
 import { getPreset } from '../model/presets';
 import { hexToRgb } from '../model/project';
 import type { Frame, Project } from '../model/types';
@@ -20,27 +20,27 @@ function processKey(p: Project): string {
   const base = isMono(p)
     ? `m|${a.brightness}|${a.contrast}|${a.invert}|${a.threshold}|${a.dither}|${p.background}|${p.width}`
     : `c|${a.brightness}|${a.contrast}|${a.saturation}|${a.hue}|${a.invert}|${p.background}`;
-  return base + '|' + stickerKey(p);
+  return base + '|' + bakeKey(p);
 }
 
-const frameCache = new WeakMap<Uint8ClampedArray, { key: string; out: OutFrame }>();
+const frameCache = new WeakMap<Uint8ClampedArray, { key: string; cels: Frame['cels']; out: OutFrame }>();
 
 // Adjusted frame without color reduction.
 export function processFrame(p: Project, f: Frame): OutFrame {
   const key = processKey(p);
   const hit = frameCache.get(f.data);
-  if (hit && hit.key === key) return hit.out;
+  if (hit && hit.key === key && hit.cels === f.cels) return hit.out;
   const bg = hexToRgb(p.background);
-  const data = bakeLayers(p, f.data); // stickers on top of the drawing
+  const data = bakeLayers(p, f); // paint layers and stickers on top of the drawing
   const out: OutFrame = isMono(p)
     ? { kind: 'mono', bits: toMono(adjustToLuma(data, p.adjust, bg), p.width, p.height, p.adjust.threshold, p.adjust.dither) }
     : { kind: 'rgb565', px: adjustTo565(data, p.adjust, bg) };
-  frameCache.set(f.data, { key, out });
+  frameCache.set(f.data, { key, cels: f.cels, out });
   return out;
 }
 
 // Color reduction across the whole animation (shared palette), cached until frames or settings change.
-let quantCache: { key: string; frames: Uint8ClampedArray[]; q: Quantized } | null = null;
+let quantCache: { key: string; frames: Frame[]; q: Quantized } | null = null;
 
 export function projectQuantization(p: Project, maxColors: number): Quantized {
   const key = processKey(p) + '|' + maxColors;
@@ -48,13 +48,13 @@ export function projectQuantization(p: Project, maxColors: number): Quantized {
     quantCache &&
     quantCache.key === key &&
     quantCache.frames.length === p.frames.length &&
-    quantCache.frames.every((d, i) => d === p.frames[i].data)
+    quantCache.frames.every((f, i) => f.data === p.frames[i].data && f.cels === p.frames[i].cels)
   ) {
     return quantCache.q;
   }
   const px = p.frames.map((f) => (processFrame(p, f) as { px: Uint16Array }).px);
   const q = quantize(px, maxColors);
-  quantCache = { key, frames: p.frames.map((f) => f.data), q };
+  quantCache = { key, frames: p.frames.slice(), q };
   return q;
 }
 

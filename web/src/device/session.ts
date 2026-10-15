@@ -92,7 +92,7 @@ export async function autoConnect() {
 }
 
 function isBlank(p: Project) {
-  return p.frames.length === 1 && !p.frames[0].data.some((v, i) => i % 4 === 3 && v !== 0);
+  return p.frames.length === 1 && !p.frames[0].cels && !p.frames[0].data.some((v, i) => i % 4 === 3 && v !== 0);
 }
 
 function matchDisplay(info: DeviceInfo) {

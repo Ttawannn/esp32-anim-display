@@ -1,4 +1,5 @@
 import { flipH, flipV, type Tool } from '../editor/tools';
+import { flipLayer, paintTarget } from '../model/layers';
 import { setFrameData, store, type EditorState } from '../model/store';
 import { IconButton } from './common';
 import { t } from '../i18n';
@@ -18,6 +19,12 @@ export const TOOLS: { id: Tool; icon: string; label: string; key: string }[] = [
 export function ToolBar({ s }: { s: EditorState }) {
   const { project: p, frameIndex } = s;
   const frame = p.frames[frameIndex];
+  // With a paint layer selected, flips apply to its pixels on this frame.
+  const target = paintTarget(p, s.selectedLayer);
+  const flip = (horizontal: boolean) => {
+    if (target) flipLayer(target.id, horizontal);
+    else setFrameData(frameIndex, (horizontal ? flipH : flipV)(frame.data, p.width, p.height));
+  };
   return (
     <div class="tools">
       {TOOLS.map((tool) => (
@@ -34,9 +41,9 @@ export function ToolBar({ s }: { s: EditorState }) {
         onClick={() => store.set({ mirror: !s.mirror })} />
       <div class="sep" />
       <IconButton icon="flipH" title={t('Flip horizontally (this frame)')}
-        onClick={() => setFrameData(frameIndex, flipH(frame.data, p.width, p.height))} />
+        onClick={() => flip(true)} />
       <IconButton icon="flipV" title={t('Flip vertically (this frame)')}
-        onClick={() => setFrameData(frameIndex, flipV(frame.data, p.width, p.height))} />
+        onClick={() => flip(false)} />
       <div class="sep" />
       <IconButton icon="grid" title={t('Grid')} active={s.grid} onClick={() => store.set({ grid: !s.grid })} />
       <IconButton icon="onion" title={t('Onion skin (faint previous frame)')} active={s.onion}

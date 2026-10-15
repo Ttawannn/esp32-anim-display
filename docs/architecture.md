@@ -68,7 +68,7 @@ The browser waits for an upload receipt confirming the rename. Replacement keeps
 | `model/` | project, display presets, palettes, store (state + undo + autosave) |
 | `editor/` | drawing tools |
 | `templates/` | procedurally generated animations: 12 eye moods (`eyes.ts`) and the template gallery that lists them alongside the clock and 21 animations (`gallery.ts`, pixel helpers in `kit.ts`) |
-| `layers/` | things placed on top of the animation: sticker catalogue (emoji, icons, fonts), rasterizing and baking stickers into frames, clock formats, the widget block writer/reader and its reference renderer |
+| `layers/` | things placed on top of the animation: paint layers (per-frame cels that move and scale as one object, `paint.ts`), sticker catalogue (emoji, icons, fonts), rasterizing and baking paint layers and stickers into frames, clock formats, the widget block writer/reader and its reference renderer |
 | `color/` | RGB565, color adjustment, dithering, color reduction |
 | `render/` | the image the panel will actually show + display preview |
 | `codec/` | RLE, .dpa writer/reader, worker encoding and cached results, unit tests, test vectors |

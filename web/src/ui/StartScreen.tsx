@@ -60,7 +60,7 @@ const blankCache = new WeakMap<Uint8ClampedArray, boolean>();
 
 export function isBlankProject(s: EditorState): boolean {
   const frames = s.project.frames;
-  if (frames.length !== 1) return false;
+  if (frames.length !== 1 || frames[0].cels) return false;
   const data = frames[0].data;
   let blank = blankCache.get(data);
   if (blank === undefined) {

@@ -288,6 +288,10 @@ export function EditorCanvas({ s }: { s: EditorState }) {
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0 && e.button !== 2) return;
+    // No text selection: pressing inside selected text (the module's printed labels) would start a
+    // native drag of it, which cancels the pointer and stops a layer drag halfway.
+    e.preventDefault();
+    window.getSelection()?.removeAllRanges();
     if (store.state.playing) store.set({ playing: false });
     const pt = toPoint(e);
     const startDrag = (d: Omit<LayerDrag, 'startX' | 'startY' | 'curX' | 'curY' | 'moved'>) => {
@@ -488,6 +492,7 @@ export function EditorCanvas({ s }: { s: EditorState }) {
         onPointerCancel={onPointerUp}
         onPointerLeave={() => setHover(null)}
         onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
       />
       </ModuleFrame>
       {dropping && <div class="drop-hint">{t('Drop to place it here')}</div>}

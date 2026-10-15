@@ -762,7 +762,7 @@ label.switch input { width: 20px; height: 20px; }
 .mount-up svg { width: 60%; height: 60%; max-width: 22px; max-height: 22px; }
 .wiring-section { margin: 14px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 .wiring-section > h4 { margin: 0; font-size: 13px; }
-.module-frame { position: relative; flex: none; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .55)); }
+.module-frame { position: relative; flex: none; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .55)); user-select: none; -webkit-user-select: none; }
 .module-frame > svg { position: absolute; transform-origin: center; }
 .module-screen { position: absolute; overflow: hidden; }
 .module-screen.round { border-radius: 50%; }

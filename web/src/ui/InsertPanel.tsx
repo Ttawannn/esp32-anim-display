@@ -7,7 +7,7 @@ import { EMOJI, EMOJI_FONT, emojiList, FONTS, ICONS } from '../layers/catalog';
 import { CLOCK_PRESETS, clockTimeOf, formatClock } from '../layers/clock';
 import { widgetsFor } from '../layers/raster';
 import {
-  addLayer, bakeLayer, canvasScreenRect, duplicateLayer, INSERT_MIME, layersOf, moveLayerOrder, removeLayer,
+  addLayer, bakeLayer, canvasScreenRect, duplicateLayer, INSERT_MIME, layersOf, moveLayerOrder, rasterizeSticker, removeLayer,
   updateLayer, type InsertItem,
 } from '../model/layers';
 import { getPreset } from '../model/presets';
@@ -106,7 +106,7 @@ export function InsertPanel({ s }: { s: EditorState }) {
 
       {layers.length > 0 && (
         <button class="btn small wide-btn" onClick={() => store.set({ sideTab: 'layers' })}>
-          <Icon name="layers" /> {t('On the picture ({n})', { n: layers.length })}
+          <Icon name="layers" /> {t('Layers ({n})', { n: layers.length })}
         </button>
       )}
     </div>
@@ -213,8 +213,12 @@ function StickerProps({ s, layer, mono, live, set, end }: PropsOf<StickerLayer>)
         <label class="check" title={t('Hard pixel edges, no blur')}><input type="checkbox" checked={layer.crisp} onChange={() => set({ crisp: !layer.crisp })} /> {t('Crisp')}</label>
       </div>
       <div class="row">
-        <span class="hint grow">{t('Objects appear on every frame')}</span>
+        <span class="hint grow">{t('This layer appears on every frame')}</span>
       </div>
+      <button class="btn small wide-btn tight" title={t('Turns it into pixels you can draw on, move and resize (text and size can no longer be edited)')}
+        onClick={() => { rasterizeSticker(layer.id); store.set({ sideTab: 'layers', tool: 'pencil' }); }}>
+        <Icon name="pencil" /> {t('Draw on it (make it a drawing layer)')}
+      </button>
       <div class="row">
         <button class="btn small grow" title={t('Paint it into this frame and remove it from the list')} onClick={() => bakeLayer(layer.id, false)}>
           <Icon name="stamp" /> {t('Stamp on this frame')}

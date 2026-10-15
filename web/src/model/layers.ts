@@ -1,8 +1,9 @@
 // Layer actions: add from the insert panel (click or drag & drop), move, resize, edit, bake;
-// paint layers: lift a drawing into an object, draw on it, merge it back.
+// paint layers: lift part of the drawing into a layer, draw on it, merge it back.
 
 import { parseFormat, usesSeconds } from '../layers/clock';
-import { celRect, compositeCel, flipCel, liftPixels, type Box } from '../layers/paint';
+import { ICONS } from '../layers/catalog';
+import { celRect, compositeCel, flipCel, liftPixels, trimCel, type Box } from '../layers/paint';
 import { composite, stickerBitmap, widgetsFor } from '../layers/raster';
 import { getPreset } from './presets';
 import { store, toast } from './store';
@@ -228,8 +229,27 @@ export function liftToLayer(rect: Box | null, allFrames: boolean): boolean {
   // Just above the background, so it stays under the stickers it was under before.
   store.commit({ ...p, frames, layers: [layer, ...layersOf(p)] });
   store.set({ selectedLayer: layer.id, tool: 'select', sideTab: 'layers', playing: false });
-  toast(t('Turned into an object: drag to move, drag the corner to resize'));
+  toast(t('Turned into a layer: drag to move, drag the corner to resize'));
   return true;
+}
+
+// Turns a sticker (emoji / icon / text) into a paint layer with the same pixels on every frame, in
+// the same place in the list, so it can be drawn on. Returns the new layer.
+export function rasterizeSticker(id: string): PaintLayer | null {
+  const p = store.state.project;
+  const l = layersOf(p).find((x): x is StickerLayer => x.id === id && x.kind === 'sticker');
+  const b = l && stickerBitmap(l);
+  if (!l || !b) return null;
+  const cel = trimCel(new Uint8ClampedArray(b.data), b.w, b.h, 0, 0);
+  const src = l.source;
+  const name = src.type === 'emoji' ? src.char
+    : src.type === 'text' ? src.text || t('Text')
+    : t(ICONS.find((i) => i.id === src.name)?.label ?? 'Icon');
+  const layer: PaintLayer = { kind: 'paint', id: newId(), name, x: Math.round(l.x), y: Math.round(l.y), scale: 1, ...(l.hidden && { hidden: true }) };
+  const frames = cel ? p.frames.map((f) => withCel(f, layer.id, cel)) : p.frames; // one shared cel
+  store.commit({ ...p, frames, layers: layersOf(p).map((x) => (x.id === id ? layer : x)) });
+  store.set({ selectedLayer: layer.id });
+  return layer;
 }
 
 export function setCel(frameIndex: number, id: string, cel: Cel | null, live = false) {

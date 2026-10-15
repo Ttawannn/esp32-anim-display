@@ -5,7 +5,7 @@ import { IconButton } from './common';
 import { t } from '../i18n';
 
 export const TOOLS: { id: Tool; icon: string; label: string; key: string }[] = [
-  { id: 'select', icon: 'cursor', label: 'Select / move objects', key: 'V' },
+  { id: 'select', icon: 'cursor', label: 'Select / move layers', key: 'V' },
   { id: 'pencil', icon: 'pencil', label: 'Pencil', key: 'B' },
   { id: 'eraser', icon: 'eraser', label: 'Eraser', key: 'E' },
   { id: 'line', icon: 'line', label: 'Line', key: 'L' },

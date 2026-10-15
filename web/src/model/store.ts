@@ -31,7 +31,7 @@ export interface EditorState {
   dialog: Dialog;
   sideTab: 'insert' | 'layers' | 'color' | 'adjust' | 'export';
   selectedLayer: string | null; // layer being moved / edited; a selected paint layer is also drawn on
-  liftAll: boolean; // turning a drawing into an object takes it from every frame
+  liftAll: boolean; // turning a drawing into a layer takes it from every frame
   connectOpen: boolean; // connection popover in the top bar
   sending: { label: string; pct: number } | null; // send-to-board progress (0..1)
   startDismissed: boolean; // hide the start screen on a blank project

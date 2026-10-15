@@ -27,14 +27,14 @@ export function LayersPanel({ s }: { s: EditorState }) {
         </button>
         <button class="btn small grow" title={t('Move the whole drawing into a layer you can move and resize')}
           onClick={() => liftToLayer(null, s.liftAll)}>
-          <Icon name="layers" /> {t('Drawing → object')}
+          <Icon name="layers" /> {t('Drawing → layer')}
         </button>
       </div>
       <label class="check lift-all">
         <input type="checkbox" checked={s.liftAll} onChange={() => store.set({ liftAll: !s.liftAll })} />
         {t('Take it from every frame')}
       </label>
-      <p class="hint">{t('Tip: with the select tool (V), drag a box around part of the drawing to turn just that part into an object.')}</p>
+      <p class="hint">{t('Tip: with the select tool (V), drag a box around part of the drawing to turn just that part into a layer.')}</p>
 
       <div class="layer-list">
         {[...layers].reverse().map((l) => (

@@ -7,6 +7,7 @@ import type { OledTint, Project } from '../model/types';
 import type { OutFrame } from './output';
 
 const OLED_OFF = [6, 8, 12];
+const pack = (r: number, g: number, b: number) => (0xff000000 | (b << 16) | (g << 8) | r) >>> 0; // ImageData order (little-endian)
 const OLED_ON: Record<OledTint, number[][]> = {
   white: [[235, 240, 255]],
   blue: [[90, 200, 255]],
@@ -21,7 +22,6 @@ export function composeScreen(p: Project, frame: OutFrame, tint: OledTint = 'whi
   const sw = preset.width, sh = preset.height;
   const img = new ImageData(sw, sh);
   const d = new Uint32Array(img.data.buffer); // little-endian: 0xAABBGGRR
-  const pack = (r: number, g: number, b: number) => (0xff000000 | (b << 16) | (g << 8) | r) >>> 0;
 
   let bgPix: number, onPix: number[] = [], offPix = 0;
   if (frame.kind === 'mono') {
@@ -77,6 +77,26 @@ export function composeScreen(p: Project, frame: OutFrame, tint: OledTint = 'whi
     } });
   }
   if (preset.round) maskRound(d, sw, sh);
+  return img;
+}
+
+// CSS color of an OLED's screen around the picture: lit when the background is light (as composeScreen).
+export function oledScreenColor(p: Project, tint: OledTint): string {
+  const [r, g, b] = hexToRgb(p.background);
+  const on = OLED_ON[tint];
+  return `rgb(${((r * 77 + g * 150 + b * 29) >> 8 >= 128 ? on[on.length - 1] : OLED_OFF).join(',')})`;
+}
+
+// A 1-bit frame at canvas resolution in the OLED's colors: the editing canvas on mono panels.
+export function monoCanvasImage(p: Project, bits: Uint8Array, tint: OledTint): ImageData {
+  const img = new ImageData(p.width, p.height);
+  const d = new Uint32Array(img.data.buffer);
+  const on = OLED_ON[tint].map(([r, g, b]) => pack(r, g, b)), off = pack(OLED_OFF[0], OLED_OFF[1], OLED_OFF[2]);
+  for (let y = 0; y < p.height; y++) {
+    // Two-color modules: the top 16 screen rows are yellow.
+    const lit = on.length > 1 && p.offsetY + y * p.scale < 16 ? on[0] : on[on.length - 1];
+    for (let x = 0; x < p.width; x++) d[y * p.width + x] = bits[y * p.width + x] ? lit : off;
+  }
   return img;
 }
 

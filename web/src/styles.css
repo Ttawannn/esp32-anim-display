@@ -571,9 +571,11 @@ label.switch input { width: 20px; height: 20px; }
 .layer-gap { margin-top: 10px; }
 .lift-all { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 2px 0 4px; }
 .wide-btn { width: 100%; margin-top: 16px; justify-content: center; }
+.wide-btn.tight { margin: 2px 0 8px; }
 .target-chip { margin-left: 8px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-color: rgba(79, 140, 255, .55); }
 .layer-row .del:hover { color: var(--danger); background: rgba(255, 90, 90, .1); }
 .layer-row .del svg { width: 15px; height: 15px; }
+.stage canvas.edit.oled { border-radius: 0; box-shadow: 0 0 0 1px rgba(255, 255, 255, .07); } /* lit like the real panel */
 .stage.dropping canvas.edit { box-shadow: 0 0 0 2px var(--accent), 0 0 0 8px var(--accent-soft), var(--shadow-lg); }
 .drop-hint {
   position: absolute; top: 56px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 14px;

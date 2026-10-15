@@ -51,7 +51,7 @@ export interface Project {
   encoding: Encoding;
   jpegQuality: number; // 0.3..0.95
   source: 'pixel' | 'gif' | 'video';
-  layers?: Layer[]; // objects on top of every frame (absent in older projects)
+  layers?: Layer[]; // layers on top of the background drawing (absent in older projects)
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -62,15 +62,16 @@ const MODULES: Record<string, ModuleSpec> = {
     labelSide: 'above',
     fpc: { x: 14.5, y: 36.4, w: 9, h: 1.8, color: '#2a2f38' },
   },
-  // 0.96" OLED 128×64 (SSD1306): black board, header on top, ribbon at the bottom.
+  // 0.96" OLED 128×64 (SSD1306), the common blue module: header VCC GND SCL SDA on top, the glass
+  // right below it with the pixels near its top, the dark bonding strip of the ribbon underneath.
   oled096: {
-    w: 27.3, h: 27.8, pcb: BLACK,
-    active: { x: 2.8, y: 7.6, w: 21.7, h: 10.9 },
-    glass: { x: 0.9, y: 5.8, w: 25.5, h: 18.8 },
+    w: 27.3, h: 27.8, pcb: BLUE,
+    active: { x: 2.8, y: 5.8, w: 21.7, h: 10.9 },
+    glass: { x: 0.3, y: 4.3, w: 26.7, h: 15 },
     holes: [[1.9, 1.9, 1], [25.4, 1.9, 1], [1.9, 25.9, 1], [25.4, 25.9, 1]],
-    pins: pinsRow(['GND', 'VCC', 'SCL', 'SDA'], 9.8, 1.9),
+    pins: pinsRow(['VCC', 'GND', 'SCL', 'SDA'], 9.8, 1.7),
     labelSide: 'below',
-    fpc: { x: 9.5, y: 24.6, w: 8.3, h: 3.2, color: '#d9a21b' },
+    fpc: { x: 6.2, y: 19.3, w: 14.9, h: 3.4, color: '#0c0d10' },
   },
   // 0.91" OLED 128×32 (SSD1306): long black strip, header on the left.
   oled091: {

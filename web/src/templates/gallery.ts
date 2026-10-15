@@ -2,11 +2,13 @@
 // code (no image files), so it fits any panel size and colour depth. Loops are seamless where the
 // motion allows: positions are periodic in t = frame / frameCount.
 
+import { t as tr } from '../i18n';
 import { EMOJI_FONT, fontCss } from '../layers/catalog';
+import { trimCel } from '../layers/paint';
 import { widgetsFor } from '../layers/raster';
 import { getPreset, type DisplayPreset } from '../model/presets';
-import { createProject, newFrame } from '../model/project';
-import type { ClockLayer, Layer, Pixels, Project } from '../model/types';
+import { createProject, newFrame, rgbToHex } from '../model/project';
+import type { Cel, ClockLayer, Layer, PaintLayer, Pixels, Project } from '../model/types';
 import { defaultEyeOptions } from './eyeProject';
 import { EYE_ANIMS, generateEyes, type EyeAnim, type EyeOptions } from './eyes';
 import { hsv, Img, mix, rgb, rng, safeRadius, type RGB } from './kit';
@@ -29,7 +31,12 @@ export type OptionDef =
 export type Options = Record<string, string>;
 
 export interface Generated {
-  frames: { data: Pixels; delay: number }[];
+  frames: { data: Pixels; delay: number }[]; // the picture, or what lies under `parts`
+  // Separate things drawn on transparent images, one per frame, bottom to top over `frames`. Each
+  // becomes its own paint layer named `name` (an English label, translated when the project is made).
+  parts?: { name: string; frames: Pixels[] }[];
+  name?: string; // layer name for what `frames` holds besides the background (default: the template name)
+  split?: { x: number; names: [string, string] }; // cut that layer in two at canvas column x (two eyes)
   layers?: Layer[];
   background?: string;
   canvas?: { w: number; h: number; scale: number }; // when the generator picks its own canvas (eyes)
@@ -383,19 +390,25 @@ const bounce: AnimTemplate = {
   generate(c, o) {
     const fg = col(c, o, 'color'), bg = bgCol(c, o), hi = mix(fg, WHITE, 0.6), dark = mix(fg, BLACK, 0.45);
     const r = Math.max(3, Math.min(c.w * 0.15, c.h * 0.14)), floor = c.h * (c.round ? 0.8 : 0.88);
-    return { frames: frames(36, 35, (t) => {
-      const img = new Img(c.w, c.h, bg);
+    const n = 36, shadows: Pixels[] = [], balls: Pixels[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / n;
+      const shadow = new Img(c.w, c.h), img = new Img(c.w, c.h);
+      shadows.push(shadow.d); balls.push(img.d);
       const hop = Math.abs(Math.sin(2 * Math.PI * t * 2)); // two bounces per loop
       const x = c.w / 2 + Math.sin(2 * Math.PI * t) * (c.w / 2 - r * (c.round ? 2.4 : 1.4));
       const y = floor - r - hop * (floor - r * 2 - c.h * 0.08);
       const squash = hop < 0.12 ? 1 - (0.12 - hop) * 2.2 : 1;
-      if (!c.mono) img.shape((px, py) => ((px - x) / (r * (1.4 - hop * 0.6))) ** 2 + ((py - floor) / (r * 0.25)) ** 2 <= 1, mix(bg, BLACK, 0.5));
+      if (!c.mono) shadow.shape((px, py) => ((px - x) / (r * (1.4 - hop * 0.6))) ** 2 + ((py - floor) / (r * 0.25)) ** 2 <= 1, mix(bg, BLACK, 0.5));
       const ry = r * squash, rx = r / squash, by = squash < 1 ? floor - ry : y;
       img.shape((px, py) => ((px - x) / rx) ** 2 + ((py - by) / ry) ** 2 <= 1, c.mono ? WHITE : dark);
       if (!c.mono) img.shape((px, py) => ((px - x + rx * 0.12) / (rx * 0.85)) ** 2 + ((py - by + ry * 0.12) / (ry * 0.85)) ** 2 <= 1, fg);
       if (!c.mono) img.disc(x - rx * 0.35, by - ry * 0.35, Math.max(1, r * 0.22), hi, smooth(c));
-      return img;
-    }) };
+    }
+    return {
+      frames: balls.map(() => ({ data: new Img(c.w, c.h).d, delay: 35 })), background: rgbToHex(bg[0], bg[1], bg[2]),
+      parts: [...(c.mono ? [] : [{ name: 'Shadow', frames: shadows }]), { name: 'Ball', frames: balls }],
+    };
   },
 };
 
@@ -412,17 +425,20 @@ const pacman: AnimTemplate = {
     const yellow: RGB = c.mono ? WHITE : [255, 220, 0], ghostCol: RGB = c.mono ? WHITE : [255, 60, 70], dot: RGB = c.mono ? WHITE : [255, 200, 170];
     const travel = long + r * (o.ghost === 'yes' ? 7 : 3);
     const spacing = Math.max(4, Math.round(r * 1.2));
-    return { frames: frames(40, 50, (t) => {
-      const img = new Img(c.w, c.h, BLACK);
+    const n = 40, dots: Pixels[] = [], men: Pixels[] = [], ghosts: Pixels[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / n;
+      const dotImg = new Img(c.w, c.h), man = new Img(c.w, c.h), img = new Img(c.w, c.h);
+      dots.push(dotImg.d); men.push(man.d); ghosts.push(img.d);
       const pos = -r * 1.5 + t * travel;
       for (let d = spacing / 2; d < long; d += spacing) {
         if (d <= pos + r * 0.2) continue;
         const [dx, dy] = xy(d);
-        img.rect(dx - 1, dy - 1, 2, 2, dot);
+        dotImg.rect(dx - 1, dy - 1, 2, 2, dot);
       }
       const mouth = 0.08 + 0.32 * Math.abs(Math.sin(2 * Math.PI * t * 8));
       const [px0, py0] = xy(pos);
-      img.shape((px, py) => {
+      man.shape((px, py) => {
         const dx = px - px0, dy = py - py0;
         if (dx * dx + dy * dy > r * r) return false;
         const [ahead, side] = down ? [dy, dx] : [dx, dy];
@@ -443,8 +459,11 @@ const pacman: AnimTemplate = {
           img.disc(gx + ex * r + (down ? 0 : r * 0.1), gy - r * (down ? 0.03 : 0.1), Math.max(0.6, r * 0.13), [30, 60, 220]);
         }
       }
-      return img;
-    }) };
+    }
+    return {
+      frames: dots.map(() => ({ data: new Img(c.w, c.h).d, delay: 50 })), background: '#000000',
+      parts: [{ name: 'Dots', frames: dots }, { name: 'Pac-Man', frames: men }, ...(o.ghost === 'yes' ? [{ name: 'Ghost', frames: ghosts }] : [])],
+    };
   },
 };
 
@@ -777,7 +796,7 @@ const clock: AnimTemplate = {
       add('mm', big);
       if (seconds) add('ss', big * 0.5);
       if (date) { add(`${latin}ddd`, big * 0.4); add(`${latin}d MMM`, big * 0.4); }
-      return { ...base, layers, arrange: (boxes) => stackCentered(boxes, W, H, [0, big * 0.12, big * 0.25, big * 0.1]) };
+      return { ...base, name: 'Background animation', layers, arrange: (boxes) => stackCentered(boxes, W, H, [0, big * 0.12, big * 0.25, big * 0.1]) };
     }
 
     // Long strip with a date: time on the left, day and date stacked on the right.
@@ -787,7 +806,7 @@ const clock: AnimTemplate = {
       add(`${latin}ddd`, H * 0.3);
       add(`${latin}d MMM`, H * 0.3);
       return {
-        ...base, layers,
+        ...base, name: 'Background animation', layers,
         arrange: ([t, d1, d2]) => {
           const gap = H * 0.25, total = t.w + gap + Math.max(d1.w, d2.w), x0 = (W - total) / 2, xd = x0 + t.w + gap;
           const dh = d1.h + d2.h + 1, yd = (H - dh) / 2;
@@ -801,7 +820,7 @@ const clock: AnimTemplate = {
       : Math.min(H * (date ? 0.34 : 0.45), W * (seconds ? 0.17 : 0.24));
     add(seconds ? 'HH:mm:ss' : 'HH:mm', big);
     if (date) add(`${latin}${H < 48 ? 'd MMM' : 'ddd d MMM'}`, big * 0.42);
-    return { ...base, layers, arrange: (boxes) => stackCentered(boxes, W, H, [0, big * 0.2]) };
+    return { ...base, name: 'Background animation', layers, arrange: (boxes) => stackCentered(boxes, W, H, [0, big * 0.2]) };
   },
 };
 
@@ -853,7 +872,8 @@ function eyeTemplate(id: string, name: string, icon: string, hint: string, anims
         canvas = { w: g.width, h: g.height, scale: g.scale };
         return g.frames;
       });
-      return { frames, canvas, background: c.mono ? '#000000' : eo.bgColor };
+      const split = eo.style === 'single' || !canvas ? undefined : { x: Math.floor(canvas.w / 2), names: ['Left eye', 'Right eye'] as [string, string] };
+      return { frames, canvas, split, background: c.mono ? '#000000' : eo.bgColor };
     },
   };
 }
@@ -893,16 +913,82 @@ export function templateProject(t: AnimTemplate, presetId: string, o: Options, s
     frames: g.frames.map((f) => newFrame(w, h, Math.max(20, Math.round(f.delay / speed)), f.data)),
   });
   if (c.mono && !t.smoothMono) p.adjust.dither = 'none';
+  layerize(p, g, t.name);
   if (g.layers?.length) {
-    p.layers = g.layers;
+    let extra = g.layers;
     // Place clock layers now that their rendered size is known.
-    const w = widgetsFor(p);
+    const w = widgetsFor({ ...p, layers: extra });
     if (w) {
-      const boxes = p.layers.map((l) => w.boxes[w.layers.findIndex((x) => x.id === l.id)] ?? { w: 0, h: 0 });
-      const at = g.arrange?.(boxes) ?? boxes.map((b, i) => ({ x: (c.screenW - b.w) / 2, y: g.layers![i].y }));
-      p.layers = p.layers.map((l, i) =>
+      const boxes = extra.map((l) => w.boxes[w.layers.findIndex((x) => x.id === l.id)] ?? { w: 0, h: 0 });
+      const at = g.arrange?.(boxes) ?? boxes.map((b, i) => ({ x: (c.screenW - b.w) / 2, y: extra[i].y }));
+      extra = extra.map((l, i) =>
         w.layers.some((x) => x.id === l.id) ? { ...l, x: Math.round(at[i].x), y: Math.round(at[i].y) } : l);
     }
+    p.layers = [...(p.layers ?? []), ...extra];
   }
   return p;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Templates arrive as layers: the most common colour becomes the project background, the rest of
+// the picture (or each named part) a paint layer, so it can be moved, resized or drawn on at once.
+// Baking the layers over the background gives back the generated frames.
+
+// Most common opaque colour (0xRRGGBB) when it covers at least a quarter of all pixels.
+export function dominantColor(list: Pixels[]): number | null {
+  const counts = new Map<number, number>();
+  let total = 0;
+  for (const d of list)
+    for (let i = 0; i < d.length; i += 4) {
+      total++;
+      if (d[i + 3] !== 255) continue;
+      const k = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+  let best = -1, n = 0;
+  for (const [k, v] of counts) if (v > n) { best = k; n = v; }
+  return best >= 0 && n * 4 >= total ? best : null;
+}
+
+function withoutColor(d: Pixels, key: number): Pixels {
+  const out = d.slice();
+  for (let i = 0; i < out.length; i += 4)
+    if (out[i + 3] === 255 && ((out[i] << 16) | (out[i + 1] << 8) | out[i + 2]) === key) out[i + 3] = 0;
+  return out;
+}
+
+// Columns x0..x1 of a picture, the rest transparent.
+function columns(d: Pixels, w: number, x0: number, x1: number): Pixels {
+  const out = new Uint8ClampedArray(d.length);
+  for (let y = 0; y < d.length / (w * 4); y++) out.set(d.subarray((y * w + x0) * 4, (y * w + x1) * 4), (y * w + x0) * 4);
+  return out;
+}
+
+function layerize(p: Project, g: Generated, templateName: string) {
+  const { width: w, height: h } = p;
+  const bg = dominantColor(p.frames.map((f) => f.data));
+  if (bg !== null) p.background = rgbToHex(bg >> 16, (bg >> 8) & 255, bg & 255);
+  const pictures = p.frames.map((f) => (bg === null ? f.data : withoutColor(f.data, bg)));
+  const layers: PaintLayer[] = [];
+  const add = (name: string, list: Pixels[]) => {
+    const cels = list.map((d) => trimCel(d, w, h, 0, 0));
+    const used = cels.filter((x): x is Cel => !!x);
+    if (!used.length) return;
+    const x0 = Math.min(...used.map((x) => x.x)), y0 = Math.min(...used.map((x) => x.y));
+    const layer: PaintLayer = { kind: 'paint', id: Math.random().toString(36).slice(2, 10), name: tr(name), x: x0, y: y0, scale: 1 };
+    p.frames = p.frames.map((f, i) => {
+      const cel = cels[i];
+      return cel ? { ...f, cels: { ...f.cels, [layer.id]: { ...cel, x: cel.x - x0, y: cel.y - y0 } } } : f;
+    });
+    layers.push(layer);
+  };
+  if (g.split) {
+    const x = Math.max(0, Math.min(w, g.split.x));
+    add(g.split.names[0], pictures.map((d) => columns(d, w, 0, x)));
+    add(g.split.names[1], pictures.map((d) => columns(d, w, x, w)));
+  } else add(g.name ?? templateName, pictures);
+  for (const part of g.parts ?? []) add(part.name, part.frames);
+  // The background drawing starts empty, ready to draw under the layers.
+  p.frames = p.frames.map((f) => ({ ...f, data: new Uint8ClampedArray(w * h * 4) }));
+  p.layers = layers;
 }

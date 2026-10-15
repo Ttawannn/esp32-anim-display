@@ -37,7 +37,7 @@ export class EncodingCache {
     catch (error) { return Promise.reject(error); }
     const key = projectEncodingKey(p);
     let entry = this.entries.find((e) => e.key === key && e.frames.length === p.frames.length &&
-      e.frames.every((f, i) => f.data === p.frames[i].data && f.delay === p.frames[i].delay));
+      e.frames.every((f, i) => f.data === p.frames[i].data && f.cels === p.frames[i].cels && f.delay === p.frames[i].delay));
     if (!entry) {
       const listeners = new Set<EncodeProgress>();
       const current: Entry = {

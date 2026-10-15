@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'preact/hooks';
 import { hexToRgba, replaceColor, usedColors } from '../editor/tools';
 import { MONO_PALETTE, PALETTES } from '../model/palettes';
-import { mapAllFrames, store, toast, type EditorState } from '../model/store';
+import { store, toast, type EditorState } from '../model/store';
+import type { Pixels } from '../model/types';
 import { isMono } from '../render/output';
 import { Icon } from './common';
 import { t } from '../i18n';
@@ -13,7 +14,7 @@ export function PalettePanel({ s }: { s: EditorState }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [replaceWith, setReplaceWith] = useState('#ffffff');
 
-  const used = useMemo(() => usedColors(p.frames.map((f) => f.data)), [p.frames]);
+  const used = useMemo(() => usedColors(p.frames.flatMap((f) => [f.data, ...Object.values(f.cels ?? {}).map((c) => c.data)])), [p.frames]);
 
   const pick = (hex: string, secondary: boolean) => {
     store.set(secondary ? { secondary: hex } : { primary: hex });
@@ -23,7 +24,7 @@ export function PalettePanel({ s }: { s: EditorState }) {
   const doReplace = () => {
     if (!selected) return;
     const from = hexToRgba(selected), to = hexToRgba(replaceWith);
-    if (mapAllFrames((f) => replaceColor(f.data, from, to))) {
+    if (replaceEverywhere(from, to)) {
       toast(t('Replaced {a} with {b} in every frame', { a: selected, b: replaceWith }));
       setSelected(replaceWith);
     }
@@ -90,4 +91,28 @@ export function PalettePanel({ s }: { s: EditorState }) {
       </div>
     </div>
   );
+}
+
+// Replaces a color in the drawing and in every paint layer, keeping shared cels shared.
+function replaceEverywhere(from: ReturnType<typeof hexToRgba>, to: ReturnType<typeof hexToRgba>): boolean {
+  const p = store.state.project;
+  const done = new Map<Pixels, Pixels | null>();
+  const swap = (d: Pixels) => {
+    if (!done.has(d)) done.set(d, replaceColor(d, from, to));
+    return done.get(d)!;
+  };
+  let changed = false;
+  const frames = p.frames.map((f) => {
+    const data = swap(f.data);
+    let cels = f.cels;
+    for (const [id, c] of Object.entries(f.cels ?? {})) {
+      const d = swap(c.data);
+      if (d) cels = { ...cels, [id]: { ...c, data: d } };
+    }
+    if (!data && cels === f.cels) return f;
+    changed = true;
+    return { ...f, data: data ?? f.data, cels };
+  });
+  if (changed) store.commit({ ...p, frames });
+  return changed;
 }

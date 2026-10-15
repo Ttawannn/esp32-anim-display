@@ -8,7 +8,7 @@ export function newFrame(width: number, height: number, delay = 100, data?: Pixe
 }
 
 export function cloneFrame(f: Frame): Frame {
-  return { id: nextFrameId++, data: f.data.slice(), delay: f.delay };
+  return { id: nextFrameId++, data: f.data.slice(), delay: f.delay, ...(f.cels && { cels: f.cels }) }; // cels are shared
 }
 
 export function createProject(opts: {

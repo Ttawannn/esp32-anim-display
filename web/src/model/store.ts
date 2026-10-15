@@ -4,7 +4,7 @@ import type { Tool } from '../editor/tools';
 import { translateKnown } from '../i18n';
 import { idbGet, idbSet } from '../storage/idb';
 import { cloneFrame, createProject, newFrame } from './project';
-import type { Frame, OledTint, Project } from './types';
+import type { OledTint, Project } from './types';
 import type { Pixels } from './types';
 
 export type Dialog = null | 'new' | 'gif' | 'video' | 'templates' | 'device' | 'wiring';
@@ -29,8 +29,9 @@ export interface EditorState {
   deviceTransport: 'wifi' | 'usb' | null;
   live: boolean; // mirror the current frame on the board while editing
   dialog: Dialog;
-  sideTab: 'insert' | 'color' | 'adjust' | 'export';
-  selectedLayer: string | null; // layer being moved / edited (select tool)
+  sideTab: 'insert' | 'layers' | 'color' | 'adjust' | 'export';
+  selectedLayer: string | null; // layer being moved / edited; a selected paint layer is also drawn on
+  liftAll: boolean; // turning a drawing into an object takes it from every frame
   connectOpen: boolean; // connection popover in the top bar
   sending: { label: string; pct: number } | null; // send-to-board progress (0..1)
   startDismissed: boolean; // hide the start screen on a blank project
@@ -71,6 +72,7 @@ class Store {
       dialog: null,
       sideTab: 'color',
       selectedLayer: null,
+      liftAll: false,
       connectOpen: false,
       sending: null,
       startDismissed: false,
@@ -153,7 +155,7 @@ class Store {
     try {
       const saved = await idbGet<Project>('project');
       if (saved?.frames?.length) {
-        saved.frames = saved.frames.map((f) => newFrame(saved.width, saved.height, f.delay, f.data));
+        saved.frames = saved.frames.map((f) => ({ ...newFrame(saved.width, saved.height, f.delay, f.data), ...(f.cels && { cels: f.cels }) }));
         this.load(saved);
       }
       const prefs = await idbGet<Partial<EditorState>>('prefs');
@@ -207,19 +209,6 @@ export function setFrameData(index: number, data: Pixels) {
   const frames = p.frames.slice();
   frames[index] = { ...frames[index], data };
   store.commit({ ...p, frames }, index);
-}
-
-export function mapAllFrames(fn: (f: Frame) => Pixels | null) {
-  const p = store.state.project;
-  let changed = false;
-  const frames = p.frames.map((f) => {
-    const d = fn(f);
-    if (!d) return f;
-    changed = true;
-    return { ...f, data: d };
-  });
-  if (changed) store.commit({ ...p, frames });
-  return changed;
 }
 
 export function addFrame(duplicate: boolean) {

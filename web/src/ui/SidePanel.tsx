@@ -1,6 +1,7 @@
 import { store, type EditorState } from '../model/store';
 import { AdjustPanel } from './AdjustPanel';
 import { InsertPanel } from './InsertPanel';
+import { LayersPanel } from './LayersPanel';
 import { Icon } from './common';
 import { OutputPanel } from './OutputPanel';
 import { PalettePanel } from './PalettePanel';
@@ -9,6 +10,7 @@ import { t } from '../i18n';
 
 const TABS: { id: EditorState['sideTab']; label: string; icon: string }[] = [
   { id: 'insert', label: 'Insert', icon: 'smile' },
+  { id: 'layers', label: 'Layers', icon: 'layers' },
   { id: 'color', label: 'Colors', icon: 'palette' },
   { id: 'adjust', label: 'Adjust', icon: 'sliders' },
   { id: 'export', label: 'Export', icon: 'download' },
@@ -29,6 +31,7 @@ export function SidePanel({ s }: { s: EditorState }) {
       </div>
       <div class="tab-body">
         {s.sideTab === 'insert' && <InsertPanel s={s} />}
+        {s.sideTab === 'layers' && <LayersPanel s={s} />}
         {s.sideTab === 'color' && <PalettePanel s={s} />}
         {s.sideTab === 'adjust' && <AdjustPanel s={s} />}
         {s.sideTab === 'export' && <OutputPanel s={s} />}

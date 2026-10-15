@@ -1,32 +1,46 @@
 import { memo } from 'preact/compat';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { bakeKey, bakeLayers } from '../layers/raster';
 import { totalDuration } from '../model/project';
 import { addFrame, deleteFrame, moveFrame, selectFrame, setDelay, store, type EditorState } from '../model/store';
-import type { Frame } from '../model/types';
+import type { Frame, Project } from '../model/types';
 import { IconButton } from './common';
 import { t } from '../i18n';
 
 const THUMB_H = 52;
 
-const Thumb = memo(function Thumb(props: { frame: Frame; w: number; h: number }) {
+// Thumbnails show the frame with its layers; `sig` (debounced layer state) decides when to redraw.
+const Thumb = memo(function Thumb(props: { frame: Frame; p: Project; sig: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const cw = Math.min(120, Math.round((props.w * THUMB_H) / props.h));
+  const { width: w, height: h } = props.p;
+  const cw = Math.min(120, Math.round((w * THUMB_H) / h));
   useEffect(() => {
     const c = ref.current!;
     const ctx = c.getContext('2d')!;
-    const img = new OffscreenCanvas(props.w, props.h);
-    img.getContext('2d')!.putImageData(new ImageData(props.frame.data, props.w, props.h), 0, 0);
-    ctx.imageSmoothingEnabled = c.width < props.w; // smooth only when shrinking
+    const img = new OffscreenCanvas(w, h);
+    img.getContext('2d')!.putImageData(new ImageData(bakeLayers(props.p, props.frame), w, h), 0, 0);
+    ctx.imageSmoothingEnabled = c.width < w; // smooth only when shrinking
     ctx.clearRect(0, 0, c.width, c.height);
     ctx.drawImage(img, 0, 0, c.width, c.height);
-  }, [props.frame.data, props.w, props.h]);
+  }, [props.frame, props.sig, w, h]);
   return <canvas ref={ref} width={cw} height={THUMB_H} style={{ width: cw, height: THUMB_H }} />;
-});
+}, (a, b) => a.frame === b.frame && a.sig === b.sig && a.p.width === b.p.width && a.p.height === b.p.height);
+
+// Layer changes reach the thumbnails once dragging pauses.
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return v;
+}
 
 export function Timeline({ s }: { s: EditorState }) {
   const { project: p, frameIndex } = s;
   const frame = p.frames[frameIndex];
   const stripRef = useRef<HTMLDivElement>(null);
+  const sig = useDebounced(bakeKey(p), 250);
   // 67 ms is really 15 fps; show whole numbers when the delay was rounded from one.
   const rawFps = 1000 / frame.delay;
   const fps = Math.abs(rawFps - Math.round(rawFps)) < 0.2 ? Math.round(rawFps) : Math.round(rawFps * 10) / 10;
@@ -67,7 +81,7 @@ export function Timeline({ s }: { s: EditorState }) {
       <div class="frames" ref={stripRef}>
         {p.frames.map((f, i) => (
           <div key={f.id} class={`thumb${i === frameIndex ? ' sel' : ''}`} onClick={() => selectFrame(i)}>
-            <Thumb frame={f} w={p.width} h={p.height} />
+            <Thumb frame={f} p={p} sig={sig} />
             <span class="n">{i + 1}</span>
             <div class="d">{f.delay}ms</div>
           </div>

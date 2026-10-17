@@ -846,4 +846,11 @@ export const TH: Record<string, string> = {
   "Mouth": "ปาก",
   "Face with a mouth": "หน้าตาพร้อมปาก",
   "Eyes and a mouth that change with every mood": "ตากับปากที่เปลี่ยนไปตามอารมณ์",
+  // heart templates
+  "Floating hearts": "หัวใจลอย",
+  "Hearts drift up the screen": "หัวใจลอยขึ้นไปเรื่อย ๆ",
+  "Heart rain": "ฝนหัวใจ",
+  "Hearts in many colors fall down": "หัวใจหลากสีตกลงมา",
+  "Filling heart": "หัวใจเติมสี",
+  "A heart fills up, then beats": "หัวใจค่อย ๆ เติมจนเต็มแล้วเต้น",
 };

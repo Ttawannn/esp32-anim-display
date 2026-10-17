@@ -131,6 +131,81 @@ const heart: AnimTemplate = {
   },
 };
 
+// The classic heart curve around (cx, cy); R is about half its width. Spans cy - 1.05R .. cy + 1.15R.
+const insideHeart = (x: number, y: number, cx: number, cy: number, R: number) => {
+  const u = (x - cx) / R, v = -(y - cy) / R + 0.15;
+  const q = u * u + v * v - 1;
+  return q * q * q - u * u * v * v * v <= 0;
+};
+const heartAt = (img: Img, cx: number, cy: number, R: number, c: RGB) =>
+  img.shape((x, y) => insideHeart(x, y, cx, cy, R), c, cx - R * 1.25, cy - R * 1.3, cx + R * 1.25 + 1, cy + R * 1.3 + 1);
+
+const HEART_COLORS: RGB[] = [[255, 61, 110], [255, 130, 170], [230, 30, 60], [190, 90, 255], [255, 160, 70]];
+
+// Hearts drifting up (or falling) and swaying; each crosses the screen a whole number of times
+// per loop, so the animation loops seamlessly.
+function driftingHearts(id: string, name: string, hint: string, fall: boolean): AnimTemplate {
+  return {
+    id, name, icon: 'heart', hint, category: 'fun', pixel: 2,
+    options: fall
+      ? [{ id: 'bg', label: 'Background', type: 'color' }]
+      : [{ id: 'color', label: 'Heart color', type: 'color' }, { id: 'bg', label: 'Background', type: 'color' }],
+    defaults: fall ? { bg: '#12081c' } : { color: '#ff3d6e', bg: '#1a0612' },
+    generate(c, o) {
+      const bg = bgCol(c, o), base = fall ? null : col(c, o, 'color');
+      const rand = rng(fall ? 11 : 7), m = Math.min(c.w, c.h);
+      const n = Math.max(5, Math.round((c.w * c.h) / (fall ? 520 : 950)));
+      const hearts = Array.from({ length: n }, () => ({
+        x: rand() * c.w, ph: rand(), k: 1 + Math.floor(rand() * 2), sp: rand(),
+        R: Math.max(2.5, m * (fall ? 0.03 + rand() * 0.035 : 0.04 + rand() * 0.06)), sway: rand() * m * 0.05,
+        color: c.mono ? WHITE
+          : base ? mix(base, rand() < 0.5 ? WHITE : BLACK, rand() * 0.35)
+          : HEART_COLORS[Math.floor(rand() * HEART_COLORS.length)],
+      })).sort((a, b) => a.R - b.R); // small (far away) ones behind
+      return { frames: frames(48, 50, (t) => {
+        const img = new Img(c.w, c.h, bg);
+        for (const h of hearts) {
+          const span = c.h + h.R * 3, p = (h.ph + t * h.k) % 1;
+          const y = fall ? -h.R * 1.5 + p * span : c.h + h.R * 1.5 - p * span;
+          heartAt(img, h.x + Math.sin(2 * Math.PI * (t * h.k + h.sp)) * h.sway, y, h.R, h.color);
+        }
+        return img;
+      }) };
+    },
+  };
+}
+
+const floatingHearts = driftingHearts('hearts-float', 'Floating hearts', 'Hearts drift up the screen', false);
+const heartRain = driftingHearts('hearts-rain', 'Heart rain', 'Hearts in many colors fall down', true);
+
+// An outlined heart fills up with a wavy surface, beats twice when full, then starts over.
+const heartFill: AnimTemplate = {
+  id: 'heart-fill', name: 'Filling heart', icon: 'heart', hint: 'A heart fills up, then beats', category: 'fun', pixel: 3,
+  options: [{ id: 'color', label: 'Heart color', type: 'color' }, { id: 'bg', label: 'Background', type: 'color' }],
+  defaults: { color: '#ff2d55', bg: '#000000' },
+  generate(c, o) {
+    const fg = col(c, o, 'color'), bg = bgCol(c, o), rim = c.mono ? WHITE : mix(fg, WHITE, 0.45);
+    const R0 = safeRadius(c.w, c.h, c.round) * 0.6, cx = c.w / 2, cy = c.h / 2 + R0 * 0.05;
+    const line = Math.max(1, R0 * 0.13);
+    const fills = 20, beats = 8;
+    const out: Generated['frames'] = [];
+    for (let i = 0; i < fills + beats; i++) {
+      const filling = i < fills, level = filling ? i / (fills - 1) : 1;
+      const R = filling ? R0 : R0 * (1 + 0.12 * Math.sin((Math.PI * (i - fills + 1)) / (beats / 2)) ** 2);
+      const img = new Img(c.w, c.h, bg);
+      heartAt(img, cx, cy, R, rim);
+      heartAt(img, cx, cy, R - line, bg);
+      // Liquid level from the bottom tip to the top of the lobes, with a small wave while filling.
+      const top = cy - R * 1.05, bottom = cy + R * 1.15, surface = bottom - level * (bottom - top);
+      const wave = filling && level > 0 && level < 1 ? Math.max(0.6, R * 0.05) : 0;
+      img.shape((x, y) => y >= surface + Math.sin(x * 0.45 + i * 0.9) * wave && insideHeart(x, y, cx, cy, R - line * 1.6),
+        fg, cx - R * 1.25, cy - R * 1.3, cx + R * 1.25 + 1, cy + R * 1.3 + 1);
+      out.push({ data: img.d, delay: i === fills + beats - 1 ? 600 : filling ? 80 : 60 });
+    }
+    return { frames: out };
+  },
+};
+
 const spinner: AnimTemplate = {
   id: 'spinner', name: 'Loading', icon: 'loader', hint: 'Spinning dots', category: 'tech', pixel: 2,
   options: [{ id: 'color', label: 'Color', type: 'color' }, { id: 'style', label: 'Style', type: 'choice', choices: [['dots', 'Dots'], ['ring', 'Ring']] }],
@@ -890,7 +965,7 @@ const EYES: AnimTemplate[] = [
 ];
 
 export const TEMPLATES: AnimTemplate[] = [
-  clock, ...EYES, heart, fire, stars, rain, snow, wave, plasma, bounce, pacman, fireworks, emojiBounce, marquee,
+  clock, ...EYES, heart, floatingHearts, heartRain, heartFill, fire, stars, rain, snow, wave, plasma, bounce, pacman, fireworks, emojiBounce, marquee,
   spinner, warp, matrix, equalizer, battery, wifi, radar, life,
 ];
 

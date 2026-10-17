@@ -10,7 +10,7 @@ A single firmware supports every display; the display model is chosen from the w
 > - ✅ Phases 3–4: full editor, eye templates, live preview on the board, board manager
 > - ✅ Phase 5: playlist, BOOT button, resume the last animation after reboot
 > - ✅ Setup wizard (OLED auto-detect, test-pattern comparison with one-tap fixes), remote with templates, messages, file rename/delete and board settings
-> - ✅ Template gallery (21 generated animations) and drag-and-drop objects: emoji, icons, text, live date/time widgets drawn by the board
+> - ✅ Template gallery (24 generated animations, opened as editable layers) and drag-and-drop layers: emoji, icons, text, live date/time widgets drawn by the board
 > - ⏳ Remaining: testing on real hardware, OTA (optional), items under "Not yet implemented"
 
 ---

@@ -1,5 +1,6 @@
 import { store, type EditorState } from '../model/store';
 import { AdjustPanel } from './AdjustPanel';
+import { AsciiPanel } from './AsciiPanel';
 import { InsertPanel } from './InsertPanel';
 import { LayersPanel } from './LayersPanel';
 import { Icon } from './common';
@@ -33,7 +34,7 @@ export function SidePanel({ s }: { s: EditorState }) {
         {s.sideTab === 'insert' && <InsertPanel s={s} />}
         {s.sideTab === 'layers' && <LayersPanel s={s} />}
         {s.sideTab === 'color' && <PalettePanel s={s} />}
-        {s.sideTab === 'adjust' && <AdjustPanel s={s} />}
+        {s.sideTab === 'adjust' && <><AdjustPanel s={s} /><AsciiPanel s={s} /></>}
         {s.sideTab === 'export' && <OutputPanel s={s} />}
       </div>
     </aside>

@@ -2,6 +2,7 @@
 // code (no image files), so it fits any panel size and colour depth. Loops are seamless where the
 // motion allows: positions are periodic in t = frame / frameCount.
 
+import { asciiGrid, type Grid } from '../ascii/ascii';
 import { t as tr } from '../i18n';
 import { EMOJI_FONT, fontCss } from '../layers/catalog';
 import { trimCel } from '../layers/paint';
@@ -45,7 +46,7 @@ export interface Generated {
   arrange?: (boxes: { w: number; h: number }[]) => { x: number; y: number }[];
 }
 
-export type CategoryId = 'eyes' | 'nature' | 'fun' | 'tech' | 'text';
+export type CategoryId = 'eyes' | 'nature' | 'fun' | 'tech' | 'text' | 'ascii';
 
 export interface AnimTemplate {
   id: string;
@@ -68,6 +69,7 @@ export const CATEGORIES: { id: CategoryId | 'all'; label: string }[] = [
   { id: 'nature', label: 'Nature' },
   { id: 'fun', label: 'Fun' },
   { id: 'tech', label: 'Tech' },
+  { id: 'ascii', label: 'ASCII art' },
 ];
 
 const BLACK: RGB = [0, 0, 0];
@@ -717,6 +719,142 @@ const radar: AnimTemplate = {
 };
 
 // ---------------------------------------------------------------------------------------------
+// ASCII art: characters from the bitmap fonts in ascii/font.ts, laid out on a character grid.
+
+const LUMINANCE = '.,-~:;=!*#$@'; // dim to bright, in both fonts
+const DENSITY = ' .:-=+*#%@';
+
+function putChar(img: Img, g: Grid, ch: string, col: number, row: number, color: RGB) {
+  const glyph = g.font.glyphs.get(ch) ?? g.font.glyphs.get('?');
+  if (!glyph || col < 0 || row < 0 || col >= g.cols || row >= g.rows) return;
+  const fw = g.font.cellW, x0 = g.ox + col * g.cellW, y0 = g.oy + row * g.cellH;
+  for (let y = 0; y < g.cellH; y++)
+    for (let x = 0; x < g.cellW; x++) if (glyph[((y / g.scale) | 0) * fw + ((x / g.scale) | 0)]) img.plot(x0 + x, y0 + y, color);
+}
+
+// Medium characters when 16 columns fit, otherwise small ones.
+const charGrid = (c: TemplateCtx) => asciiGrid(c.w, c.h, c.w / 6 >= 16 ? 'medium' : 'small');
+
+const charAt = (chars: string, v: number) => chars[Math.max(0, Math.min(chars.length - 1, Math.floor(v * chars.length)))];
+
+const asciiDonut: AnimTemplate = {
+  id: 'ascii-donut', name: 'Spinning donut', icon: 'ball', hint: 'A 3D ring shaded with characters', category: 'ascii', pixel: 2,
+  options: [{ id: 'color', label: 'Color', type: 'color' }, { id: 'bg', label: 'Background', type: 'color' }],
+  defaults: { color: '#ffb340', bg: '#000000' },
+  generate(c, o) {
+    const fg = col(c, o, 'color'), bg = bgCol(c, o), dim = mix(bg, fg, 0.35);
+    const g = asciiGrid(c.w, c.h, 'small');
+    const R1 = 1, R2 = 2, K2 = 5, K1 = (safeRadius(g.cols * g.cellW, g.rows * g.cellH, c.round) * 2 * K2 * 3) / (8 * (R1 + R2));
+    const cx = g.ox + (g.cols * g.cellW) / 2, cy = g.oy + (g.rows * g.cellH) / 2;
+    return { frames: frames(40, 50, (t) => {
+      const img = new Img(c.w, c.h, bg);
+      // Both angles turn one full circle, so the loop is seamless.
+      const A = 2 * Math.PI * t, B = 2 * Math.PI * t;
+      const cA = Math.cos(A), sA = Math.sin(A), cB = Math.cos(B), sB = Math.sin(B);
+      const zbuf = new Float32Array(g.cols * g.rows), lum = new Float32Array(g.cols * g.rows).fill(-1);
+      for (let th = 0; th < 2 * Math.PI; th += 0.07) {
+        const ct = Math.cos(th), st = Math.sin(th);
+        for (let ph = 0; ph < 2 * Math.PI; ph += 0.02) {
+          const cp = Math.cos(ph), sp = Math.sin(ph);
+          const hx = R2 + R1 * ct, hy = R1 * st;
+          const x = hx * (cB * cp + sA * sB * sp) - hy * cA * sB;
+          const y = hx * (sB * cp - sA * cB * sp) + hy * cA * cB;
+          const z = K2 + cA * hx * sp + hy * sA, ooz = 1 / z;
+          const gx = Math.floor((cx + K1 * ooz * x - g.ox) / g.cellW), gy = Math.floor((cy - K1 * ooz * y - g.oy) / g.cellH);
+          if (gx < 0 || gy < 0 || gx >= g.cols || gy >= g.rows) continue;
+          // Surface normal against a light from the upper back.
+          const L = cp * ct * sB - cA * ct * sp - sA * st + cB * (cA * st - ct * sA * sp);
+          const i = gy * g.cols + gx;
+          if (L > 0 && ooz > zbuf[i]) { zbuf[i] = ooz; lum[i] = L / Math.SQRT2; }
+        }
+      }
+      for (let i = 0; i < lum.length; i++)
+        if (lum[i] >= 0) putChar(img, g, charAt(LUMINANCE, lum[i]), i % g.cols, (i / g.cols) | 0, c.mono ? WHITE : mix(dim, fg, lum[i]));
+      return img;
+    }) };
+  },
+};
+
+const asciiPlasma: AnimTemplate = {
+  id: 'ascii-plasma', name: 'ASCII plasma', icon: 'rainbow', hint: 'Flowing waves of characters', category: 'ascii', pixel: 2,
+  options: [{ id: 'palette', label: 'Palette', type: 'choice', choices: [['rainbow', 'Rainbow'], ['ocean', 'Ocean'], ['sunset', 'Sunset'], ['purple', 'Purple']] }],
+  defaults: { palette: 'rainbow' },
+  generate(c, o) {
+    const pal = ramp(PALETTES[o.palette] ?? PALETTES.rainbow);
+    const g = charGrid(c);
+    // The same field as the plasma template, sampled at each character's centre.
+    const s = 12 / Math.max(g.cols * g.cellW, g.rows * g.cellH);
+    return { frames: frames(24, 70, (t) => {
+      const img = new Img(c.w, c.h, BLACK);
+      const a = 2 * Math.PI * t;
+      for (let row = 0; row < g.rows; row++)
+        for (let x = 0; x < g.cols; x++) {
+          const u = (x + 0.5) * g.cellW * s, v = (row + 0.5) * g.cellH * s;
+          const val = Math.sin(u + a) + Math.sin(v * 0.8 - a) + Math.sin((u + v) * 0.6 + a) + Math.sin(Math.hypot(u - 6, v - 6) - 2 * a);
+          const k = val / 4 + 0.5;
+          putChar(img, g, charAt(DENSITY.slice(1), k), x, row, c.mono ? WHITE : pal((k + t) % 1)); // no blanks
+        }
+      return img;
+    }) };
+  },
+};
+
+const asciiFire: AnimTemplate = {
+  id: 'ascii-fire', name: 'ASCII fire', icon: 'flame', hint: 'Flames made of characters', category: 'ascii', pixel: 2,
+  options: [{ id: 'palette', label: 'Flame color', type: 'choice', choices: PALETTE_CHOICES }],
+  defaults: { palette: 'fire' },
+  generate(c, o) {
+    const pal = ramp(PALETTES[o.palette] ?? PALETTES.fire);
+    const g = charGrid(c), w = g.cols, h = g.rows, max = 36, rand = rng(11);
+    // The fire template's flames, one cell per character.
+    const decay = max / (h * 0.75);
+    const heat = new Float32Array(w * h);
+    heat.fill(max, (h - 1) * w);
+    const step = () => {
+      for (let x = 0; x < w; x++)
+        for (let y = 1; y < h; y++) {
+          const src = y * w + x, dst = src - w - Math.floor(rand() * 3) + 1;
+          if (dst >= 0 && dst < w * h) heat[dst] = Math.max(0, heat[src] - rand() * 2 * decay);
+        }
+    };
+    for (let i = 0; i < h * 2; i++) step();
+    return { frames: frames(36, 60, () => {
+      step();
+      const img = new Img(c.w, c.h, BLACK);
+      for (let i = 0; i < w * h; i++) {
+        const v = heat[i] / max;
+        if (v > 0.06) putChar(img, g, charAt(DENSITY, v), i % w, (i / w) | 0, c.mono ? WHITE : pal(v));
+      }
+      return img;
+    }) };
+  },
+};
+
+const terminal: AnimTemplate = {
+  id: 'terminal', name: 'Terminal', icon: 'code', hint: 'Types your message like an old computer (English letters and digits)', category: 'ascii', pixel: 2,
+  options: [{ id: 'text', label: 'Text', type: 'text' }, { id: 'color', label: 'Color', type: 'color' }],
+  defaults: { text: 'HELLO, WORLD', color: '#33ff77' },
+  generate(c, o) {
+    const fg = col(c, o, 'color'), bg = BLACK, dim = mix(bg, fg, 0.55);
+    const g = asciiGrid(c.w, c.h, 'medium'); // the small font has no letters
+    // Characters the font cannot draw (Thai, emoji) show as '?'.
+    const text = [...('> ' + (o.text.trim() || ' ').toUpperCase())].map((ch) => (g.font.glyphs.has(ch) ? ch : '?'))
+      .slice(0, g.cols * g.rows - 1);
+    const cell = (k: number) => [k % g.cols, Math.floor(k / g.cols)];
+    const draw = (typed: number, cursor: boolean) => {
+      const img = new Img(c.w, c.h, bg);
+      for (let k = 0; k < typed; k++) putChar(img, g, text[k], cell(k)[0], cell(k)[1], k < 2 ? dim : fg);
+      if (cursor) putChar(img, g, '█', cell(typed)[0], cell(typed)[1], fg);
+      return img;
+    };
+    const out: Generated['frames'] = [];
+    for (let k = 1; k <= text.length; k++) out.push({ data: draw(k, true).d, delay: text[k - 1] === ' ' ? 160 : 90 });
+    for (let b = 0; b < 6; b++) out.push({ data: draw(text.length, b % 2 === 1).d, delay: 450 });
+    return { frames: out };
+  },
+};
+
+// ---------------------------------------------------------------------------------------------
 // Canvas-based (text and emoji)
 
 function ctx2d(w: number, h: number) {
@@ -966,7 +1104,7 @@ const EYES: AnimTemplate[] = [
 
 export const TEMPLATES: AnimTemplate[] = [
   clock, ...EYES, heart, floatingHearts, heartRain, heartFill, fire, stars, rain, snow, wave, plasma, bounce, pacman, fireworks, emojiBounce, marquee,
-  spinner, warp, matrix, equalizer, battery, wifi, radar, life,
+  spinner, warp, matrix, equalizer, battery, wifi, radar, life, asciiDonut, asciiPlasma, asciiFire, terminal,
 ];
 
 // ---------------------------------------------------------------------------------------------

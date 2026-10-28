@@ -62,6 +62,37 @@ export function retarget(p: Project, presetId: string): Project {
   return next;
 }
 
+// The same picture at scale 1: every canvas pixel becomes scale × scale pixels, so effects that
+// need the screen's own resolution (ASCII art) have room to work. Paint layers and stickers keep
+// their place and size; clocks are already in screen pixels.
+export function atFullResolution(p: Project): Project {
+  const k = p.scale;
+  if (k === 1) return p;
+  const w0 = p.width, w = w0 * k, h = p.height * k;
+  const up = (src: Pixels): Pixels => {
+    const out = new Uint8ClampedArray(w * h * 4);
+    for (let sy = 0; sy < p.height; sy++) {
+      const row = sy * k * w * 4;
+      for (let x = 0; x < w; x++) {
+        const s = (sy * w0 + ((x / k) | 0)) * 4, d = row + x * 4;
+        out[d] = src[s]; out[d + 1] = src[s + 1]; out[d + 2] = src[s + 2]; out[d + 3] = src[s + 3];
+      }
+      for (let r = 1; r < k; r++) out.copyWithin(row + r * w * 4, row, row + w * 4);
+    }
+    return out;
+  };
+  return {
+    ...p, width: w, height: h, scale: 1,
+    frames: p.frames.map((f) => ({ ...f, data: up(f.data) })),
+    ...(p.layers && {
+      layers: p.layers.map((l) =>
+        l.kind === 'paint' ? { ...l, x: l.x * k, y: l.y * k, scale: l.scale * k }
+        : l.kind === 'sticker' ? { ...l, x: l.x * k, y: l.y * k, size: l.size * k }
+        : l),
+    }),
+  };
+}
+
 export function totalDuration(p: Project): number {
   return p.frames.reduce((s, f) => s + f.delay, 0);
 }

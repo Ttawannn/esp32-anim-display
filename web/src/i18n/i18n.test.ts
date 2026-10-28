@@ -3,6 +3,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CHARSETS, SIZES } from '../ascii/ascii';
 import { EMOJI, FONTS, ICONS } from '../layers/catalog';
 import { CLOCK_PRESETS } from '../layers/clock';
 import { PALETTES } from '../model/palettes';
@@ -39,6 +40,7 @@ describe('i18n', () => {
       ...TEMPLATES.flatMap((x) => [x.name, x.hint, ...x.options.flatMap((o) => [o.label, ...(o.type === 'choice' ? o.choices.map((c) => c[1]) : [])])]),
       ...CATEGORIES.map((c) => c.label), ...EMOJI.map((c) => c.label), ...ICONS.map((i) => i.label), ...FONTS.map((f) => f.label),
       ...CLOCK_PRESETS.map((c) => c.label), ...EYE_ANIMS.map((a) => a.name), ...PALETTES.map((p) => p.name),
+      ...CHARSETS.map((c) => c.label), ...SIZES.map((z) => z.label),
     ];
     const missing = [...new Set(labels)].filter((l) => !(l in TH) && !/^\d+$/.test(l));
     expect(missing).toEqual([]);

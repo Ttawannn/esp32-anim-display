@@ -23,6 +23,8 @@ export interface Cel {
 export type Dither = 'none' | 'bayer' | 'floyd' | 'atkinson';
 export type Encoding = 'auto' | 'indexed' | 'jpeg';
 export type OledTint = 'white' | 'blue' | 'yellow-blue';
+export type AsciiCharset = 'classic' | 'detailed' | 'blocks' | 'binary';
+export type AsciiSize = 'small' | 'medium' | 'large';
 
 export interface ColorAdjust {
   brightness: number; // -100..100
@@ -52,6 +54,16 @@ export interface Project {
   jpegQuality: number; // 0.3..0.95
   source: 'pixel' | 'gif' | 'video';
   layers?: Layer[]; // layers on top of the background drawing (absent in older projects)
+  ascii?: AsciiEffect; // draw the picture as characters (absent = off), see ascii/ascii.ts
+}
+
+// ASCII art: every cell of the finished picture becomes one character, denser where it is
+// brighter. Applied after the color adjustments, so brightness and contrast steer the choice.
+export interface AsciiEffect {
+  charset: AsciiCharset;
+  size: AsciiSize; // canvas pixels per character: small 4×6, medium 6×8, large 12×16
+  color: 'image' | 'solid'; // character color: the picture's color in that cell, or `ink`
+  ink: string; // #rrggbb
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -118,6 +130,8 @@ export const DEFAULT_ADJUST: ColorAdjust = {
   threshold: 128,
   dither: 'floyd',
 };
+
+export const DEFAULT_ASCII: AsciiEffect = { charset: 'classic', size: 'medium', color: 'image', ink: '#33ff77' };
 
 export function isAdjustNeutral(a: ColorAdjust): boolean {
   return a.brightness === 0 && a.contrast === 0 && a.saturation === 0 && a.hue === 0 && !a.invert && a.colors === 0;

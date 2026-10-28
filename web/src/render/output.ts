@@ -1,7 +1,8 @@
-// Turns editor frames (RGBA) into what the panel will show: color adjustments, RGB565 or 1-bit
-// conversion and optional color reduction. Results are cached per frame buffer.
+// Turns editor frames (RGBA) into what the panel will show: color adjustments, the optional ASCII
+// art effect, RGB565 or 1-bit conversion and optional color reduction. Results are cached per frame buffer.
 
-import { adjustTo565, adjustToLuma } from '../color/adjust';
+import { asciiTo565, asciiToMono } from '../ascii/ascii';
+import { adjustTo565, adjustToLuma, adjustToRgba } from '../color/adjust';
 import { toMono } from '../color/mono';
 import { quantize, type Quantized } from '../color/quantize';
 import { bakeKey, bakeLayers } from '../layers/raster';
@@ -20,7 +21,7 @@ function processKey(p: Project): string {
   const base = isMono(p)
     ? `m|${a.brightness}|${a.contrast}|${a.invert}|${a.threshold}|${a.dither}|${p.background}|${p.width}`
     : `c|${a.brightness}|${a.contrast}|${a.saturation}|${a.hue}|${a.invert}|${p.background}`;
-  return base + '|' + bakeKey(p);
+  return base + '|' + bakeKey(p) + (p.ascii ? '|' + JSON.stringify(p.ascii) : '');
 }
 
 const frameCache = new WeakMap<Uint8ClampedArray, { key: string; cels: Frame['cels']; out: OutFrame }>();
@@ -32,9 +33,14 @@ export function processFrame(p: Project, f: Frame): OutFrame {
   if (hit && hit.key === key && hit.cels === f.cels) return hit.out;
   const bg = hexToRgb(p.background);
   const data = bakeLayers(p, f); // paint layers and stickers on top of the drawing
-  const out: OutFrame = isMono(p)
-    ? { kind: 'mono', bits: toMono(adjustToLuma(data, p.adjust, bg), p.width, p.height, p.adjust.threshold, p.adjust.dither) }
-    : { kind: 'rgb565', px: adjustTo565(data, p.adjust, bg) };
+  const { width: w, height: h, adjust: a, ascii } = p;
+  let out: OutFrame;
+  if (isMono(p)) {
+    const gray = adjustToLuma(data, a, bg);
+    out = { kind: 'mono', bits: ascii ? asciiToMono(gray, w, h, ascii) : toMono(gray, w, h, a.threshold, a.dither) };
+  } else {
+    out = { kind: 'rgb565', px: ascii ? asciiTo565(adjustToRgba(data, a, bg), w, h, ascii, bg) : adjustTo565(data, a, bg) };
+  }
   frameCache.set(f.data, { key, cels: f.cels, out });
   return out;
 }

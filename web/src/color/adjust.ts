@@ -4,8 +4,24 @@ import { to565 } from './rgb565';
 // Applies brightness/contrast/saturation/hue/invert, composites transparency over `bg`, and returns
 // RGB565 pixels (what a TFT will actually show).
 export function adjustTo565(src: Uint8ClampedArray, a: ColorAdjust, bg: [number, number, number]): Uint16Array {
+  const out = new Uint16Array(src.length >> 2);
+  adjustEach(src, a, bg, (i, r, g, b) => { out[i] = to565(r, g, b); });
+  return out;
+}
+
+// The same adjustments as opaque RGBA, for effects that still work on the picture (ASCII art).
+export function adjustToRgba(src: Uint8ClampedArray, a: ColorAdjust, bg: [number, number, number]): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(src.length);
+  adjustEach(src, a, bg, (i, r, g, b) => {
+    const p = i * 4;
+    out[p] = r; out[p + 1] = g; out[p + 2] = b; out[p + 3] = 255;
+  });
+  return out;
+}
+
+function adjustEach(src: Uint8ClampedArray, a: ColorAdjust, bg: [number, number, number],
+  emit: (i: number, r: number, g: number, b: number) => void) {
   const n = src.length >> 2;
-  const out = new Uint16Array(n);
   const lut = toneLut(a);
   const m = colorMatrix(a.saturation, a.hue);
   const identity = a.saturation === 0 && a.hue === 0;
@@ -26,9 +42,8 @@ export function adjustTo565(src: Uint8ClampedArray, a: ColorAdjust, bg: [number,
       g = ng < 0 ? 0 : ng > 255 ? 255 : ng;
       b = nb < 0 ? 0 : nb > 255 ? 255 : nb;
     }
-    out[i] = to565(lut[r | 0], lut[g | 0], lut[b | 0]);
+    emit(i, lut[r | 0], lut[g | 0], lut[b | 0]);
   }
-  return out;
 }
 
 // Grayscale 0..255 after adjustments, for mono panels.

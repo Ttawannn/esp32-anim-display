@@ -46,7 +46,7 @@ export function AdjustPanel({ s }: { s: EditorState }) {
           </div>
         </>
       )}
-      {mono && (
+      {mono && !p.ascii && (
         <>
           <Slider label={t('Threshold')} min={1} max={254} value={a.threshold}
             onInput={(v) => live({ threshold: v })} onCommit={end} />
@@ -59,10 +59,12 @@ export function AdjustPanel({ s }: { s: EditorState }) {
               <option value="bayer">{t('Bayer (even dot pattern)')}</option>
             </select>
           </div>
-          <label class="check">
-            <input type="checkbox" checked={a.invert} onChange={() => commit({ invert: !a.invert })} /> {t('Invert black/white')}
-          </label>
         </>
+      )}
+      {mono && (
+        <label class="check">
+          <input type="checkbox" checked={a.invert} onChange={() => commit({ invert: !a.invert })} /> {t('Invert black/white')}
+        </label>
       )}
     </div>
   );

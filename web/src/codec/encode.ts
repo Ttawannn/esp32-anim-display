@@ -11,7 +11,7 @@ type Runner = (project: Project, progress: EncodeProgress, signal: AbortSignal) 
 // Every setting that changes the encoded bytes. Names and editor UI state do not.
 export function projectEncodingKey(p: Project): string {
   return JSON.stringify([p.presetId, p.width, p.height, p.scale, p.offsetX, p.offsetY, p.loop,
-    p.background, p.encoding, p.jpegQuality, p.source, p.adjust, p.layers ?? []]);
+    p.background, p.encoding, p.jpegQuality, p.source, p.adjust, p.layers ?? [], p.ascii ?? null]);
 }
 
 interface Entry {

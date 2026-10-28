@@ -22,6 +22,7 @@ Draw pixel art, generate expressive robot eyes, or import GIFs and videos. Then 
 - **Eye templates:** 12 moods in 3 styles (robot, cartoon, single eye for round displays). Color, size and smoothness are adjustable.
 - **GIF and video import:** trim, crop and choose the frame rate. All conversion happens in the browser.
 - **Color tools:** brightness, contrast, saturation, hue and color count. OLEDs get 1-bit conversion with dithering.
+- **ASCII art:** draw any animation, GIF or video as characters (four character sets, three sizes, picture colors or one color), on color and OLED displays alike. The template gallery has an ASCII category too: a spinning donut, plasma, fire and a terminal that types your message.
 - **True-to-hardware preview:** RGB565 or 1-bit color and the round-display mask. Switch the target display at any time.
 - **One-click upload:** with live preview on the real display while you edit.
 - **USB connection:** manage the board and upload directly over Web Serial, with progress and confirmation that files were saved.

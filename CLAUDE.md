@@ -150,3 +150,4 @@ Web presets (`web/src/model/presets.ts`) carry geometry only. A project's displa
   - `#/remote` is the phone remote (`ui/RemoteApp.tsx`).
   - Without a hash, phones that reach a board (served by it, or the dev proxy flag `VITE_DEVICE_PROXY`) get the remote.
   - Remote thumbnails (`device/thumbs.ts`) download files via `/api/anims/file` and show the longest-held frame.
+  - The remote's drawing pad (`ui/RemoteDraw.tsx`) draws at template resolution (`canvasFor`) with a hard-edged brush, sends each stroke as a live frame, and saves the picture as the "Drawing" file.

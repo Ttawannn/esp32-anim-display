@@ -15,6 +15,7 @@ import { formatBytes, Icon } from './common';
 import { FirmwareNotice } from './FirmwareNotice';
 import { LangSwitch } from './LangSwitch';
 import { BoardSettingsSheet, MessageCard, TemplatesSection } from './RemoteExtras';
+import { DrawCard } from './RemoteDraw';
 import { SetupWizardAuto } from './SetupWizard';
 import { UsbControls } from './UsbControls';
 import { t } from '../i18n';
@@ -287,6 +288,7 @@ export function RemoteApp() {
             )}
           </section>
 
+          <DrawCard host={host} info={info} onSent={() => { loadFiles(); refreshDevice().catch(() => {}); }} />
           <MessageCard host={host} info={info} onSent={() => { loadFiles(); refreshDevice().catch(() => {}); }} />
           <TemplatesSection host={host} info={info} onInstalled={() => { loadFiles(); refreshDevice().catch(() => {}); }} />
 

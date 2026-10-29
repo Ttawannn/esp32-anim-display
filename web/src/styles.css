@@ -658,6 +658,16 @@ label.switch input { width: 20px; height: 20px; }
 }
 .card.message textarea:focus { outline: none; border-color: var(--accent); }
 .color-dots { display: flex; gap: 10px; margin: 10px 0 0; }
+.draw-pad {
+  display: block; width: 100%; max-height: 62vh; object-fit: contain; image-rendering: pixelated; touch-action: none;
+  background: #000; border-radius: 10px; box-shadow: 0 0 0 1px var(--line-2); cursor: crosshair;
+}
+.draw-pad.round { border-radius: 50%; }
+.draw .color-dots { flex-wrap: wrap; }
+.draw-tools { margin: 10px 0 0; }
+.draw-tools .seg { margin: 0; }
+.draw .seg svg { width: 15px; height: 15px; vertical-align: -3px; }
+.draw .toggle { margin: 10px 0; }
 .color-dots button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px var(--line-2); }
 .color-dots button.sel { border-color: var(--bg); box-shadow: 0 0 0 2px var(--text); }
 .tpl-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; }
